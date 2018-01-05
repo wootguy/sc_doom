@@ -1,4 +1,5 @@
 #include "anims"
+#include "utils"
 
 enum activities {
 	ANIM_IDLE,
@@ -19,11 +20,13 @@ class fireball : ScriptBaseAnimating
 	bool dead = false;
 	int deathFrameStart = 2;
 	int deathFrameEnd = 4;
+	int frameCounter = 0;
 	
 	void Spawn()
 	{				
-		self.pev.movetype = MOVETYPE_FLY;
-		self.pev.solid = SOLID_TRIGGER;
+		pev.movetype = MOVETYPE_FLY;
+		pev.solid = SOLID_TRIGGER;
+		pev.effects = EF_DIMLIGHT;
 		
 		g_EntityFuncs.SetModel( self, "sprites/doom/BAL1.spr" );
 		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -8), Vector(8, 8, 8));
@@ -42,52 +45,108 @@ class fireball : ScriptBaseAnimating
 	
 	void Touch( CBaseEntity@ pOther )
 	{
-		if (dead)
+		if (dead or (pOther.pev.classname == "fireball"))
 			return;
+			
+		CBaseEntity@ owner = g_EntityFuncs.Instance( self.pev.owner );
+		if (owner !is null and owner.entindex() == pOther.entindex())
+			return;
+			
 		dead = true;
 		pev.velocity = Vector(0,0,0);
 		pev.solid = SOLID_NOT;
 		pev.frame = 2;
+		frameCounter = 2;
 		pev.nextthink = g_Engine.time + 0.15;
 		
-		CBaseEntity@ owner = g_EntityFuncs.Instance( self.pev.owner );
-		pOther.TakeDamage(self.pev, owner.pev, 20.0f, DMG_BLAST);
+		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, 20.0f, DMG_BLAST);
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, boomSound, 1.0f, 0.5f, 0, 100);
 	}
 	
 	void Think()
 	{
-		pev.frame += 1;
 		if (dead)
 		{
+			pev.frame = frameCounter;
 			if (pev.frame > deathFrameEnd)
 			{
 				g_EntityFuncs.Remove(self);
 				return;
 			}
+			
+			int flash_size = 30;
+			int flash_life = 3;
+			int flash_decay = 8;
+			Color flash_color = Color(32, 8, 4);
+			te_dlight(self.pev.origin, flash_size, flash_color, flash_life, flash_decay);
+			
+			pev.nextthink = g_Engine.time + 0.15;
 		}
 		else
 		{
-			if (pev.frame > 1)
-				pev.frame = 0;
+			pev.frame = (frameCounter / 3) % 2;
+			
+			int flash_size = 20;
+			int flash_life = 1;
+			int flash_decay = 8;
+			Color flash_color = Color(255, 64, 32);
+			te_dlight(self.pev.origin, flash_size, flash_color, flash_life, flash_decay);
+			
+			pev.nextthink = g_Engine.time + 0.05;
 		}
-		pev.nextthink = g_Engine.time + 0.15;
+		
+		frameCounter++;
 	}
 }
 
-class monster_imp : ScriptBaseMonsterEntity
+class AnimInfo
 {
-	array< array< array<string> > > anims = SPR_ANIM_TROO;
+	float framerate;
+	bool looped;
+	array<int> frameIndices;
+	int attackFrameIdx; // frame index where attack is called
+	
+	AnimInfo() {}
+	
+	AnimInfo(int min, int max, float rate, bool loop)
+	{
+		this.framerate = rate;
+		this.looped = loop;
+		this.attackFrameIdx = max - min;
+		
+		for (int i = min; i <= max; i++)
+			frameIndices.insertLast(i);
+	}
+	
+	int getFrameIdx(uint frameCounter, float oldCounter, bool &out looped)
+	{
+		int oldIdx = int(oldCounter*framerate) % frameIndices.length();
+		int newIdx = int(frameCounter*framerate) % frameIndices.length();
+		looped = oldIdx > newIdx or frameIndices.length() == 1;
+		return newIdx;
+	}
+	
+	int lastFrame()
+	{
+		return frameIndices[frameIndices.length()-1];
+	}
+}
+
+class monster_doom : ScriptBaseMonsterEntity
+{
+	array< array< array<string> > > anim_frames;
+	array<AnimInfo> animInfo;
+	AnimInfo currentAnim;
+	string anim_prefix;
 	
 	int activity = ANIM_IDLE;
+	bool hasMelee = true;
+	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
 	
-	int minFrame = 0;
-	int maxFrame = 2;
-	bool animLoop = true;
 	uint frameCounter = 0;
-	float framerate = 0.125f;
+	uint oldFrameCounter = 0;
 	int animLoops = 0;
-	int oldFrame = 0;
+	int oldFrameIdx = 0;
 	
 	float walkSpeed = 8.0f;
 	float meleeRange = 64.0f;
@@ -96,22 +155,22 @@ class monster_imp : ScriptBaseMonsterEntity
 	float lastWallReflect = 0;
 	float lastDirChange = 0;
 	float lastEnemy = 0;
+	float deathRemoveDelay = 60.0f; // time before entity is destroyed after death
 	float nextIdleSound = 0;
 	bool dormant = true;
 	EHandle h_enemy;
 	
-	array<string> idleSounds = {"doom/DSBGACT.wav"};
-	string clawSound = "doom/DSCLAW.wav";
-	string painSound = "doom/DSPOPAIN.wav";
-	array<string> deathSounds = {"doom/DSBGDTH1.wav", "doom/DSBGDTH2.wav"};
-	array<string> alertSounds = {"doom/DSBGSIT1.wav", "doom/DSBGSIT2.wav"};
+	array<string> idleSounds;
+	string painSound;
+	array<string> deathSounds;
+	array<string> alertSounds;
 	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{
 		return BaseClass.KeyValue( szKey, szValue );
 	}
 	
-	void Spawn()
+	void DoomSpawn()
 	{		
 		pev.movetype = MOVETYPE_STEP;
 		pev.solid = SOLID_SLIDEBOX;
@@ -119,65 +178,27 @@ class monster_imp : ScriptBaseMonsterEntity
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		
-		self.m_FormattedName = "Imp";
 		self.m_bloodColor = BLOOD_COLOR_RED;
-		self.pev.health = 100;
 		self.pev.scale = 1.2f;
 		pev.takedamage = DAMAGE_YES;
 		
+		self.MonsterInit();
+		
 		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 		self.SetClassification(CLASS_ALIEN_MONSTER);
-		
-		//self.MonsterInit();
-		
-		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.1;
+		SetActivity(ANIM_IDLE);
 	}
 	
 	void SetActivity(int act)
 	{
-		switch(act)
-		{
-			case ANIM_IDLE:
-				minFrame = 0;
-				maxFrame = 2;
-				framerate = 0.125f;
-				animLoop = true;
-				break;
-			case ANIM_MOVE:
-				minFrame = 0;
-				maxFrame = 4;
-				framerate = 0.25f;
-				animLoop = true;
-				break;
-			case ANIM_ATTACK:
-				minFrame = 4;
-				maxFrame = 7;
-				framerate = 0.25f;
-				animLoop = true;
-				break;
-			case ANIM_PAIN:
-				minFrame = 7;
-				maxFrame = 8;
-				framerate = 0.125;
-				break;
-			case ANIM_DEAD:
-				minFrame = 0;
-				maxFrame = 5;
-				animLoop = false;
-				framerate = 0.25f;
-				break;
-			case ANIM_GIB:
-				minFrame = 5;
-				maxFrame = 13;
-				animLoop = false;
-				framerate = 0.5f;
-				break;
-		}
+		if (act < 0 or act >= int(animInfo.length()))
+			println("Bad activity: " + act);
+		else
+			currentAnim = animInfo[act];
 		
 		println("ACT " + activity);
 		animLoops = 0;
-		frameCounter = 0;
+		oldFrameCounter = frameCounter = 0;
 		activity = act;
 	}
 	
@@ -196,13 +217,12 @@ class monster_imp : ScriptBaseMonsterEntity
 	
 	int TakeDamage( entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType )
 	{
-		if (!self.IsAlive())
+		if (!self.IsAlive() or flDamage == 0)
 			return 0;
 		pev.health -= flDamage;
 		if (pev.health <= 0)
 		{
-			println("I R DEAD");
-			g_EntityFuncs.SetModel(self, "sprites/doom/TROO" + light_suffix[pev.light_level] + ".spr");
+			g_EntityFuncs.SetModel(self, "sprites/doom/" + anim_prefix + light_suffix[pev.light_level] + ".spr");
 			pev.renderamt = 255;
 			pev.rendermode = 0;
 			pev.solid = SOLID_NOT;
@@ -212,6 +232,8 @@ class monster_imp : ScriptBaseMonsterEntity
 			pev.deadflag = DEAD_DYING;
 			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
+			if (gib)
+				snd = "doom/DSSLOP.wav";
 			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, snd, 1.0f, 0.5f, 0, 100);
 		}
 		else
@@ -220,7 +242,6 @@ class monster_imp : ScriptBaseMonsterEntity
 			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, painSound, 1.0f, 0.5f, 0, 100);
 			
 			CBaseEntity@ attacker = g_EntityFuncs.Instance(pevAttacker.get_pContainingEntity());
-			println("ATTACKER IS " + attacker.pev.classname);
 			SetEnemy( attacker );
 		}
 		
@@ -229,11 +250,19 @@ class monster_imp : ScriptBaseMonsterEntity
 	
 	void SetEnemy(CBaseEntity@ ent)
 	{
+		if (!ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0)
+			return;
 		// only switch targets after chasing current one for a while
-		if (!h_enemy.IsValid() or lastEnemy + 0.0f < g_Engine.time)
+		if (!h_enemy.IsValid() or lastEnemy + 10.0f < g_Engine.time)
 			h_enemy = EHandle(ent);
 		Wakeup();
 		lastEnemy = g_Engine.time;
+	}
+	
+	void ClearEnemy()
+	{
+		h_enemy = null;
+		Sleep();
 	}
 	
 	void Sleep()
@@ -242,20 +271,56 @@ class monster_imp : ScriptBaseMonsterEntity
 			return;
 			
 		h_enemy = null;
-		println("SLEEPY TIME");
 		dormant = true;
 		SetActivity(ANIM_IDLE);
 	}
 	
-	void Think()
+	Vector BodyPos()
 	{
-		frameCounter += 1;
-		int frame = minFrame + (int(frameCounter*framerate) % (maxFrame - minFrame));
+		return pev.origin + Vector(0,0,36);
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		println("Range attack not implemented!");
+	}
+	
+	void MeleeAttack(Vector aimDir)
+	{
+		println("Melee attack not implemented!");
+	}
+	
+	void DoomThink()
+	{
+		if (pev.deadflag == DEAD_DEAD)
+		{
+			g_EntityFuncs.Remove(self);
+			return;
+		}
 		
-		if (oldFrame > frame or minFrame == maxFrame-1)
+		pev.light_level = ((self.Illumination() + 32) / 64);
+		pev.light_level = 3 - pev.light_level;
+		if (brighten > 0)
+		{
+			brighten--;
+			pev.light_level -= brighten;
+			if (pev.light_level < 0)
+				pev.light_level = 0;
+		}
+		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
+		
+		pev.velocity.z += -0.1f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
+		
+		//println("CURENT ANIM: " + currentAnim.frameIndices[0] + " " + currentAnim.lastFrame());
+		frameCounter += 1;
+		bool looped = false;
+		int frameIdx = currentAnim.getFrameIdx(frameCounter, oldFrameCounter, looped);
+		int frame = currentAnim.frameIndices[frameIdx];
+
+		if (looped)
 			animLoops += 1;
 		
-		//println("FRAME " + frame + " " + minFrame + " " + maxFrame);
+		//println("FRAME " + frame + " " + currentAnim.minFrame + " " + currentAnim.maxFrame);
 	
 		g_EngineFuncs.MakeVectors(pev.angles);
 		Vector forward = g_Engine.v_forward;
@@ -271,36 +336,53 @@ class monster_imp : ScriptBaseMonsterEntity
 		if (pev.health > 0)
 			pev.deadflag = 0;
 		
-		if (!self.IsAlive() and frame >= maxFrame-1 or pev.deadflag == DEAD_DEAD)
+		if (!self.IsAlive() and looped or pev.deadflag == DEAD_DEAD)
 		{
 			pev.deadflag = DEAD_DEAD;
-			pev.frame = maxFrame-1;
+			pev.frame = currentAnim.lastFrame();
+			pev.nextthink = g_Engine.time + deathRemoveDelay;
+			return;
 		}
 		else
 			pev.frame = frame;
 		
 		if (!dormant and self.IsAlive())
 		{
+			Vector bodyPos = BodyPos();
+			
 			if (activity == ANIM_MOVE)
 			{
-				bool canWalk = g_EngineFuncs.WalkMove(self.edict(), pev.angles.y, walkSpeed, int(WALKMOVE_NORMAL)) == 1;
-				if (!canWalk)
+				int canWalk = g_EngineFuncs.WalkMove(self.edict(), pev.angles.y, walkSpeed, int(WALKMOVE_NORMAL));
+				if (canWalk != 1)
 				{
-					println("HIT WALL");
-					if (lastWallReflect + 0.2f < g_Engine.time)
+					TraceResult tr;
+					g_Utility.TraceHull( bodyPos, bodyPos + forward*walkSpeed, dont_ignore_monsters, human_hull, self.edict(), tr );
+					if (tr.flFraction >= 1.0f and tr.fAllSolid == 0)
 					{
-						pev.angles.y += Math.RandomFloat(90, 270);
-						lastWallReflect = g_Engine.time;
-						lastDirChange = g_Engine.time;
+						// walkmove doesn't like stepping down things, but this is a legal move
+						Vector stepPos = tr.vecEndPos;
+						// TODO: Don't step if this is actually a cliff
+						pev.origin = stepPos + Vector(0,0,-36);
+					}
+					else
+					{
+						if (lastWallReflect + 0.2f < g_Engine.time)
+						{
+							pev.angles.y += Math.RandomFloat(90, 270);
+							lastWallReflect = g_Engine.time;
+							lastDirChange = g_Engine.time;
+						}
 					}
 				}
 			}
+			
+			if (h_enemy and h_enemy.GetEntity().pev.flags & FL_NOTARGET != 0)
+				ClearEnemy();
 		
 			if (h_enemy)
 			{
 				CBaseEntity@ enemy = h_enemy;
 				
-				Vector bodyPos = pev.origin + Vector(0,0,36);
 				Vector enemyPos = enemy.pev.origin;
 				if (!enemy.IsPlayer())
 					enemyPos.z += (enemy.pev.maxs.z - enemy.pev.mins.z)*0.5f;
@@ -320,7 +402,7 @@ class monster_imp : ScriptBaseMonsterEntity
 					lastDirChange = g_Engine.time;
 				}
 				
-				bool inMeleeRange = delta.Length() < meleeRange;
+				bool inMeleeRange = hasMelee and delta.Length() < meleeRange;
 				if (activity == ANIM_ATTACK or inMeleeRange or nextRangeAttack < g_Engine.time)
 				{
 					pev.angles.y = g_EngineFuncs.VecToYaw(delta);
@@ -331,37 +413,15 @@ class monster_imp : ScriptBaseMonsterEntity
 					}
 					else
 					{
-						if (frame == maxFrame-1 and oldFrame != frame)
+						if (frameIdx == currentAnim.attackFrameIdx and oldFrameIdx != frameIdx)
 						{
 							if (inMeleeRange)
 							{
-								TraceResult tr;
-								Vector attackDir = delta.Normalize();
-								g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
-								CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
-								//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
-								
-								if (phit !is null)
-								{
-									g_WeaponFuncs.ClearMultiDamage();
-									phit.TraceAttack(pev, 15.0f, attackDir, tr, DMG_SLASH);
-									g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-									g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, clawSound, 1.0f, 0.5f, 0, 100);
-								}
+								MeleeAttack(delta);
 							}
 							else
 							{								
-								Vector angles;
-								
-								g_EngineFuncs.VecToAngles(delta, angles);
-								angles.x = -angles.x;
-								
-								dictionary keys;
-								keys["origin"] = bodyPos.ToString();
-								keys["angles"] = angles.ToString();
-								CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
-								@fireball.pev.owner = @self.edict();
-								g_EntityFuncs.DispatchSpawn(fireball.edict());
+								RangeAttack(delta);
 							}
 						}
 						
@@ -389,10 +449,6 @@ class monster_imp : ScriptBaseMonsterEntity
 			}
 		}
 		
-		pev.light_level = ((self.Illumination() + 32) / 64);
-		pev.light_level = 3 - pev.light_level;
-		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
-		
 		// render sprite for each player
 		if (self.IsAlive())
 		{
@@ -406,7 +462,7 @@ class monster_imp : ScriptBaseMonsterEntity
 					Vector delta = pos - ent.pev.origin;
 					delta = delta.Normalize();
 					int angleIdx = getSpriteAngle(pos, forward, right, ent.pev.origin);
-					if (angleIdx >= int(SPR_ANIM_TROO[pev.light_level][frame].length()))
+					if (angleIdx >= int(anim_frames[pev.light_level][frame].length()))
 						angleIdx = 0;
 						
 					if (dormant and ent.IsAlive())
@@ -418,7 +474,7 @@ class monster_imp : ScriptBaseMonsterEntity
 						}
 					}
 					
-					string spr = SPR_ANIM_TROO[pev.light_level][frame][angleIdx];
+					string spr = anim_frames[pev.light_level][frame][angleIdx];
 					
 					int scale = 14;
 					int fps = 15;
@@ -427,7 +483,233 @@ class monster_imp : ScriptBaseMonsterEntity
 			} while (ent !is null);
 		}
 		
-		oldFrame = frame;
+		// react to sounds
+		if (dormant)
+		{
+			CSoundEnt@ sndent = GetSoundEntInstance();
+			int activeList = sndent.ActiveList();
+			while (activeList > -1)
+			{
+				CSound@ snd = sndent.SoundPointerForIndex(activeList);
+				if (snd is null)
+					break;
+				CBaseEntity@ owner = snd.hOwner;
+				if (snd.m_iVolume > 0)
+				{
+					Vector delta = snd.m_vecOrigin - pev.origin;
+					if (delta.Length() < snd.m_iVolume)
+					{
+						delta.z = 0;
+						g_EngineFuncs.VecToAngles(delta.Normalize(), pev.angles);
+					}
+				}
+					
+				activeList = snd.m_iNext;
+			}
+		}
+		
+		oldFrameCounter = frameCounter;
+		oldFrameIdx = frameIdx;
 		pev.nextthink = g_Engine.time + 0.05;
 	}
 };
+
+class monster_imp : monster_doom
+{
+	string meleeSound = "doom/DSCLAW.wav";
+	
+	void Spawn()
+	{		
+		this.anim_frames = SPR_ANIM_TROO;
+		this.anim_prefix = "imp/TROO";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(5, 12, 0.5f, false)); // ANIM_GIB		
+		
+		idleSounds.insertLast("doom/DSBGACT.wav");
+		painSound = "doom/DSPOPAIN.wav";
+		deathSounds.insertLast("doom/DSBGDTH1.wav");
+		deathSounds.insertLast("doom/DSBGDTH2.wav");
+		alertSounds.insertLast("doom/DSBGSIT1.wav");
+		alertSounds.insertLast("doom/DSBGSIT2.wav");
+		
+		this.hasMelee = true;
+		
+		self.m_FormattedName = "Imp";
+		self.pev.health = 100;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void MeleeAttack(Vector aimDir)
+	{
+		Vector bodyPos = BodyPos();
+		TraceResult tr;
+		Vector attackDir = aimDir.Normalize();
+		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
+		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
+		//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
+		
+		if (phit !is null)
+		{
+			g_WeaponFuncs.ClearMultiDamage();
+			phit.TraceAttack(pev, 15.0f, attackDir, tr, DMG_SLASH);
+			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
+		}
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		brighten = 8;
+		
+		Vector bodyPos = BodyPos();
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		
+		dictionary keys;
+		keys["origin"] = bodyPos.ToString();
+		keys["angles"] = angles.ToString();
+		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fireball.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(fireball.edict());
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_zombieman : monster_doom
+{
+	string shootSnd = "doom/DSPISTOL.wav";
+
+	void Spawn()
+	{		
+		this.anim_frames = SPR_ANIM_POSS;
+		this.anim_prefix = "zombieman/POSS";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(5, 13, 0.5f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		
+		idleSounds.insertLast("doom/DSPOSACT.wav");
+		painSound = "doom/DSPOPAIN.wav";
+		deathSounds.insertLast("doom/DSPODTH2.wav");
+		deathSounds.insertLast("doom/DSPODTH3.wav");
+		deathSounds.insertLast("doom/DSPODTH1.wav");
+		alertSounds.insertLast("doom/DSPOSIT1.wav");
+		alertSounds.insertLast("doom/DSPOSIT2.wav");
+		
+		this.hasMelee = false;
+		
+		self.m_FormattedName = "Zombieman";
+		self.pev.health = 50;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		Vector vecSrc = BodyPos();
+		float range = 16384;
+		float damage = 5.0f;
+		float spread = 12.0f;
+		
+		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
+		
+		int flash_size = 20;
+		int flash_life = 1;
+		int flash_decay = 0;
+		Color flash_color = Color(255, 160, 64);
+		te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
+		brighten = 4;
+		
+		aimDir = aimDir.Normalize();
+		Vector vecAiming = spreadDir(aimDir, spread, SPREAD_GAUSSIAN);
+	
+		// Do the bullet collision
+		TraceResult tr;
+		Vector vecEnd = vecSrc + vecAiming * range;
+		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, self.edict(), tr );
+		
+		// do more fancy effects
+		if( tr.flFraction < 1.0 )
+		{
+			if( tr.pHit !is null )
+			{
+				CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+				
+				if( pHit !is null ) 
+				{			
+					
+					CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
+						
+					Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
+					Vector angles = Math.VecToAngles(attackDir);
+					Math.MakeVectors(angles);
+						
+					// damage done before hitgroup multipliers
+					
+					g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
+					pHit.TraceAttack(self.pev, damage, attackDir, tr, DMG_BULLET);
+					
+					Vector oldVel = pHit.pev.velocity;
+					
+					// set both classes in case this a pvp map where classes are always changing
+					int oldClass1 = self.GetClassification(0);
+					int oldClass2 = pHit.GetClassification(0);
+					self.SetClassification(CLASS_PLAYER);
+					pHit.SetClassification(CLASS_ALIEN_MILITARY);
+					
+					g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+					
+					self.SetClassification(oldClass1);
+					pHit.SetClassification(oldClass2);
+					
+					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
+					
+					Vector knockDir = Vector(0,0,100);
+					Vector knockVel = g_Engine.v_forward*knockDir.z +
+									  g_Engine.v_up*knockDir.y +
+									  g_Engine.v_right*knockDir.x;
+					knockBack(pHit, knockVel);
+					
+					if (pHit.IsBSPModel()) 
+					{
+						te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
+						//te_decal(tr.vecEndPos, pHit, decal);
+					}
+				}
+			}
+		}
+		
+		// bullet tracer effects
+		te_tracer(vecSrc, tr.vecEndPos);
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
