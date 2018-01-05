@@ -1,330 +1,81 @@
 array< array< array<string> > > SPR_ANIM_TROO = {
-	{	
-		{
-			"sprites/doom/TROOA1_L3.spr",
-			"sprites/doom/TROOA2A8_L3.spr",
-			"sprites/doom/TROOA3A7_L3.spr",
-			"sprites/doom/TROOA4A6_L3.spr",
-			"sprites/doom/TROOA5_L3.spr",
-			"sprites/doom/TROOA6A4_L3.spr",
-			"sprites/doom/TROOA7A3_L3.spr",
-			"sprites/doom/TROOA8A2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOB1_L3.spr",
-			"sprites/doom/TROOB2B8_L3.spr",
-			"sprites/doom/TROOB3B7_L3.spr",
-			"sprites/doom/TROOB4B6_L3.spr",
-			"sprites/doom/TROOB5_L3.spr",
-			"sprites/doom/TROOB6B4_L3.spr",
-			"sprites/doom/TROOB7B3_L3.spr",
-			"sprites/doom/TROOB8B2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOC1_L3.spr",
-			"sprites/doom/TROOC2C8_L3.spr",
-			"sprites/doom/TROOC3C7_L3.spr",
-			"sprites/doom/TROOC4C6_L3.spr",
-			"sprites/doom/TROOC5_L3.spr",
-			"sprites/doom/TROOC6C4_L3.spr",
-			"sprites/doom/TROOC7C3_L3.spr",
-			"sprites/doom/TROOC8C2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOD1_L3.spr",
-			"sprites/doom/TROOD2D8_L3.spr",
-			"sprites/doom/TROOD3D7_L3.spr",
-			"sprites/doom/TROOD4D6_L3.spr",
-			"sprites/doom/TROOD5_L3.spr",
-			"sprites/doom/TROOD6D4_L3.spr",
-			"sprites/doom/TROOD7D3_L3.spr",
-			"sprites/doom/TROOD8D2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOE1_L3.spr",
-			"sprites/doom/TROOE2E8_L3.spr",
-			"sprites/doom/TROOE3E7_L3.spr",
-			"sprites/doom/TROOE4E6_L3.spr",
-			"sprites/doom/TROOE5_L3.spr",
-			"sprites/doom/TROOE6E4_L3.spr",
-			"sprites/doom/TROOE7E3_L3.spr",
-			"sprites/doom/TROOE8E2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOF1_L3.spr",
-			"sprites/doom/TROOF2F8_L3.spr",
-			"sprites/doom/TROOF3F7_L3.spr",
-			"sprites/doom/TROOF4F6_L3.spr",
-			"sprites/doom/TROOF5_L3.spr",
-			"sprites/doom/TROOF6F4_L3.spr",
-			"sprites/doom/TROOF7F3_L3.spr",
-			"sprites/doom/TROOF8F2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOG1_L3.spr",
-			"sprites/doom/TROOG2G8_L3.spr",
-			"sprites/doom/TROOG3G7_L3.spr",
-			"sprites/doom/TROOG4G6_L3.spr",
-			"sprites/doom/TROOG5_L3.spr",
-			"sprites/doom/TROOG6G4_L3.spr",
-			"sprites/doom/TROOG7G3_L3.spr",
-			"sprites/doom/TROOG8G2_L3.spr"
-		},
-		{
-			"sprites/doom/TROOH1_L3.spr",
-			"sprites/doom/TROOH2H8_L3.spr",
-			"sprites/doom/TROOH3H7_L3.spr",
-			"sprites/doom/TROOH4H6_L3.spr",
-			"sprites/doom/TROOH5_L3.spr",
-			"sprites/doom/TROOH6H4_L3.spr",
-			"sprites/doom/TROOH7H3_L3.spr",
-			"sprites/doom/TROOH8H2_L3.spr"
-		}
+	{
+		{ "sprites/doom/imp/TROOA1_L3.spr", "sprites/doom/imp/TROOA2A8_L3.spr", "sprites/doom/imp/TROOA3A7_L3.spr", "sprites/doom/imp/TROOA4A6_L3.spr", "sprites/doom/imp/TROOA5_L3.spr", "sprites/doom/imp/TROOA6A4_L3.spr", "sprites/doom/imp/TROOA7A3_L3.spr", "sprites/doom/imp/TROOA8A2_L3.spr" },
+		{ "sprites/doom/imp/TROOB1_L3.spr", "sprites/doom/imp/TROOB2B8_L3.spr", "sprites/doom/imp/TROOB3B7_L3.spr", "sprites/doom/imp/TROOB4B6_L3.spr", "sprites/doom/imp/TROOB5_L3.spr", "sprites/doom/imp/TROOB6B4_L3.spr", "sprites/doom/imp/TROOB7B3_L3.spr", "sprites/doom/imp/TROOB8B2_L3.spr" },
+		{ "sprites/doom/imp/TROOC1_L3.spr", "sprites/doom/imp/TROOC2C8_L3.spr", "sprites/doom/imp/TROOC3C7_L3.spr", "sprites/doom/imp/TROOC4C6_L3.spr", "sprites/doom/imp/TROOC5_L3.spr", "sprites/doom/imp/TROOC6C4_L3.spr", "sprites/doom/imp/TROOC7C3_L3.spr", "sprites/doom/imp/TROOC8C2_L3.spr" },
+		{ "sprites/doom/imp/TROOD1_L3.spr", "sprites/doom/imp/TROOD2D8_L3.spr", "sprites/doom/imp/TROOD3D7_L3.spr", "sprites/doom/imp/TROOD4D6_L3.spr", "sprites/doom/imp/TROOD5_L3.spr", "sprites/doom/imp/TROOD6D4_L3.spr", "sprites/doom/imp/TROOD7D3_L3.spr", "sprites/doom/imp/TROOD8D2_L3.spr" },
+		{ "sprites/doom/imp/TROOE1_L3.spr", "sprites/doom/imp/TROOE2E8_L3.spr", "sprites/doom/imp/TROOE3E7_L3.spr", "sprites/doom/imp/TROOE4E6_L3.spr", "sprites/doom/imp/TROOE5_L3.spr", "sprites/doom/imp/TROOE6E4_L3.spr", "sprites/doom/imp/TROOE7E3_L3.spr", "sprites/doom/imp/TROOE8E2_L3.spr" },
+		{ "sprites/doom/imp/TROOF1_L3.spr", "sprites/doom/imp/TROOF2F8_L3.spr", "sprites/doom/imp/TROOF3F7_L3.spr", "sprites/doom/imp/TROOF4F6_L3.spr", "sprites/doom/imp/TROOF5_L3.spr", "sprites/doom/imp/TROOF6F4_L3.spr", "sprites/doom/imp/TROOF7F3_L3.spr", "sprites/doom/imp/TROOF8F2_L3.spr" },
+		{ "sprites/doom/imp/TROOG1_L3.spr", "sprites/doom/imp/TROOG2G8_L3.spr", "sprites/doom/imp/TROOG3G7_L3.spr", "sprites/doom/imp/TROOG4G6_L3.spr", "sprites/doom/imp/TROOG5_L3.spr", "sprites/doom/imp/TROOG6G4_L3.spr", "sprites/doom/imp/TROOG7G3_L3.spr", "sprites/doom/imp/TROOG8G2_L3.spr" },
+		{ "sprites/doom/imp/TROOH1_L3.spr", "sprites/doom/imp/TROOH2H8_L3.spr", "sprites/doom/imp/TROOH3H7_L3.spr", "sprites/doom/imp/TROOH4H6_L3.spr", "sprites/doom/imp/TROOH5_L3.spr", "sprites/doom/imp/TROOH6H4_L3.spr", "sprites/doom/imp/TROOH7H3_L3.spr", "sprites/doom/imp/TROOH8H2_L3.spr" }
 	},
 	{
-		{
-			"sprites/doom/TROOA1_L2.spr",
-			"sprites/doom/TROOA2A8_L2.spr",
-			"sprites/doom/TROOA3A7_L2.spr",
-			"sprites/doom/TROOA4A6_L2.spr",
-			"sprites/doom/TROOA5_L2.spr",
-			"sprites/doom/TROOA6A4_L2.spr",
-			"sprites/doom/TROOA7A3_L2.spr",
-			"sprites/doom/TROOA8A2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOB1_L2.spr",
-			"sprites/doom/TROOB2B8_L2.spr",
-			"sprites/doom/TROOB3B7_L2.spr",
-			"sprites/doom/TROOB4B6_L2.spr",
-			"sprites/doom/TROOB5_L2.spr",
-			"sprites/doom/TROOB6B4_L2.spr",
-			"sprites/doom/TROOB7B3_L2.spr",
-			"sprites/doom/TROOB8B2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOC1_L2.spr",
-			"sprites/doom/TROOC2C8_L2.spr",
-			"sprites/doom/TROOC3C7_L2.spr",
-			"sprites/doom/TROOC4C6_L2.spr",
-			"sprites/doom/TROOC5_L2.spr",
-			"sprites/doom/TROOC6C4_L2.spr",
-			"sprites/doom/TROOC7C3_L2.spr",
-			"sprites/doom/TROOC8C2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOD1_L2.spr",
-			"sprites/doom/TROOD2D8_L2.spr",
-			"sprites/doom/TROOD3D7_L2.spr",
-			"sprites/doom/TROOD4D6_L2.spr",
-			"sprites/doom/TROOD5_L2.spr",
-			"sprites/doom/TROOD6D4_L2.spr",
-			"sprites/doom/TROOD7D3_L2.spr",
-			"sprites/doom/TROOD8D2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOE1_L2.spr",
-			"sprites/doom/TROOE2E8_L2.spr",
-			"sprites/doom/TROOE3E7_L2.spr",
-			"sprites/doom/TROOE4E6_L2.spr",
-			"sprites/doom/TROOE5_L2.spr",
-			"sprites/doom/TROOE6E4_L2.spr",
-			"sprites/doom/TROOE7E3_L2.spr",
-			"sprites/doom/TROOE8E2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOF1_L2.spr",
-			"sprites/doom/TROOF2F8_L2.spr",
-			"sprites/doom/TROOF3F7_L2.spr",
-			"sprites/doom/TROOF4F6_L2.spr",
-			"sprites/doom/TROOF5_L2.spr",
-			"sprites/doom/TROOF6F4_L2.spr",
-			"sprites/doom/TROOF7F3_L2.spr",
-			"sprites/doom/TROOF8F2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOG1_L2.spr",
-			"sprites/doom/TROOG2G8_L2.spr",
-			"sprites/doom/TROOG3G7_L2.spr",
-			"sprites/doom/TROOG4G6_L2.spr",
-			"sprites/doom/TROOG5_L2.spr",
-			"sprites/doom/TROOG6G4_L2.spr",
-			"sprites/doom/TROOG7G3_L2.spr",
-			"sprites/doom/TROOG8G2_L2.spr"
-		},
-		{
-			"sprites/doom/TROOH1_L2.spr",
-			"sprites/doom/TROOH2H8_L2.spr",
-			"sprites/doom/TROOH3H7_L2.spr",
-			"sprites/doom/TROOH4H6_L2.spr",
-			"sprites/doom/TROOH5_L2.spr",
-			"sprites/doom/TROOH6H4_L2.spr",
-			"sprites/doom/TROOH7H3_L2.spr",
-			"sprites/doom/TROOH8H2_L2.spr"
-		}
+		{ "sprites/doom/imp/TROOA1_L2.spr", "sprites/doom/imp/TROOA2A8_L2.spr", "sprites/doom/imp/TROOA3A7_L2.spr", "sprites/doom/imp/TROOA4A6_L2.spr", "sprites/doom/imp/TROOA5_L2.spr", "sprites/doom/imp/TROOA6A4_L2.spr", "sprites/doom/imp/TROOA7A3_L2.spr", "sprites/doom/imp/TROOA8A2_L2.spr" },
+		{ "sprites/doom/imp/TROOB1_L2.spr", "sprites/doom/imp/TROOB2B8_L2.spr", "sprites/doom/imp/TROOB3B7_L2.spr", "sprites/doom/imp/TROOB4B6_L2.spr", "sprites/doom/imp/TROOB5_L2.spr", "sprites/doom/imp/TROOB6B4_L2.spr", "sprites/doom/imp/TROOB7B3_L2.spr", "sprites/doom/imp/TROOB8B2_L2.spr" },
+		{ "sprites/doom/imp/TROOC1_L2.spr", "sprites/doom/imp/TROOC2C8_L2.spr", "sprites/doom/imp/TROOC3C7_L2.spr", "sprites/doom/imp/TROOC4C6_L2.spr", "sprites/doom/imp/TROOC5_L2.spr", "sprites/doom/imp/TROOC6C4_L2.spr", "sprites/doom/imp/TROOC7C3_L2.spr", "sprites/doom/imp/TROOC8C2_L2.spr" },
+		{ "sprites/doom/imp/TROOD1_L2.spr", "sprites/doom/imp/TROOD2D8_L2.spr", "sprites/doom/imp/TROOD3D7_L2.spr", "sprites/doom/imp/TROOD4D6_L2.spr", "sprites/doom/imp/TROOD5_L2.spr", "sprites/doom/imp/TROOD6D4_L2.spr", "sprites/doom/imp/TROOD7D3_L2.spr", "sprites/doom/imp/TROOD8D2_L2.spr" },
+		{ "sprites/doom/imp/TROOE1_L2.spr", "sprites/doom/imp/TROOE2E8_L2.spr", "sprites/doom/imp/TROOE3E7_L2.spr", "sprites/doom/imp/TROOE4E6_L2.spr", "sprites/doom/imp/TROOE5_L2.spr", "sprites/doom/imp/TROOE6E4_L2.spr", "sprites/doom/imp/TROOE7E3_L2.spr", "sprites/doom/imp/TROOE8E2_L2.spr" },
+		{ "sprites/doom/imp/TROOF1_L2.spr", "sprites/doom/imp/TROOF2F8_L2.spr", "sprites/doom/imp/TROOF3F7_L2.spr", "sprites/doom/imp/TROOF4F6_L2.spr", "sprites/doom/imp/TROOF5_L2.spr", "sprites/doom/imp/TROOF6F4_L2.spr", "sprites/doom/imp/TROOF7F3_L2.spr", "sprites/doom/imp/TROOF8F2_L2.spr" },
+		{ "sprites/doom/imp/TROOG1_L2.spr", "sprites/doom/imp/TROOG2G8_L2.spr", "sprites/doom/imp/TROOG3G7_L2.spr", "sprites/doom/imp/TROOG4G6_L2.spr", "sprites/doom/imp/TROOG5_L2.spr", "sprites/doom/imp/TROOG6G4_L2.spr", "sprites/doom/imp/TROOG7G3_L2.spr", "sprites/doom/imp/TROOG8G2_L2.spr" },
+		{ "sprites/doom/imp/TROOH1_L2.spr", "sprites/doom/imp/TROOH2H8_L2.spr", "sprites/doom/imp/TROOH3H7_L2.spr", "sprites/doom/imp/TROOH4H6_L2.spr", "sprites/doom/imp/TROOH5_L2.spr", "sprites/doom/imp/TROOH6H4_L2.spr", "sprites/doom/imp/TROOH7H3_L2.spr", "sprites/doom/imp/TROOH8H2_L2.spr" }
 	},
 	{
-		{
-			"sprites/doom/TROOA1_L1.spr",
-			"sprites/doom/TROOA2A8_L1.spr",
-			"sprites/doom/TROOA3A7_L1.spr",
-			"sprites/doom/TROOA4A6_L1.spr",
-			"sprites/doom/TROOA5_L1.spr",
-			"sprites/doom/TROOA6A4_L1.spr",
-			"sprites/doom/TROOA7A3_L1.spr",
-			"sprites/doom/TROOA8A2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOB1_L1.spr",
-			"sprites/doom/TROOB2B8_L1.spr",
-			"sprites/doom/TROOB3B7_L1.spr",
-			"sprites/doom/TROOB4B6_L1.spr",
-			"sprites/doom/TROOB5_L1.spr",
-			"sprites/doom/TROOB6B4_L1.spr",
-			"sprites/doom/TROOB7B3_L1.spr",
-			"sprites/doom/TROOB8B2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOC1_L1.spr",
-			"sprites/doom/TROOC2C8_L1.spr",
-			"sprites/doom/TROOC3C7_L1.spr",
-			"sprites/doom/TROOC4C6_L1.spr",
-			"sprites/doom/TROOC5_L1.spr",
-			"sprites/doom/TROOC6C4_L1.spr",
-			"sprites/doom/TROOC7C3_L1.spr",
-			"sprites/doom/TROOC8C2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOD1_L1.spr",
-			"sprites/doom/TROOD2D8_L1.spr",
-			"sprites/doom/TROOD3D7_L1.spr",
-			"sprites/doom/TROOD4D6_L1.spr",
-			"sprites/doom/TROOD5_L1.spr",
-			"sprites/doom/TROOD6D4_L1.spr",
-			"sprites/doom/TROOD7D3_L1.spr",
-			"sprites/doom/TROOD8D2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOE1_L1.spr",
-			"sprites/doom/TROOE2E8_L1.spr",
-			"sprites/doom/TROOE3E7_L1.spr",
-			"sprites/doom/TROOE4E6_L1.spr",
-			"sprites/doom/TROOE5_L1.spr",
-			"sprites/doom/TROOE6E4_L1.spr",
-			"sprites/doom/TROOE7E3_L1.spr",
-			"sprites/doom/TROOE8E2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOF1_L1.spr",
-			"sprites/doom/TROOF2F8_L1.spr",
-			"sprites/doom/TROOF3F7_L1.spr",
-			"sprites/doom/TROOF4F6_L1.spr",
-			"sprites/doom/TROOF5_L1.spr",
-			"sprites/doom/TROOF6F4_L1.spr",
-			"sprites/doom/TROOF7F3_L1.spr",
-			"sprites/doom/TROOF8F2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOG1_L1.spr",
-			"sprites/doom/TROOG2G8_L1.spr",
-			"sprites/doom/TROOG3G7_L1.spr",
-			"sprites/doom/TROOG4G6_L1.spr",
-			"sprites/doom/TROOG5_L1.spr",
-			"sprites/doom/TROOG6G4_L1.spr",
-			"sprites/doom/TROOG7G3_L1.spr",
-			"sprites/doom/TROOG8G2_L1.spr"
-		},
-		{
-			"sprites/doom/TROOH1_L1.spr",
-			"sprites/doom/TROOH2H8_L1.spr",
-			"sprites/doom/TROOH3H7_L1.spr",
-			"sprites/doom/TROOH4H6_L1.spr",
-			"sprites/doom/TROOH5_L1.spr",
-			"sprites/doom/TROOH6H4_L1.spr",
-			"sprites/doom/TROOH7H3_L1.spr",
-			"sprites/doom/TROOH8H2_L1.spr"
-		}
+		{ "sprites/doom/imp/TROOA1_L1.spr", "sprites/doom/imp/TROOA2A8_L1.spr", "sprites/doom/imp/TROOA3A7_L1.spr", "sprites/doom/imp/TROOA4A6_L1.spr", "sprites/doom/imp/TROOA5_L1.spr", "sprites/doom/imp/TROOA6A4_L1.spr", "sprites/doom/imp/TROOA7A3_L1.spr", "sprites/doom/imp/TROOA8A2_L1.spr" },
+		{ "sprites/doom/imp/TROOB1_L1.spr", "sprites/doom/imp/TROOB2B8_L1.spr", "sprites/doom/imp/TROOB3B7_L1.spr", "sprites/doom/imp/TROOB4B6_L1.spr", "sprites/doom/imp/TROOB5_L1.spr", "sprites/doom/imp/TROOB6B4_L1.spr", "sprites/doom/imp/TROOB7B3_L1.spr", "sprites/doom/imp/TROOB8B2_L1.spr" },
+		{ "sprites/doom/imp/TROOC1_L1.spr", "sprites/doom/imp/TROOC2C8_L1.spr", "sprites/doom/imp/TROOC3C7_L1.spr", "sprites/doom/imp/TROOC4C6_L1.spr", "sprites/doom/imp/TROOC5_L1.spr", "sprites/doom/imp/TROOC6C4_L1.spr", "sprites/doom/imp/TROOC7C3_L1.spr", "sprites/doom/imp/TROOC8C2_L1.spr" },
+		{ "sprites/doom/imp/TROOD1_L1.spr", "sprites/doom/imp/TROOD2D8_L1.spr", "sprites/doom/imp/TROOD3D7_L1.spr", "sprites/doom/imp/TROOD4D6_L1.spr", "sprites/doom/imp/TROOD5_L1.spr", "sprites/doom/imp/TROOD6D4_L1.spr", "sprites/doom/imp/TROOD7D3_L1.spr", "sprites/doom/imp/TROOD8D2_L1.spr" },
+		{ "sprites/doom/imp/TROOE1_L1.spr", "sprites/doom/imp/TROOE2E8_L1.spr", "sprites/doom/imp/TROOE3E7_L1.spr", "sprites/doom/imp/TROOE4E6_L1.spr", "sprites/doom/imp/TROOE5_L1.spr", "sprites/doom/imp/TROOE6E4_L1.spr", "sprites/doom/imp/TROOE7E3_L1.spr", "sprites/doom/imp/TROOE8E2_L1.spr" },
+		{ "sprites/doom/imp/TROOF1_L1.spr", "sprites/doom/imp/TROOF2F8_L1.spr", "sprites/doom/imp/TROOF3F7_L1.spr", "sprites/doom/imp/TROOF4F6_L1.spr", "sprites/doom/imp/TROOF5_L1.spr", "sprites/doom/imp/TROOF6F4_L1.spr", "sprites/doom/imp/TROOF7F3_L1.spr", "sprites/doom/imp/TROOF8F2_L1.spr" },
+		{ "sprites/doom/imp/TROOG1_L1.spr", "sprites/doom/imp/TROOG2G8_L1.spr", "sprites/doom/imp/TROOG3G7_L1.spr", "sprites/doom/imp/TROOG4G6_L1.spr", "sprites/doom/imp/TROOG5_L1.spr", "sprites/doom/imp/TROOG6G4_L1.spr", "sprites/doom/imp/TROOG7G3_L1.spr", "sprites/doom/imp/TROOG8G2_L1.spr" },
+		{ "sprites/doom/imp/TROOH1_L1.spr", "sprites/doom/imp/TROOH2H8_L1.spr", "sprites/doom/imp/TROOH3H7_L1.spr", "sprites/doom/imp/TROOH4H6_L1.spr", "sprites/doom/imp/TROOH5_L1.spr", "sprites/doom/imp/TROOH6H4_L1.spr", "sprites/doom/imp/TROOH7H3_L1.spr", "sprites/doom/imp/TROOH8H2_L1.spr" }
 	},
 	{
-		{
-			"sprites/doom/TROOA1_L0.spr",
-			"sprites/doom/TROOA2A8_L0.spr",
-			"sprites/doom/TROOA3A7_L0.spr",
-			"sprites/doom/TROOA4A6_L0.spr",
-			"sprites/doom/TROOA5_L0.spr",
-			"sprites/doom/TROOA6A4_L0.spr",
-			"sprites/doom/TROOA7A3_L0.spr",
-			"sprites/doom/TROOA8A2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOB1_L0.spr",
-			"sprites/doom/TROOB2B8_L0.spr",
-			"sprites/doom/TROOB3B7_L0.spr",
-			"sprites/doom/TROOB4B6_L0.spr",
-			"sprites/doom/TROOB5_L0.spr",
-			"sprites/doom/TROOB6B4_L0.spr",
-			"sprites/doom/TROOB7B3_L0.spr",
-			"sprites/doom/TROOB8B2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOC1_L0.spr",
-			"sprites/doom/TROOC2C8_L0.spr",
-			"sprites/doom/TROOC3C7_L0.spr",
-			"sprites/doom/TROOC4C6_L0.spr",
-			"sprites/doom/TROOC5_L0.spr",
-			"sprites/doom/TROOC6C4_L0.spr",
-			"sprites/doom/TROOC7C3_L0.spr",
-			"sprites/doom/TROOC8C2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOD1_L0.spr",
-			"sprites/doom/TROOD2D8_L0.spr",
-			"sprites/doom/TROOD3D7_L0.spr",
-			"sprites/doom/TROOD4D6_L0.spr",
-			"sprites/doom/TROOD5_L0.spr",
-			"sprites/doom/TROOD6D4_L0.spr",
-			"sprites/doom/TROOD7D3_L0.spr",
-			"sprites/doom/TROOD8D2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOE1_L0.spr",
-			"sprites/doom/TROOE2E8_L0.spr",
-			"sprites/doom/TROOE3E7_L0.spr",
-			"sprites/doom/TROOE4E6_L0.spr",
-			"sprites/doom/TROOE5_L0.spr",
-			"sprites/doom/TROOE6E4_L0.spr",
-			"sprites/doom/TROOE7E3_L0.spr",
-			"sprites/doom/TROOE8E2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOF1_L0.spr",
-			"sprites/doom/TROOF2F8_L0.spr",
-			"sprites/doom/TROOF3F7_L0.spr",
-			"sprites/doom/TROOF4F6_L0.spr",
-			"sprites/doom/TROOF5_L0.spr",
-			"sprites/doom/TROOF6F4_L0.spr",
-			"sprites/doom/TROOF7F3_L0.spr",
-			"sprites/doom/TROOF8F2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOG1_L0.spr",
-			"sprites/doom/TROOG2G8_L0.spr",
-			"sprites/doom/TROOG3G7_L0.spr",
-			"sprites/doom/TROOG4G6_L0.spr",
-			"sprites/doom/TROOG5_L0.spr",
-			"sprites/doom/TROOG6G4_L0.spr",
-			"sprites/doom/TROOG7G3_L0.spr",
-			"sprites/doom/TROOG8G2_L0.spr"
-		},
-		{
-			"sprites/doom/TROOH1_L0.spr",
-			"sprites/doom/TROOH2H8_L0.spr",
-			"sprites/doom/TROOH3H7_L0.spr",
-			"sprites/doom/TROOH4H6_L0.spr",
-			"sprites/doom/TROOH5_L0.spr",
-			"sprites/doom/TROOH6H4_L0.spr",
-			"sprites/doom/TROOH7H3_L0.spr",
-			"sprites/doom/TROOH8H2_L0.spr"
-		}
+		{ "sprites/doom/imp/TROOA1_L0.spr", "sprites/doom/imp/TROOA2A8_L0.spr", "sprites/doom/imp/TROOA3A7_L0.spr", "sprites/doom/imp/TROOA4A6_L0.spr", "sprites/doom/imp/TROOA5_L0.spr", "sprites/doom/imp/TROOA6A4_L0.spr", "sprites/doom/imp/TROOA7A3_L0.spr", "sprites/doom/imp/TROOA8A2_L0.spr" },
+		{ "sprites/doom/imp/TROOB1_L0.spr", "sprites/doom/imp/TROOB2B8_L0.spr", "sprites/doom/imp/TROOB3B7_L0.spr", "sprites/doom/imp/TROOB4B6_L0.spr", "sprites/doom/imp/TROOB5_L0.spr", "sprites/doom/imp/TROOB6B4_L0.spr", "sprites/doom/imp/TROOB7B3_L0.spr", "sprites/doom/imp/TROOB8B2_L0.spr" },
+		{ "sprites/doom/imp/TROOC1_L0.spr", "sprites/doom/imp/TROOC2C8_L0.spr", "sprites/doom/imp/TROOC3C7_L0.spr", "sprites/doom/imp/TROOC4C6_L0.spr", "sprites/doom/imp/TROOC5_L0.spr", "sprites/doom/imp/TROOC6C4_L0.spr", "sprites/doom/imp/TROOC7C3_L0.spr", "sprites/doom/imp/TROOC8C2_L0.spr" },
+		{ "sprites/doom/imp/TROOD1_L0.spr", "sprites/doom/imp/TROOD2D8_L0.spr", "sprites/doom/imp/TROOD3D7_L0.spr", "sprites/doom/imp/TROOD4D6_L0.spr", "sprites/doom/imp/TROOD5_L0.spr", "sprites/doom/imp/TROOD6D4_L0.spr", "sprites/doom/imp/TROOD7D3_L0.spr", "sprites/doom/imp/TROOD8D2_L0.spr" },
+		{ "sprites/doom/imp/TROOE1_L0.spr", "sprites/doom/imp/TROOE2E8_L0.spr", "sprites/doom/imp/TROOE3E7_L0.spr", "sprites/doom/imp/TROOE4E6_L0.spr", "sprites/doom/imp/TROOE5_L0.spr", "sprites/doom/imp/TROOE6E4_L0.spr", "sprites/doom/imp/TROOE7E3_L0.spr", "sprites/doom/imp/TROOE8E2_L0.spr" },
+		{ "sprites/doom/imp/TROOF1_L0.spr", "sprites/doom/imp/TROOF2F8_L0.spr", "sprites/doom/imp/TROOF3F7_L0.spr", "sprites/doom/imp/TROOF4F6_L0.spr", "sprites/doom/imp/TROOF5_L0.spr", "sprites/doom/imp/TROOF6F4_L0.spr", "sprites/doom/imp/TROOF7F3_L0.spr", "sprites/doom/imp/TROOF8F2_L0.spr" },
+		{ "sprites/doom/imp/TROOG1_L0.spr", "sprites/doom/imp/TROOG2G8_L0.spr", "sprites/doom/imp/TROOG3G7_L0.spr", "sprites/doom/imp/TROOG4G6_L0.spr", "sprites/doom/imp/TROOG5_L0.spr", "sprites/doom/imp/TROOG6G4_L0.spr", "sprites/doom/imp/TROOG7G3_L0.spr", "sprites/doom/imp/TROOG8G2_L0.spr" },
+		{ "sprites/doom/imp/TROOH1_L0.spr", "sprites/doom/imp/TROOH2H8_L0.spr", "sprites/doom/imp/TROOH3H7_L0.spr", "sprites/doom/imp/TROOH4H6_L0.spr", "sprites/doom/imp/TROOH5_L0.spr", "sprites/doom/imp/TROOH6H4_L0.spr", "sprites/doom/imp/TROOH7H3_L0.spr", "sprites/doom/imp/TROOH8H2_L0.spr" }
+	}
+};
+
+array< array< array<string> > > SPR_ANIM_POSS = {
+	{
+		{ "sprites/doom/zombieman/POSSA1_L3.spr", "sprites/doom/zombieman/POSSA2A8_L3.spr", "sprites/doom/zombieman/POSSA3A7_L3.spr", "sprites/doom/zombieman/POSSA4A6_L3.spr", "sprites/doom/zombieman/POSSA5_L3.spr", "sprites/doom/zombieman/POSSA6A4_L3.spr", "sprites/doom/zombieman/POSSA7A3_L3.spr", "sprites/doom/zombieman/POSSA8A2_L3.spr" },
+		{ "sprites/doom/zombieman/POSSB1_L3.spr", "sprites/doom/zombieman/POSSB2B8_L3.spr", "sprites/doom/zombieman/POSSB3B7_L3.spr", "sprites/doom/zombieman/POSSB4B6_L3.spr", "sprites/doom/zombieman/POSSB5_L3.spr", "sprites/doom/zombieman/POSSB6B4_L3.spr", "sprites/doom/zombieman/POSSB7B3_L3.spr", "sprites/doom/zombieman/POSSB8B2_L3.spr" },
+		{ "sprites/doom/zombieman/POSSC1_L3.spr", "sprites/doom/zombieman/POSSC2C8_L3.spr", "sprites/doom/zombieman/POSSC3C7_L3.spr", "sprites/doom/zombieman/POSSC4C6_L3.spr", "sprites/doom/zombieman/POSSC5_L3.spr", "sprites/doom/zombieman/POSSC6C4_L3.spr", "sprites/doom/zombieman/POSSC7C3_L3.spr", "sprites/doom/zombieman/POSSC8C2_L3.spr" },
+		{ "sprites/doom/zombieman/POSSD1_L3.spr", "sprites/doom/zombieman/POSSD2D8_L3.spr", "sprites/doom/zombieman/POSSD3D7_L3.spr", "sprites/doom/zombieman/POSSD4D6_L3.spr", "sprites/doom/zombieman/POSSD5_L3.spr", "sprites/doom/zombieman/POSSD6D4_L3.spr", "sprites/doom/zombieman/POSSD7D3_L3.spr", "sprites/doom/zombieman/POSSD8D2_L3.spr" },
+		{ "sprites/doom/zombieman/POSSE1_L3.spr", "sprites/doom/zombieman/POSSE2E8_L3.spr", "sprites/doom/zombieman/POSSE3E7_L3.spr", "sprites/doom/zombieman/POSSE4E6_L3.spr", "sprites/doom/zombieman/POSSE5_L3.spr", "sprites/doom/zombieman/POSSE6E4_L3.spr", "sprites/doom/zombieman/POSSE7E3_L3.spr", "sprites/doom/zombieman/POSSE8E2_L3.spr" },
+		{ "sprites/doom/zombieman/POSSF1_L3.spr", "sprites/doom/zombieman/POSSF2F8_L3.spr", "sprites/doom/zombieman/POSSF3F7_L3.spr", "sprites/doom/zombieman/POSSF4F6_L3.spr", "sprites/doom/zombieman/POSSF5_L3.spr", "sprites/doom/zombieman/POSSF6F4_L3.spr", "sprites/doom/zombieman/POSSF7F3_L3.spr", "sprites/doom/zombieman/POSSF8F2_L3.spr" },
+		{ "sprites/doom/zombieman/POSSG1_L3.spr", "sprites/doom/zombieman/POSSG2G8_L3.spr", "sprites/doom/zombieman/POSSG3G7_L3.spr", "sprites/doom/zombieman/POSSG4G6_L3.spr", "sprites/doom/zombieman/POSSG5_L3.spr", "sprites/doom/zombieman/POSSG6G4_L3.spr", "sprites/doom/zombieman/POSSG7G3_L3.spr", "sprites/doom/zombieman/POSSG8G2_L3.spr" }
+	},
+	{
+		{ "sprites/doom/zombieman/POSSA1_L2.spr", "sprites/doom/zombieman/POSSA2A8_L2.spr", "sprites/doom/zombieman/POSSA3A7_L2.spr", "sprites/doom/zombieman/POSSA4A6_L2.spr", "sprites/doom/zombieman/POSSA5_L2.spr", "sprites/doom/zombieman/POSSA6A4_L2.spr", "sprites/doom/zombieman/POSSA7A3_L2.spr", "sprites/doom/zombieman/POSSA8A2_L2.spr" },
+		{ "sprites/doom/zombieman/POSSB1_L2.spr", "sprites/doom/zombieman/POSSB2B8_L2.spr", "sprites/doom/zombieman/POSSB3B7_L2.spr", "sprites/doom/zombieman/POSSB4B6_L2.spr", "sprites/doom/zombieman/POSSB5_L2.spr", "sprites/doom/zombieman/POSSB6B4_L2.spr", "sprites/doom/zombieman/POSSB7B3_L2.spr", "sprites/doom/zombieman/POSSB8B2_L2.spr" },
+		{ "sprites/doom/zombieman/POSSC1_L2.spr", "sprites/doom/zombieman/POSSC2C8_L2.spr", "sprites/doom/zombieman/POSSC3C7_L2.spr", "sprites/doom/zombieman/POSSC4C6_L2.spr", "sprites/doom/zombieman/POSSC5_L2.spr", "sprites/doom/zombieman/POSSC6C4_L2.spr", "sprites/doom/zombieman/POSSC7C3_L2.spr", "sprites/doom/zombieman/POSSC8C2_L2.spr" },
+		{ "sprites/doom/zombieman/POSSD1_L2.spr", "sprites/doom/zombieman/POSSD2D8_L2.spr", "sprites/doom/zombieman/POSSD3D7_L2.spr", "sprites/doom/zombieman/POSSD4D6_L2.spr", "sprites/doom/zombieman/POSSD5_L2.spr", "sprites/doom/zombieman/POSSD6D4_L2.spr", "sprites/doom/zombieman/POSSD7D3_L2.spr", "sprites/doom/zombieman/POSSD8D2_L2.spr" },
+		{ "sprites/doom/zombieman/POSSE1_L2.spr", "sprites/doom/zombieman/POSSE2E8_L2.spr", "sprites/doom/zombieman/POSSE3E7_L2.spr", "sprites/doom/zombieman/POSSE4E6_L2.spr", "sprites/doom/zombieman/POSSE5_L2.spr", "sprites/doom/zombieman/POSSE6E4_L2.spr", "sprites/doom/zombieman/POSSE7E3_L2.spr", "sprites/doom/zombieman/POSSE8E2_L2.spr" },
+		{ "sprites/doom/zombieman/POSSF1_L2.spr", "sprites/doom/zombieman/POSSF2F8_L2.spr", "sprites/doom/zombieman/POSSF3F7_L2.spr", "sprites/doom/zombieman/POSSF4F6_L2.spr", "sprites/doom/zombieman/POSSF5_L2.spr", "sprites/doom/zombieman/POSSF6F4_L2.spr", "sprites/doom/zombieman/POSSF7F3_L2.spr", "sprites/doom/zombieman/POSSF8F2_L2.spr" },
+		{ "sprites/doom/zombieman/POSSG1_L2.spr", "sprites/doom/zombieman/POSSG2G8_L2.spr", "sprites/doom/zombieman/POSSG3G7_L2.spr", "sprites/doom/zombieman/POSSG4G6_L2.spr", "sprites/doom/zombieman/POSSG5_L2.spr", "sprites/doom/zombieman/POSSG6G4_L2.spr", "sprites/doom/zombieman/POSSG7G3_L2.spr", "sprites/doom/zombieman/POSSG8G2_L2.spr" }
+	},
+	{
+		{ "sprites/doom/zombieman/POSSA1_L1.spr", "sprites/doom/zombieman/POSSA2A8_L1.spr", "sprites/doom/zombieman/POSSA3A7_L1.spr", "sprites/doom/zombieman/POSSA4A6_L1.spr", "sprites/doom/zombieman/POSSA5_L1.spr", "sprites/doom/zombieman/POSSA6A4_L1.spr", "sprites/doom/zombieman/POSSA7A3_L1.spr", "sprites/doom/zombieman/POSSA8A2_L1.spr" },
+		{ "sprites/doom/zombieman/POSSB1_L1.spr", "sprites/doom/zombieman/POSSB2B8_L1.spr", "sprites/doom/zombieman/POSSB3B7_L1.spr", "sprites/doom/zombieman/POSSB4B6_L1.spr", "sprites/doom/zombieman/POSSB5_L1.spr", "sprites/doom/zombieman/POSSB6B4_L1.spr", "sprites/doom/zombieman/POSSB7B3_L1.spr", "sprites/doom/zombieman/POSSB8B2_L1.spr" },
+		{ "sprites/doom/zombieman/POSSC1_L1.spr", "sprites/doom/zombieman/POSSC2C8_L1.spr", "sprites/doom/zombieman/POSSC3C7_L1.spr", "sprites/doom/zombieman/POSSC4C6_L1.spr", "sprites/doom/zombieman/POSSC5_L1.spr", "sprites/doom/zombieman/POSSC6C4_L1.spr", "sprites/doom/zombieman/POSSC7C3_L1.spr", "sprites/doom/zombieman/POSSC8C2_L1.spr" },
+		{ "sprites/doom/zombieman/POSSD1_L1.spr", "sprites/doom/zombieman/POSSD2D8_L1.spr", "sprites/doom/zombieman/POSSD3D7_L1.spr", "sprites/doom/zombieman/POSSD4D6_L1.spr", "sprites/doom/zombieman/POSSD5_L1.spr", "sprites/doom/zombieman/POSSD6D4_L1.spr", "sprites/doom/zombieman/POSSD7D3_L1.spr", "sprites/doom/zombieman/POSSD8D2_L1.spr" },
+		{ "sprites/doom/zombieman/POSSE1_L1.spr", "sprites/doom/zombieman/POSSE2E8_L1.spr", "sprites/doom/zombieman/POSSE3E7_L1.spr", "sprites/doom/zombieman/POSSE4E6_L1.spr", "sprites/doom/zombieman/POSSE5_L1.spr", "sprites/doom/zombieman/POSSE6E4_L1.spr", "sprites/doom/zombieman/POSSE7E3_L1.spr", "sprites/doom/zombieman/POSSE8E2_L1.spr" },
+		{ "sprites/doom/zombieman/POSSF1_L1.spr", "sprites/doom/zombieman/POSSF2F8_L1.spr", "sprites/doom/zombieman/POSSF3F7_L1.spr", "sprites/doom/zombieman/POSSF4F6_L1.spr", "sprites/doom/zombieman/POSSF5_L1.spr", "sprites/doom/zombieman/POSSF6F4_L1.spr", "sprites/doom/zombieman/POSSF7F3_L1.spr", "sprites/doom/zombieman/POSSF8F2_L1.spr" },
+		{ "sprites/doom/zombieman/POSSG1_L1.spr", "sprites/doom/zombieman/POSSG2G8_L1.spr", "sprites/doom/zombieman/POSSG3G7_L1.spr", "sprites/doom/zombieman/POSSG4G6_L1.spr", "sprites/doom/zombieman/POSSG5_L1.spr", "sprites/doom/zombieman/POSSG6G4_L1.spr", "sprites/doom/zombieman/POSSG7G3_L1.spr", "sprites/doom/zombieman/POSSG8G2_L1.spr" }
+	},
+	{
+		{ "sprites/doom/zombieman/POSSA1_L0.spr", "sprites/doom/zombieman/POSSA2A8_L0.spr", "sprites/doom/zombieman/POSSA3A7_L0.spr", "sprites/doom/zombieman/POSSA4A6_L0.spr", "sprites/doom/zombieman/POSSA5_L0.spr", "sprites/doom/zombieman/POSSA6A4_L0.spr", "sprites/doom/zombieman/POSSA7A3_L0.spr", "sprites/doom/zombieman/POSSA8A2_L0.spr" },
+		{ "sprites/doom/zombieman/POSSB1_L0.spr", "sprites/doom/zombieman/POSSB2B8_L0.spr", "sprites/doom/zombieman/POSSB3B7_L0.spr", "sprites/doom/zombieman/POSSB4B6_L0.spr", "sprites/doom/zombieman/POSSB5_L0.spr", "sprites/doom/zombieman/POSSB6B4_L0.spr", "sprites/doom/zombieman/POSSB7B3_L0.spr", "sprites/doom/zombieman/POSSB8B2_L0.spr" },
+		{ "sprites/doom/zombieman/POSSC1_L0.spr", "sprites/doom/zombieman/POSSC2C8_L0.spr", "sprites/doom/zombieman/POSSC3C7_L0.spr", "sprites/doom/zombieman/POSSC4C6_L0.spr", "sprites/doom/zombieman/POSSC5_L0.spr", "sprites/doom/zombieman/POSSC6C4_L0.spr", "sprites/doom/zombieman/POSSC7C3_L0.spr", "sprites/doom/zombieman/POSSC8C2_L0.spr" },
+		{ "sprites/doom/zombieman/POSSD1_L0.spr", "sprites/doom/zombieman/POSSD2D8_L0.spr", "sprites/doom/zombieman/POSSD3D7_L0.spr", "sprites/doom/zombieman/POSSD4D6_L0.spr", "sprites/doom/zombieman/POSSD5_L0.spr", "sprites/doom/zombieman/POSSD6D4_L0.spr", "sprites/doom/zombieman/POSSD7D3_L0.spr", "sprites/doom/zombieman/POSSD8D2_L0.spr" },
+		{ "sprites/doom/zombieman/POSSE1_L0.spr", "sprites/doom/zombieman/POSSE2E8_L0.spr", "sprites/doom/zombieman/POSSE3E7_L0.spr", "sprites/doom/zombieman/POSSE4E6_L0.spr", "sprites/doom/zombieman/POSSE5_L0.spr", "sprites/doom/zombieman/POSSE6E4_L0.spr", "sprites/doom/zombieman/POSSE7E3_L0.spr", "sprites/doom/zombieman/POSSE8E2_L0.spr" },
+		{ "sprites/doom/zombieman/POSSF1_L0.spr", "sprites/doom/zombieman/POSSF2F8_L0.spr", "sprites/doom/zombieman/POSSF3F7_L0.spr", "sprites/doom/zombieman/POSSF4F6_L0.spr", "sprites/doom/zombieman/POSSF5_L0.spr", "sprites/doom/zombieman/POSSF6F4_L0.spr", "sprites/doom/zombieman/POSSF7F3_L0.spr", "sprites/doom/zombieman/POSSF8F2_L0.spr" },
+		{ "sprites/doom/zombieman/POSSG1_L0.spr", "sprites/doom/zombieman/POSSG2G8_L0.spr", "sprites/doom/zombieman/POSSG3G7_L0.spr", "sprites/doom/zombieman/POSSG4G6_L0.spr", "sprites/doom/zombieman/POSSG5_L0.spr", "sprites/doom/zombieman/POSSG6G4_L0.spr", "sprites/doom/zombieman/POSSG7G3_L0.spr", "sprites/doom/zombieman/POSSG8G2_L0.spr" }
 	}
 };
