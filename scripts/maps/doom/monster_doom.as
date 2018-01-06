@@ -159,6 +159,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	float nextIdleSound = 0;
 	bool dormant = true;
 	EHandle h_enemy;
+	EHandle h_beamTarget;
 	
 	array<string> idleSounds;
 	string painSound;
@@ -183,6 +184,11 @@ class monster_doom : ScriptBaseMonsterEntity
 		pev.takedamage = DAMAGE_YES;
 		
 		self.MonsterInit();
+		
+		dictionary keys;
+		keys["origin"] = "0 0 0";
+		keys["model"] = "models/w_357.mdl";
+		h_beamTarget = g_EntityFuncs.CreateEntity("cycler", keys, true);
 		
 		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 		self.SetClassification(CLASS_ALIEN_MONSTER);
@@ -451,7 +457,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		// render sprite for each player
 		if (self.IsAlive())
-		{
+		{		
 			CBaseEntity@ ent = null;
 			do {
 				@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
@@ -479,6 +485,20 @@ class monster_doom : ScriptBaseMonsterEntity
 					int scale = 14;
 					int fps = 15;
 					te_explosion(pos, spr, scale, fps, 15, MSG_ONE_UNRELIABLE, ent.edict());
+					
+					Vector bpos = pos + Vector(0,0,96);
+					
+					//te_beampoints(bpos + Vector(0,0,100), bpos, spr, 0, 0, 1, 180, 0, Color(255,255,255,self.Illumination()), 0);
+					te_killbeam(self);
+					
+					spr = "sprites/doom/imp/TROO_L3.spr";
+					te_beamentpoint(self, self.pev.origin + Vector(0,0,128), spr, 0, 0, 1, 180, 0, Color(255,255,255,self.Illumination()), 0);
+					//println("TARGET AT: " + beamTarget.pev.origin.ToString());
+					
+					spr = "sprites/doom/imp/test.spr";
+					delta.z = 0;
+					delta = delta.Normalize();
+					te_explosion(pev.origin + delta*2 + Vector(0,0,15), spr, 8, fps, 15, MSG_ONE_UNRELIABLE, ent.edict());
 				}
 			} while (ent !is null);
 		}
@@ -620,7 +640,7 @@ class monster_zombieman : monster_doom
 		
 		this.hasMelee = false;
 		
-		self.m_FormattedName = "Zombieman";
+		self.m_FormattedName = "Zombie Man";
 		self.pev.health = 50;
 		
 		DoomSpawn();
@@ -634,7 +654,133 @@ class monster_zombieman : monster_doom
 		Vector vecSrc = BodyPos();
 		float range = 16384;
 		float damage = 5.0f;
-		float spread = 12.0f;
+		float spread = 22.0f;
+		
+		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
+		
+		int flash_size = 20;
+		int flash_life = 1;
+		int flash_decay = 0;
+		Color flash_color = Color(255, 160, 64);
+		te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
+		brighten = 4;
+		
+		aimDir = aimDir.Normalize();
+		Vector vecAiming = spreadDir(aimDir, spread, SPREAD_GAUSSIAN);
+	
+		// Do the bullet collision
+		TraceResult tr;
+		Vector vecEnd = vecSrc + vecAiming * range;
+		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, self.edict(), tr );
+		
+		// do more fancy effects
+		if( tr.flFraction < 1.0 )
+		{
+			if( tr.pHit !is null )
+			{
+				CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+				
+				if( pHit !is null ) 
+				{			
+					
+					CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
+						
+					Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
+					Vector angles = Math.VecToAngles(attackDir);
+					Math.MakeVectors(angles);
+						
+					// damage done before hitgroup multipliers
+					
+					g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
+					pHit.TraceAttack(self.pev, damage, attackDir, tr, DMG_BULLET);
+					
+					Vector oldVel = pHit.pev.velocity;
+					
+					// set both classes in case this a pvp map where classes are always changing
+					int oldClass1 = self.GetClassification(0);
+					int oldClass2 = pHit.GetClassification(0);
+					self.SetClassification(CLASS_PLAYER);
+					pHit.SetClassification(CLASS_ALIEN_MILITARY);
+					
+					g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+					
+					self.SetClassification(oldClass1);
+					pHit.SetClassification(oldClass2);
+					
+					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
+					
+					Vector knockDir = Vector(0,0,100);
+					Vector knockVel = g_Engine.v_forward*knockDir.z +
+									  g_Engine.v_up*knockDir.y +
+									  g_Engine.v_right*knockDir.x;
+					knockBack(pHit, knockVel);
+					
+					if (pHit.IsBSPModel()) 
+					{
+						te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
+						//te_decal(tr.vecEndPos, pHit, decal);
+					}
+				}
+			}
+		}
+		
+		// bullet tracer effects
+		te_tracer(vecSrc, tr.vecEndPos);
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+
+class monster_shotgunguy : monster_doom
+{
+	string shootSnd = "doom/DSPISTOL.wav";
+
+	void Spawn()
+	{		
+		this.anim_frames = SPR_ANIM_SPOS;
+		this.anim_prefix = "zombieman/SPOS";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(5, 13, 0.5f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		
+		idleSounds.insertLast("doom/DSPOSACT.wav");
+		painSound = "doom/DSPOPAIN.wav";
+		deathSounds.insertLast("doom/DSPODTH2.wav");
+		deathSounds.insertLast("doom/DSPODTH3.wav");
+		deathSounds.insertLast("doom/DSPODTH1.wav");
+		alertSounds.insertLast("doom/DSPOSIT1.wav");
+		alertSounds.insertLast("doom/DSPOSIT2.wav");
+		
+		this.hasMelee = false;
+		
+		self.m_FormattedName = "Shotgun Guy";
+		self.pev.health = 50;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		Vector vecSrc = BodyPos();
+		float range = 16384;
+		float damage = 5.0f;
+		float spread = 22.0f;
 		
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
 		
