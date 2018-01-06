@@ -32,6 +32,8 @@ void MapInit()
 {
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_imp", "monster_imp" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_zombieman", "monster_zombieman" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_shotgunguy", "monster_shotgunguy" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_demon", "monster_demon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
@@ -41,22 +43,34 @@ void MapInit()
 		for (uint i = 0; i < SPR_ANIM_TROO[z].length(); i++)
 			for (uint k = 0; k < SPR_ANIM_TROO[z][i].length(); k++)
 				g_Game.PrecacheModel( SPR_ANIM_TROO[z][i][k] );
+	for (uint z = 0; z < SPR_ANIM_DEATH_TROO.length(); z++)
+		g_Game.PrecacheModel( SPR_ANIM_DEATH_TROO[z] );
 			
 	for (uint z = 0; z < SPR_ANIM_POSS.length(); z++)
 		for (uint i = 0; i < SPR_ANIM_POSS[z].length(); i++)
 			for (uint k = 0; k < SPR_ANIM_POSS[z][i].length(); k++)
 				g_Game.PrecacheModel( SPR_ANIM_POSS[z][i][k] );
+	for (uint z = 0; z < SPR_ANIM_DEATH_POSS.length(); z++)
+		g_Game.PrecacheModel( SPR_ANIM_DEATH_POSS[z] );
 	
-	/*
-	for (uint z = 0; z < SPR_ANIM_SPOS.length() and z < 1; z++)
+	for (uint z = 0; z < SPR_ANIM_SPOS.length(); z++)
 		for (uint i = 0; i < SPR_ANIM_SPOS[z].length(); i++)
 			for (uint k = 0; k < SPR_ANIM_SPOS[z][i].length(); k++)
 				g_Game.PrecacheModel( SPR_ANIM_SPOS[z][i][k] );
-	
+	for (uint z = 0; z < SPR_ANIM_DEATH_SPOS.length(); z++)
+		g_Game.PrecacheModel( SPR_ANIM_DEATH_SPOS[z] );
+	/*
+	for (uint z = 0; z < SPR_ANIM_SARG.length(); z++)
+		for (uint i = 0; i < SPR_ANIM_SARG[z].length(); i++)
+			for (uint k = 0; k < SPR_ANIM_SARG[z][i].length(); k++)
+				g_Game.PrecacheModel( SPR_ANIM_SARG[z][i][k] );
+	for (uint z = 0; z < SPR_ANIM_DEATH_SARG.length(); z++)
+		g_Game.PrecacheModel( SPR_ANIM_DEATH_SARG[z] );
+	*/
 	
 	// 3300 max possible sprites if using paths like "d/AAA.spr"
 	// Needed: 16 full monsters (13 normal + 2 boss + 1 player) + 3 partial (one light level)
-	
+	/*
 	for (uint z = 0; z < 3300; z++)
 	{
 		//println("PRECACHE " + "d/" + base36(z));
@@ -73,7 +87,6 @@ void MapInit()
 	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L1.spr");
 	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L2.spr");
 	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L3.spr");
-	g_Game.PrecacheModel("sprites/doom/imp/test.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	
@@ -130,7 +143,7 @@ int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, V
 
 void doTheStatic(CBaseEntity@ ent)
 {
-	g_EngineFuncs.MakeStatic(ent.edict());
+	//g_EngineFuncs.MakeStatic(ent.edict());
 }
 
 int frame = 0;
@@ -138,7 +151,7 @@ void doEffect()
 {
 	dictionary keys;
 	keys["origin"] = Vector(256,256,128).ToString();
-	keys["model"] = "sprites/doom/imp/TROOA1_L3.spr";
+	keys["model"] = "d/t.spr";
 	keys["framerate"] = "0";
 	keys["vp_type"] = "3";
 	CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("env_sprite", keys, false);

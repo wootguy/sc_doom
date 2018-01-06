@@ -135,6 +135,7 @@ class AnimInfo
 class monster_doom : ScriptBaseMonsterEntity
 {
 	array< array< array<string> > > anim_frames;
+	array<string> anim_frames_death;
 	array<AnimInfo> animInfo;
 	AnimInfo currentAnim;
 	string anim_prefix;
@@ -228,7 +229,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		pev.health -= flDamage;
 		if (pev.health <= 0)
 		{
-			g_EntityFuncs.SetModel(self, "sprites/doom/" + anim_prefix + light_suffix[pev.light_level] + ".spr");
+			g_EntityFuncs.SetModel(self, anim_frames_death[pev.light_level]);
 			pev.renderamt = 255;
 			pev.rendermode = 0;
 			pev.solid = SOLID_NOT;
@@ -294,6 +295,80 @@ class monster_doom : ScriptBaseMonsterEntity
 	void MeleeAttack(Vector aimDir)
 	{
 		println("Melee attack not implemented!");
+	}
+	
+	void ShootBullet(Vector dir, float spread, float damage)
+	{
+		Vector vecSrc = BodyPos();
+		float range = 16384;
+		
+		int flash_size = 20;
+		int flash_life = 1;
+		int flash_decay = 0;
+		Color flash_color = Color(255, 160, 64);
+		te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
+		brighten = 4;
+		
+		Vector vecAiming = spreadDir(dir.Normalize(), spread, SPREAD_GAUSSIAN);
+	
+		// Do the bullet collision
+		TraceResult tr;
+		Vector vecEnd = vecSrc + vecAiming * range;
+		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, self.edict(), tr );
+		
+		// do more fancy effects
+		if( tr.flFraction < 1.0 )
+		{
+			if( tr.pHit !is null )
+			{
+				CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+				
+				if( pHit !is null ) 
+				{			
+					
+					CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
+						
+					Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
+					Vector angles = Math.VecToAngles(attackDir);
+					Math.MakeVectors(angles);
+						
+					// damage done before hitgroup multipliers
+					
+					g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
+					pHit.TraceAttack(self.pev, damage, attackDir, tr, DMG_BULLET);
+					
+					Vector oldVel = pHit.pev.velocity;
+					
+					// set both classes in case this a pvp map where classes are always changing
+					int oldClass1 = self.GetClassification(0);
+					int oldClass2 = pHit.GetClassification(0);
+					self.SetClassification(CLASS_PLAYER);
+					pHit.SetClassification(CLASS_ALIEN_MILITARY);
+					
+					g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+					
+					self.SetClassification(oldClass1);
+					pHit.SetClassification(oldClass2);
+					
+					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
+					
+					Vector knockDir = Vector(0,0,100);
+					Vector knockVel = g_Engine.v_forward*knockDir.z +
+									  g_Engine.v_up*knockDir.y +
+									  g_Engine.v_right*knockDir.x;
+					knockBack(pHit, knockVel);
+					
+					if (pHit.IsBSPModel()) 
+					{
+						te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
+						//te_decal(tr.vecEndPos, pHit, decal);
+					}
+				}
+			}
+		}
+		
+		// bullet tracer effects
+		te_tracer(vecSrc, tr.vecEndPos);
 	}
 	
 	void DoomThink()
@@ -485,20 +560,6 @@ class monster_doom : ScriptBaseMonsterEntity
 					int scale = 14;
 					int fps = 15;
 					te_explosion(pos, spr, scale, fps, 15, MSG_ONE_UNRELIABLE, ent.edict());
-					
-					Vector bpos = pos + Vector(0,0,96);
-					
-					//te_beampoints(bpos + Vector(0,0,100), bpos, spr, 0, 0, 1, 180, 0, Color(255,255,255,self.Illumination()), 0);
-					te_killbeam(self);
-					
-					spr = "sprites/doom/imp/TROO_L3.spr";
-					te_beamentpoint(self, self.pev.origin + Vector(0,0,128), spr, 0, 0, 1, 180, 0, Color(255,255,255,self.Illumination()), 0);
-					//println("TARGET AT: " + beamTarget.pev.origin.ToString());
-					
-					spr = "sprites/doom/imp/test.spr";
-					delta.z = 0;
-					delta = delta.Normalize();
-					te_explosion(pev.origin + delta*2 + Vector(0,0,15), spr, 8, fps, 15, MSG_ONE_UNRELIABLE, ent.edict());
 				}
 			} while (ent !is null);
 		}
@@ -541,7 +602,7 @@ class monster_imp : monster_doom
 	void Spawn()
 	{		
 		this.anim_frames = SPR_ANIM_TROO;
-		this.anim_prefix = "imp/TROO";
+		anim_frames_death = SPR_ANIM_DEATH_TROO;
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -616,7 +677,7 @@ class monster_zombieman : monster_doom
 	void Spawn()
 	{		
 		this.anim_frames = SPR_ANIM_POSS;
-		this.anim_prefix = "zombieman/POSS";
+		this.anim_frames_death = SPR_ANIM_DEATH_POSS;
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -650,82 +711,10 @@ class monster_zombieman : monster_doom
 	}
 	
 	void RangeAttack(Vector aimDir)
-	{
-		Vector vecSrc = BodyPos();
-		float range = 16384;
-		float damage = 5.0f;
-		float spread = 22.0f;
-		
+	{		
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
 		
-		int flash_size = 20;
-		int flash_life = 1;
-		int flash_decay = 0;
-		Color flash_color = Color(255, 160, 64);
-		te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
-		brighten = 4;
-		
-		aimDir = aimDir.Normalize();
-		Vector vecAiming = spreadDir(aimDir, spread, SPREAD_GAUSSIAN);
-	
-		// Do the bullet collision
-		TraceResult tr;
-		Vector vecEnd = vecSrc + vecAiming * range;
-		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, self.edict(), tr );
-		
-		// do more fancy effects
-		if( tr.flFraction < 1.0 )
-		{
-			if( tr.pHit !is null )
-			{
-				CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
-				
-				if( pHit !is null ) 
-				{			
-					
-					CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
-						
-					Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
-					Vector angles = Math.VecToAngles(attackDir);
-					Math.MakeVectors(angles);
-						
-					// damage done before hitgroup multipliers
-					
-					g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
-					pHit.TraceAttack(self.pev, damage, attackDir, tr, DMG_BULLET);
-					
-					Vector oldVel = pHit.pev.velocity;
-					
-					// set both classes in case this a pvp map where classes are always changing
-					int oldClass1 = self.GetClassification(0);
-					int oldClass2 = pHit.GetClassification(0);
-					self.SetClassification(CLASS_PLAYER);
-					pHit.SetClassification(CLASS_ALIEN_MILITARY);
-					
-					g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-					
-					self.SetClassification(oldClass1);
-					pHit.SetClassification(oldClass2);
-					
-					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
-					
-					Vector knockDir = Vector(0,0,100);
-					Vector knockVel = g_Engine.v_forward*knockDir.z +
-									  g_Engine.v_up*knockDir.y +
-									  g_Engine.v_right*knockDir.x;
-					knockBack(pHit, knockVel);
-					
-					if (pHit.IsBSPModel()) 
-					{
-						te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-						//te_decal(tr.vecEndPos, pHit, decal);
-					}
-				}
-			}
-		}
-		
-		// bullet tracer effects
-		te_tracer(vecSrc, tr.vecEndPos);
+		ShootBullet(aimDir, 22.0f, 5.0f);
 	}
 	
 	void Think()
@@ -737,12 +726,12 @@ class monster_zombieman : monster_doom
 
 class monster_shotgunguy : monster_doom
 {
-	string shootSnd = "doom/DSPISTOL.wav";
+	string shootSnd = "doom/DSSHOTGN.wav";
 
 	void Spawn()
 	{		
 		this.anim_frames = SPR_ANIM_SPOS;
-		this.anim_prefix = "zombieman/SPOS";
+		this.anim_frames_death = SPR_ANIM_DEATH_SPOS;
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -777,81 +766,69 @@ class monster_shotgunguy : monster_doom
 	
 	void RangeAttack(Vector aimDir)
 	{
-		Vector vecSrc = BodyPos();
-		float range = 16384;
-		float damage = 5.0f;
-		float spread = 22.0f;
-		
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
 		
-		int flash_size = 20;
-		int flash_life = 1;
-		int flash_decay = 0;
-		Color flash_color = Color(255, 160, 64);
-		te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
-		brighten = 4;
-		
-		aimDir = aimDir.Normalize();
-		Vector vecAiming = spreadDir(aimDir, spread, SPREAD_GAUSSIAN);
+		ShootBullet(aimDir, 22.0f, 5.0f);
+		ShootBullet(aimDir, 22.0f, 5.0f);
+		ShootBullet(aimDir, 22.0f, 5.0f);
+	}
 	
-		// Do the bullet collision
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_demon : monster_doom
+{
+	string meleeSound = "doom/DSCLAW.wav";
+	
+	void Spawn()
+	{		
+		this.anim_frames = SPR_ANIM_SARG;
+		anim_frames_death = SPR_ANIM_DEATH_SARG;
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(5, 12, 0.5f, false)); // ANIM_GIB		
+		
+		idleSounds.insertLast("doom/DSBGACT.wav");
+		painSound = "doom/DSPOPAIN.wav";
+		deathSounds.insertLast("doom/DSBGDTH1.wav");
+		deathSounds.insertLast("doom/DSBGDTH2.wav");
+		alertSounds.insertLast("doom/DSBGSIT1.wav");
+		alertSounds.insertLast("doom/DSBGSIT2.wav");
+		
+		this.hasMelee = true;
+		
+		self.m_FormattedName = "Demon";
+		self.pev.health = 200;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void MeleeAttack(Vector aimDir)
+	{
+		Vector bodyPos = BodyPos();
 		TraceResult tr;
-		Vector vecEnd = vecSrc + vecAiming * range;
-		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, self.edict(), tr );
+		Vector attackDir = aimDir.Normalize();
+		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
+		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
+		//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
 		
-		// do more fancy effects
-		if( tr.flFraction < 1.0 )
+		if (phit !is null)
 		{
-			if( tr.pHit !is null )
-			{
-				CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
-				
-				if( pHit !is null ) 
-				{			
-					
-					CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
-						
-					Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
-					Vector angles = Math.VecToAngles(attackDir);
-					Math.MakeVectors(angles);
-						
-					// damage done before hitgroup multipliers
-					
-					g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
-					pHit.TraceAttack(self.pev, damage, attackDir, tr, DMG_BULLET);
-					
-					Vector oldVel = pHit.pev.velocity;
-					
-					// set both classes in case this a pvp map where classes are always changing
-					int oldClass1 = self.GetClassification(0);
-					int oldClass2 = pHit.GetClassification(0);
-					self.SetClassification(CLASS_PLAYER);
-					pHit.SetClassification(CLASS_ALIEN_MILITARY);
-					
-					g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-					
-					self.SetClassification(oldClass1);
-					pHit.SetClassification(oldClass2);
-					
-					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
-					
-					Vector knockDir = Vector(0,0,100);
-					Vector knockVel = g_Engine.v_forward*knockDir.z +
-									  g_Engine.v_up*knockDir.y +
-									  g_Engine.v_right*knockDir.x;
-					knockBack(pHit, knockVel);
-					
-					if (pHit.IsBSPModel()) 
-					{
-						te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-						//te_decal(tr.vecEndPos, pHit, decal);
-					}
-				}
-			}
+			g_WeaponFuncs.ClearMultiDamage();
+			phit.TraceAttack(pev, 15.0f, attackDir, tr, DMG_SLASH);
+			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
 		}
-		
-		// bullet tracer effects
-		te_tracer(vecSrc, tr.vecEndPos);
 	}
 	
 	void Think()
