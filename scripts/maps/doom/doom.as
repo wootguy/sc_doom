@@ -1,5 +1,5 @@
 #include "anims"
-#include "monster_imp"
+#include "monster_doom"
 #include "utils"
 
 EHandle zombo;
@@ -14,6 +14,20 @@ void PrecacheSound(string sound)
 	g_Game.PrecacheGeneric("sound/" + sound);
 }
 
+string base36(int num)
+{
+	string b36;
+	string charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	
+	while (num != 0)
+	{
+		string c = charset[num % 36];
+		b36 = c + b36;
+		num /= 36; 
+	}
+	return b36;
+}
+
 void MapInit()
 {
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_imp", "monster_imp" );
@@ -22,16 +36,34 @@ void MapInit()
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 	
+	
 	for (uint z = 0; z < SPR_ANIM_TROO.length(); z++)
 		for (uint i = 0; i < SPR_ANIM_TROO[z].length(); i++)
 			for (uint k = 0; k < SPR_ANIM_TROO[z][i].length(); k++)
 				g_Game.PrecacheModel( SPR_ANIM_TROO[z][i][k] );
-				
+			
 	for (uint z = 0; z < SPR_ANIM_POSS.length(); z++)
 		for (uint i = 0; i < SPR_ANIM_POSS[z].length(); i++)
 			for (uint k = 0; k < SPR_ANIM_POSS[z][i].length(); k++)
 				g_Game.PrecacheModel( SPR_ANIM_POSS[z][i][k] );
-
+	
+	/*
+	for (uint z = 0; z < SPR_ANIM_SPOS.length() and z < 1; z++)
+		for (uint i = 0; i < SPR_ANIM_SPOS[z].length(); i++)
+			for (uint k = 0; k < SPR_ANIM_SPOS[z][i].length(); k++)
+				g_Game.PrecacheModel( SPR_ANIM_SPOS[z][i][k] );
+	
+	
+	// 3300 max possible sprites if using paths like "d/AAA.spr"
+	// Needed: 16 full monsters (13 normal + 2 boss + 1 player) + 3 partial (one light level)
+	
+	for (uint z = 0; z < 3300; z++)
+	{
+		//println("PRECACHE " + "d/" + base36(z));
+		g_Game.PrecacheGeneric("d/" + base36(z) + ".spr");
+	}
+	*/
+		
 	g_Game.PrecacheModel("sprites/doom/BAL1.spr");
 	g_Game.PrecacheModel("sprites/doom/imp/TROO_L0.spr");
 	g_Game.PrecacheModel("sprites/doom/imp/TROO_L1.spr");
@@ -41,7 +73,9 @@ void MapInit()
 	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L1.spr");
 	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L2.spr");
 	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L3.spr");
+	g_Game.PrecacheModel("sprites/doom/imp/test.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
+	
 	
 	PrecacheSound("doom/DSBGSIT1.wav");
 	PrecacheSound("doom/DSBGSIT2.wav");
@@ -62,6 +96,7 @@ void MapInit()
 	PrecacheSound("doom/DSPOSIT1.wav");
 	PrecacheSound("doom/DSPOSIT2.wav");
 	PrecacheSound("doom/DSPISTOL.wav");
+	PrecacheSound("doom/DSSHOTGN.wav");
 }
 
 void MapActivate()
@@ -93,9 +128,22 @@ int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, V
 	return 4;
 }
 
+void doTheStatic(CBaseEntity@ ent)
+{
+	g_EngineFuncs.MakeStatic(ent.edict());
+}
+
 int frame = 0;
 void doEffect()
 {
+	dictionary keys;
+	keys["origin"] = Vector(256,256,128).ToString();
+	keys["model"] = "sprites/doom/imp/TROOA1_L3.spr";
+	keys["framerate"] = "0";
+	keys["vp_type"] = "3";
+	CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("env_sprite", keys, false);
+	g_EntityFuncs.DispatchSpawn(fireball.edict());
+	g_Scheduler.SetTimeout("doTheStatic", 1.0f, @fireball);
 }
 
 bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
@@ -104,7 +152,8 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 	{
 		if (args[0] == ".test")
 		{
-			g_Scheduler.SetInterval("doEffect", 0.1, -1);
+			//g_Scheduler.SetInterval("doEffect", 0.1, -1);
+			doEffect();
 			return true;
 		}
 	}
