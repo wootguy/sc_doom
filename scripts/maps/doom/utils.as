@@ -1,6 +1,25 @@
 void print(string text) { g_Game.AlertMessage( at_console, text); }
 void println(string text) { print(text + "\n"); }
 
+
+// Will create a new state if the requested one does not exit
+PlayerState@ getPlayerState(CBasePlayer@ plr)
+{
+	string steamId = g_EngineFuncs.GetPlayerAuthId( plr.edict() );
+	if (steamId == 'STEAM_ID_LAN') {
+		steamId = plr.pev.netname;
+	}
+	
+	if ( !player_states.exists(steamId) )
+	{
+		PlayerState state;
+		state.plr = plr;
+		player_states[steamId] = state;
+	}
+	return cast<PlayerState@>( player_states[steamId] );
+}
+
+
 class Color
 { 
 	uint8 r, g, b, a;
@@ -97,7 +116,63 @@ void te_decal(Vector pos, CBaseEntity@ brushEnt=null, string decal="{handi", Net
 void te_gunshotdecal(Vector pos, CBaseEntity@ brushEnt=null, string decal="{handi", NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null) { _te_decal(pos, null, brushEnt, decal, msgType, dest, TE_GUNSHOTDECAL); }
 void te_tracer(Vector start, Vector end, NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null) { NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);m.WriteByte(TE_TRACER);m.WriteCoord(start.x);m.WriteCoord(start.y);m.WriteCoord(start.z);m.WriteCoord(end.x);m.WriteCoord(end.y);m.WriteCoord(end.z);m.End(); }
 void te_dlight(Vector pos, uint8 radius=16, Color c=PURPLE, uint8 life=255, uint8 decayRate=4, NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null) { NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);m.WriteByte(TE_DLIGHT);m.WriteCoord(pos.x);m.WriteCoord(pos.y);m.WriteCoord(pos.z);m.WriteByte(radius);m.WriteByte(c.r);m.WriteByte(c.g);m.WriteByte(c.b);m.WriteByte(life);m.WriteByte(decayRate);m.End(); }
+void te_sprite(Vector pos, string sprite="sprites/zerogxplode.spr", 
+	uint8 scale=10, uint8 alpha=200, 
+	NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null)
+{
+	NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);
+	m.WriteByte(TE_SPRITE);
+	m.WriteCoord(pos.x);
+	m.WriteCoord(pos.y);
+	m.WriteCoord(pos.z);
+	m.WriteShort(g_EngineFuncs.ModelIndex(sprite));
+	m.WriteByte(scale);
+	m.WriteByte(alpha);
+	m.End();
+}
+void te_model(Vector pos, Vector velocity, float yaw=0, 
+	string model="models/agibs.mdl", uint8 bounceSound=2, uint8 life=32,
+	NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null)
+{
 
+	NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);
+	m.WriteByte(TE_MODEL);
+	m.WriteCoord(pos.x);
+	m.WriteCoord(pos.y);
+	m.WriteCoord(pos.z);
+	m.WriteCoord(velocity.x);
+	m.WriteCoord(velocity.y);
+	m.WriteCoord(velocity.z);
+	m.WriteAngle(yaw);
+	m.WriteShort(g_EngineFuncs.ModelIndex(model));
+	m.WriteByte(bounceSound);
+	m.WriteByte(life);
+	m.End();
+}
+void te_spray(Vector pos, Vector dir, string sprite="sprites/bubble.spr", 
+	uint8 count=8, uint8 speed=127, uint8 noise=255, uint8 rendermode=0,
+	NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null)
+{
+	NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);
+	m.WriteByte(TE_SPRAY);
+	m.WriteCoord(pos.x);
+	m.WriteCoord(pos.y);
+	m.WriteCoord(pos.z);
+	m.WriteCoord(dir.x);
+	m.WriteCoord(dir.y);
+	m.WriteCoord(dir.z);
+	m.WriteShort(g_EngineFuncs.ModelIndex(sprite));
+	m.WriteByte(count);
+	m.WriteByte(speed);
+	m.WriteByte(noise);
+	m.WriteByte(rendermode);
+	m.End();
+}
+
+void delay_remove(EHandle ent)
+{
+	g_EntityFuncs.Remove(ent);
+}
 
 array<float> rotationMatrix(Vector axis, float angle)
 {

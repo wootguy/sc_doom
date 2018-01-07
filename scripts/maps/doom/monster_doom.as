@@ -1,4 +1,3 @@
-#include "anims"
 #include "utils"
 
 enum activities {
@@ -132,13 +131,13 @@ class AnimInfo
 	}
 }
 
+uint g_monster_idx = 0;
+
 class monster_doom : ScriptBaseMonsterEntity
 {
-	array< array< array<string> > > anim_frames;
-	array<string> anim_frames_death;
+	string bodySprite;
 	array<AnimInfo> animInfo;
 	AnimInfo currentAnim;
-	string anim_prefix;
 	
 	int activity = ANIM_IDLE;
 	bool hasMelee = true;
@@ -160,7 +159,10 @@ class monster_doom : ScriptBaseMonsterEntity
 	float nextIdleSound = 0;
 	bool dormant = true;
 	EHandle h_enemy;
-	EHandle h_beamTarget;
+	
+	array<EHandle> sprites;
+	array<EHandle> renderShowEnts;
+	array<EHandle> renderHideEnts;
 	
 	array<string> idleSounds;
 	string painSound;
@@ -181,15 +183,38 @@ class monster_doom : ScriptBaseMonsterEntity
 		g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		
 		self.m_bloodColor = BLOOD_COLOR_RED;
-		self.pev.scale = 1.2f;
+		self.pev.scale = 1.5f;
 		pev.takedamage = DAMAGE_YES;
 		
 		self.MonsterInit();
 		
-		dictionary keys;
-		keys["origin"] = "0 0 0";
-		keys["model"] = "models/w_357.mdl";
-		h_beamTarget = g_EntityFuncs.CreateEntity("cycler", keys, true);
+		g_monster_idx++;
+		
+		for (uint i = 0; i < 8; i++)
+		{
+			dictionary ckeys;
+			ckeys["origin"] = pev.origin.ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
+			ckeys["model"] = bodySprite;
+			ckeys["spawnflags"] = "1";
+			ckeys["rendermode"] = "2";
+			ckeys["rendercolor"] = "255 255 255";
+			ckeys["scale"] = string(pev.scale);
+			ckeys["targetname"] = "m" + g_monster_idx + "s" + i;
+			CBaseEntity@ client_sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
+			//println("MAKE LE SPRITE " + client_sprite.pev.targetname);
+			sprites.insertLast(EHandle(client_sprite));
+			
+			dictionary rkeys;
+			rkeys["target"] = string(client_sprite.pev.targetname);
+			rkeys["spawnflags"] = "75";
+			rkeys["rendermode"] = "0";
+			CBaseEntity@ show = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
+			renderShowEnts.insertLast(EHandle(show));
+			
+			rkeys["rendermode"] = "2";
+			CBaseEntity@ hide = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
+			renderHideEnts.insertLast(EHandle(hide));
+		}
 		
 		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 		self.SetClassification(CLASS_ALIEN_MONSTER);
@@ -203,7 +228,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		else
 			currentAnim = animInfo[act];
 		
-		println("ACT " + activity);
+		//println("ACT " + activity);
 		animLoops = 0;
 		oldFrameCounter = frameCounter = 0;
 		activity = act;
@@ -229,7 +254,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		pev.health -= flDamage;
 		if (pev.health <= 0)
 		{
-			g_EntityFuncs.SetModel(self, anim_frames_death[pev.light_level]);
+			g_EntityFuncs.SetModel(self, bodySprite);
+			killClientSprites();
 			pev.renderamt = 255;
 			pev.rendermode = 0;
 			pev.solid = SOLID_NOT;
@@ -371,6 +397,30 @@ class monster_doom : ScriptBaseMonsterEntity
 		te_tracer(vecSrc, tr.vecEndPos);
 	}
 	
+	void killClientSprites()
+	{
+		array<string>@ stateKeys = player_states.getKeys();
+		for (uint i = 0; i < stateKeys.size(); i++)
+		{
+			PlayerState@ state = cast<PlayerState@>(player_states[ stateKeys[i] ]);
+			for (uint k = 0; k < sprites.length(); k++)
+			{
+				if (sprites[k])
+				{
+					CBaseEntity@ client_sprite = sprites[k];
+					state.hideVisibleEnt(client_sprite.pev.targetname);
+				}
+			}
+		}
+		
+		for (uint k = 0; k < sprites.length(); k++)
+		{
+			g_EntityFuncs.Remove(sprites[k]);
+			g_EntityFuncs.Remove(renderShowEnts[k]);
+			g_EntityFuncs.Remove(renderHideEnts[k]);
+		}
+	}
+	
 	void DoomThink()
 	{
 		if (pev.deadflag == DEAD_DEAD)
@@ -379,15 +429,16 @@ class monster_doom : ScriptBaseMonsterEntity
 			return;
 		}
 		
-		pev.light_level = ((self.Illumination() + 32) / 64);
-		pev.light_level = 3 - pev.light_level;
+		int light_level = self.Illumination() + 32;
 		if (brighten > 0)
 		{
 			brighten--;
-			pev.light_level -= brighten;
-			if (pev.light_level < 0)
-				pev.light_level = 0;
+			light_level += brighten*64;
+			if (light_level > 255)
+				light_level = 255;
 		}
+		Vector lightColor = Vector(light_level, light_level, light_level);
+		//pev.rendercolor = lightColor;
 		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
 		
 		pev.velocity.z += -0.1f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
@@ -417,15 +468,20 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (pev.health > 0)
 			pev.deadflag = 0;
 		
-		if (!self.IsAlive() and looped or pev.deadflag == DEAD_DEAD)
+		if (!self.IsAlive())
 		{
-			pev.deadflag = DEAD_DEAD;
-			pev.frame = currentAnim.lastFrame();
-			pev.nextthink = g_Engine.time + deathRemoveDelay;
-			return;
+			if (looped or pev.deadflag == DEAD_DEAD)
+			{
+				pev.deadflag = DEAD_DEAD;
+				pev.frame = currentAnim.lastFrame();
+				pev.nextthink = g_Engine.time + deathRemoveDelay;
+				return;
+			}
+			else
+				pev.frame = frame;
+			pev.rendercolor = lightColor;
 		}
-		else
-			pev.frame = frame;
+		
 		
 		if (!dormant and self.IsAlive())
 		{
@@ -532,7 +588,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		// render sprite for each player
 		if (self.IsAlive())
-		{		
+		{
 			CBaseEntity@ ent = null;
 			do {
 				@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
@@ -543,8 +599,6 @@ class monster_doom : ScriptBaseMonsterEntity
 					Vector delta = pos - ent.pev.origin;
 					delta = delta.Normalize();
 					int angleIdx = getSpriteAngle(pos, forward, right, ent.pev.origin);
-					if (angleIdx >= int(anim_frames[pev.light_level][frame].length()))
-						angleIdx = 0;
 						
 					if (dormant and ent.IsAlive())
 					{
@@ -555,17 +609,52 @@ class monster_doom : ScriptBaseMonsterEntity
 						}
 					}
 					
-					string spr = anim_frames[pev.light_level][frame][angleIdx];
+					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(ent));
 					
-					int scale = 14;
-					int fps = 15;
-					te_explosion(pos, spr, scale, fps, 15, MSG_ONE_UNRELIABLE, ent.edict());
+					for (int i = 0; i < 8; i++)
+					{
+						CBaseEntity@ client_sprite = sprites[i];
+						bool shouldVisible = i == angleIdx;
+						
+						if (shouldVisible != state.isVisibleEnt(client_sprite.pev.targetname))
+						{
+							//println("SET VISIBLE " + client_sprite.pev.targetname + " " + shouldVisible);
+							if (shouldVisible)
+							{
+								CBaseEntity@ renderent = renderShowEnts[i];
+								renderent.Use(ent, ent, USE_TOGGLE);
+								state.addVisibleEnt(client_sprite.pev.targetname, EHandle(client_sprite));
+							}
+							else
+							{
+								CBaseEntity@ renderent = renderHideEnts[i];
+								renderent.Use(ent, ent, USE_TOGGLE);
+								state.hideVisibleEnt(client_sprite.pev.targetname);
+							}
+						}
+					}
 				}
 			} while (ent !is null);
+			
+			for (uint i = 0; i < 8; i++)
+			{
+				CBaseEntity@ client_sprite = sprites[i];
+				bool canAnyoneSeeThis = client_sprite.pev.colormap > 0;
+				if (canAnyoneSeeThis)
+				{
+					client_sprite.pev.effects &= ~EF_NODRAW;
+					client_sprite.pev.origin = pev.origin + Vector(0,0,11);// + Vector(0,0,64 + i*32)
+					client_sprite.pev.frame = frame*8 + i;
+					client_sprite.pev.rendercolor = lightColor;
+				}
+				else
+					client_sprite.pev.effects |= EF_NODRAW;
+				
+			}
 		}
 		
 		// react to sounds
-		if (dormant)
+		if (dormant and false)
 		{
 			CSoundEnt@ sndent = GetSoundEntInstance();
 			int activeList = sndent.ActiveList();
@@ -600,16 +689,15 @@ class monster_imp : monster_doom
 	string meleeSound = "doom/DSCLAW.wav";
 	
 	void Spawn()
-	{		
-		this.anim_frames = SPR_ANIM_TROO;
-		anim_frames_death = SPR_ANIM_DEATH_TROO;
+	{
+		bodySprite = "sprites/doom/TROO.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
 		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(5, 12, 0.5f, false)); // ANIM_GIB		
+		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(69, 76, 0.5f, false)); // ANIM_GIB		
 		
 		idleSounds.insertLast("doom/DSBGACT.wav");
 		painSound = "doom/DSPOPAIN.wav";
@@ -675,16 +763,15 @@ class monster_zombieman : monster_doom
 	string shootSnd = "doom/DSPISTOL.wav";
 
 	void Spawn()
-	{		
-		this.anim_frames = SPR_ANIM_POSS;
-		this.anim_frames_death = SPR_ANIM_DEATH_POSS;
+	{
+		this.bodySprite = "sprites/doom/POSS.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
 		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(5, 13, 0.5f, false)); // ANIM_GIB		
+		animInfo.insertLast(AnimInfo(56, 60, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(61, 69, 0.5f, false)); // ANIM_GIB		
 		
 		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
@@ -723,15 +810,13 @@ class monster_zombieman : monster_doom
 	}
 }
 
-
 class monster_shotgunguy : monster_doom
 {
 	string shootSnd = "doom/DSSHOTGN.wav";
 
 	void Spawn()
-	{		
-		this.anim_frames = SPR_ANIM_SPOS;
-		this.anim_frames_death = SPR_ANIM_DEATH_SPOS;
+	{
+		bodySprite = "sprites/doom/TROO.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -784,9 +869,8 @@ class monster_demon : monster_doom
 	string meleeSound = "doom/DSCLAW.wav";
 	
 	void Spawn()
-	{		
-		this.anim_frames = SPR_ANIM_SARG;
-		anim_frames_death = SPR_ANIM_DEATH_SARG;
+	{
+		bodySprite = "sprites/doom/TROO.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
