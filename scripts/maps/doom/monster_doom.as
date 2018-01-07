@@ -141,6 +141,8 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	int activity = ANIM_IDLE;
 	bool hasMelee = true;
+	bool hasRanged = true;
+	bool isSpectre = false;
 	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
 	
 	uint frameCounter = 0;
@@ -171,7 +173,9 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{
-		return BaseClass.KeyValue( szKey, szValue );
+		if (szKey == "spectre") isSpectre = atoi(szValue) != 0;
+		else return BaseClass.KeyValue( szKey, szValue );
+		return true;
 	}
 	
 	void DoomSpawn()
@@ -197,7 +201,8 @@ class monster_doom : ScriptBaseMonsterEntity
 			ckeys["model"] = bodySprite;
 			ckeys["spawnflags"] = "1";
 			ckeys["rendermode"] = "2";
-			ckeys["rendercolor"] = "255 255 255";
+			ckeys["renderamt"] = "0";
+			ckeys["rendercolor"] = isSpectre ? "1 1 1" : "255 255 255";
 			ckeys["scale"] = string(pev.scale);
 			ckeys["targetname"] = "m" + g_monster_idx + "s" + i;
 			CBaseEntity@ client_sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
@@ -206,12 +211,12 @@ class monster_doom : ScriptBaseMonsterEntity
 			
 			dictionary rkeys;
 			rkeys["target"] = string(client_sprite.pev.targetname);
-			rkeys["spawnflags"] = "75";
-			rkeys["rendermode"] = "0";
+			rkeys["spawnflags"] = "" + (1 | 4 | 8 | 64);
+			rkeys["renderamt"] = isSpectre ? "32" : "255";
 			CBaseEntity@ show = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
 			renderShowEnts.insertLast(EHandle(show));
 			
-			rkeys["rendermode"] = "2";
+			rkeys["rendermode"] = "0";
 			CBaseEntity@ hide = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
 			renderHideEnts.insertLast(EHandle(hide));
 		}
@@ -240,8 +245,11 @@ class monster_doom : ScriptBaseMonsterEntity
 			return;
 		SetActivity(ANIM_MOVE);
 		println("IM AWAKE");
-		string snd = alertSounds[Math.RandomLong(0, alertSounds.size()-1)];
-		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, snd, 1.0f, 0.5f, 0, 100);
+		if (alertSounds.length() > 0)
+		{
+			string snd = alertSounds[Math.RandomLong(0, alertSounds.size()-1)];
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, snd, 1.0f, 0.5f, 0, 100);
+		}
 						
 		dormant = false;
 		nextIdleSound = g_Engine.time + Math.RandomFloat(5.0f, 10.0f);
@@ -528,7 +536,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				{
 					float idealYaw = g_EngineFuncs.VecToYaw(delta);
 					pev.angles.y = idealYaw;
-					if (Math.RandomLong(0,2) <= 1) // zig zag towards target
+					if (Math.RandomLong(0,3) <= 1) // zig zag towards target
 					{
 						if (Math.RandomLong(0,1) == 0)
 							pev.angles.y += 45;
@@ -540,7 +548,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				}
 				
 				bool inMeleeRange = hasMelee and delta.Length() < meleeRange;
-				if (activity == ANIM_ATTACK or inMeleeRange or nextRangeAttack < g_Engine.time)
+				if (activity == ANIM_ATTACK or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged))
 				{
 					pev.angles.y = g_EngineFuncs.VecToYaw(delta);
 					if (activity != ANIM_ATTACK)
@@ -556,7 +564,7 @@ class monster_doom : ScriptBaseMonsterEntity
 							{
 								MeleeAttack(delta);
 							}
-							else
+							else if (hasRanged)
 							{								
 								RangeAttack(delta);
 							}
@@ -645,7 +653,8 @@ class monster_doom : ScriptBaseMonsterEntity
 					client_sprite.pev.effects &= ~EF_NODRAW;
 					client_sprite.pev.origin = pev.origin + Vector(0,0,11);// + Vector(0,0,64 + i*32)
 					client_sprite.pev.frame = frame*8 + i;
-					client_sprite.pev.rendercolor = lightColor;
+					if (!isSpectre)
+						client_sprite.pev.rendercolor = lightColor;
 				}
 				else
 					client_sprite.pev.effects |= EF_NODRAW;
@@ -683,240 +692,3 @@ class monster_doom : ScriptBaseMonsterEntity
 		pev.nextthink = g_Engine.time + 0.05;
 	}
 };
-
-class monster_imp : monster_doom
-{
-	string meleeSound = "doom/DSCLAW.wav";
-	
-	void Spawn()
-	{
-		bodySprite = "sprites/doom/TROO.spr";
-		
-		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
-		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
-		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
-		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(69, 76, 0.5f, false)); // ANIM_GIB		
-		
-		idleSounds.insertLast("doom/DSBGACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSBGDTH1.wav");
-		deathSounds.insertLast("doom/DSBGDTH2.wav");
-		alertSounds.insertLast("doom/DSBGSIT1.wav");
-		alertSounds.insertLast("doom/DSBGSIT2.wav");
-		
-		this.hasMelee = true;
-		
-		self.m_FormattedName = "Imp";
-		self.pev.health = 100;
-		
-		DoomSpawn();
-		
-		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.1;
-	}
-	
-	void MeleeAttack(Vector aimDir)
-	{
-		Vector bodyPos = BodyPos();
-		TraceResult tr;
-		Vector attackDir = aimDir.Normalize();
-		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
-		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
-		//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
-		
-		if (phit !is null)
-		{
-			g_WeaponFuncs.ClearMultiDamage();
-			phit.TraceAttack(pev, 15.0f, attackDir, tr, DMG_SLASH);
-			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
-		}
-	}
-	
-	void RangeAttack(Vector aimDir)
-	{
-		brighten = 8;
-		
-		Vector bodyPos = BodyPos();
-		Vector angles;
-		g_EngineFuncs.VecToAngles(aimDir, angles);
-		angles.x = -angles.x;
-		
-		dictionary keys;
-		keys["origin"] = bodyPos.ToString();
-		keys["angles"] = angles.ToString();
-		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
-		@fireball.pev.owner = @self.edict();
-		g_EntityFuncs.DispatchSpawn(fireball.edict());
-	}
-	
-	void Think()
-	{
-		DoomThink();
-	}
-}
-
-class monster_zombieman : monster_doom
-{
-	string shootSnd = "doom/DSPISTOL.wav";
-
-	void Spawn()
-	{
-		this.bodySprite = "sprites/doom/POSS.spr";
-		
-		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
-		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
-		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
-		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(56, 60, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(61, 69, 0.5f, false)); // ANIM_GIB		
-		
-		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
-		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
-		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
-		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
-		
-		idleSounds.insertLast("doom/DSPOSACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSPODTH2.wav");
-		deathSounds.insertLast("doom/DSPODTH3.wav");
-		deathSounds.insertLast("doom/DSPODTH1.wav");
-		alertSounds.insertLast("doom/DSPOSIT1.wav");
-		alertSounds.insertLast("doom/DSPOSIT2.wav");
-		
-		this.hasMelee = false;
-		
-		self.m_FormattedName = "Zombie Man";
-		self.pev.health = 50;
-		
-		DoomSpawn();
-		
-		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.1;
-	}
-	
-	void RangeAttack(Vector aimDir)
-	{		
-		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
-		
-		ShootBullet(aimDir, 22.0f, 5.0f);
-	}
-	
-	void Think()
-	{
-		DoomThink();
-	}
-}
-
-class monster_shotgunguy : monster_doom
-{
-	string shootSnd = "doom/DSSHOTGN.wav";
-
-	void Spawn()
-	{
-		bodySprite = "sprites/doom/TROO.spr";
-		
-		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
-		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
-		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
-		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(5, 13, 0.5f, false)); // ANIM_GIB		
-		
-		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
-		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
-		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
-		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
-		
-		idleSounds.insertLast("doom/DSPOSACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSPODTH2.wav");
-		deathSounds.insertLast("doom/DSPODTH3.wav");
-		deathSounds.insertLast("doom/DSPODTH1.wav");
-		alertSounds.insertLast("doom/DSPOSIT1.wav");
-		alertSounds.insertLast("doom/DSPOSIT2.wav");
-		
-		this.hasMelee = false;
-		
-		self.m_FormattedName = "Shotgun Guy";
-		self.pev.health = 50;
-		
-		DoomSpawn();
-		
-		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.1;
-	}
-	
-	void RangeAttack(Vector aimDir)
-	{
-		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSnd, 1.0f, 0.5f, 0, 100);
-		
-		ShootBullet(aimDir, 22.0f, 5.0f);
-		ShootBullet(aimDir, 22.0f, 5.0f);
-		ShootBullet(aimDir, 22.0f, 5.0f);
-	}
-	
-	void Think()
-	{
-		DoomThink();
-	}
-}
-
-class monster_demon : monster_doom
-{
-	string meleeSound = "doom/DSCLAW.wav";
-	
-	void Spawn()
-	{
-		bodySprite = "sprites/doom/TROO.spr";
-		
-		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
-		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
-		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
-		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(0, 4, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(5, 12, 0.5f, false)); // ANIM_GIB		
-		
-		idleSounds.insertLast("doom/DSBGACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSBGDTH1.wav");
-		deathSounds.insertLast("doom/DSBGDTH2.wav");
-		alertSounds.insertLast("doom/DSBGSIT1.wav");
-		alertSounds.insertLast("doom/DSBGSIT2.wav");
-		
-		this.hasMelee = true;
-		
-		self.m_FormattedName = "Demon";
-		self.pev.health = 200;
-		
-		DoomSpawn();
-		
-		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.1;
-	}
-	
-	void MeleeAttack(Vector aimDir)
-	{
-		Vector bodyPos = BodyPos();
-		TraceResult tr;
-		Vector attackDir = aimDir.Normalize();
-		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
-		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
-		//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
-		
-		if (phit !is null)
-		{
-			g_WeaponFuncs.ClearMultiDamage();
-			phit.TraceAttack(pev, 15.0f, attackDir, tr, DMG_SLASH);
-			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
-		}
-	}
-	
-	void Think()
-	{
-		DoomThink();
-	}
-}

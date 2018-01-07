@@ -1,4 +1,4 @@
-#include "monster_doom"
+#include "monsters"
 #include "utils"
 
 class VisEnt
@@ -94,8 +94,6 @@ void MapInit()
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 		
 	g_Game.PrecacheModel("sprites/doom/BAL1.spr");
-	//g_Game.PrecacheModel("sprites/doom/TROO.spr");
-	g_Game.PrecacheModel("sprites/doom/POSS.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	
@@ -119,6 +117,11 @@ void MapInit()
 	PrecacheSound("doom/DSPOSIT2.wav");
 	PrecacheSound("doom/DSPISTOL.wav");
 	PrecacheSound("doom/DSSHOTGN.wav");
+	PrecacheSound("doom/DSSGTATK.wav");
+	PrecacheSound("doom/DSSGTDTH.wav");
+	PrecacheSound("doom/DSDMACT.wav");
+	PrecacheSound("doom/DSDMPAIN.wav");
+	PrecacheSound("doom/DSSGTSIT.wav");
 }
 
 void MapActivate()
