@@ -11,32 +11,53 @@ enum activities {
 
 array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 
+float g_monster_scale = 1.5f;
+
 class fireball : ScriptBaseAnimating
 {
 	string fireSound = "doom/DSFIRSHT.wav";
 	string boomSound = "doom/DSFIRXPL.wav";
-	float moveSpeed = 400;
 	bool dead = false;
+	bool oriented = false;
+	int moveFrameStart = 0;
+	int moveFrameEnd = 1;
 	int deathFrameStart = 2;
 	int deathFrameEnd = 4;
 	int frameCounter = 0;
+	int damageMin = 3;
+	int damageMax = 24;
+	Vector flash_color = Vector(255, 64, 32);
+	
+	bool KeyValue( const string& in szKey, const string& in szValue )
+	{
+		if (szKey == "deathFrameStart") deathFrameStart = atoi(szValue);
+		else if (szKey == "deathFrameEnd") deathFrameEnd = atoi(szValue);
+		else if (szKey == "moveFrameStart") moveFrameStart = atoi(szValue);
+		else if (szKey == "moveFrameEnd") moveFrameEnd = atoi(szValue);
+		else if (szKey == "moveFrameEnd") moveFrameEnd = atoi(szValue);
+		else if (szKey == "flash_color") flash_color = parseVector(szValue);
+		else if (szKey == "damage_min") damageMin = atoi(szValue);
+		else if (szKey == "damage_max") damageMax = atoi(szValue);
+		else if (szKey == "oriented") oriented = atoi(szValue) != 0;
+		else return BaseClass.KeyValue( szKey, szValue );
+		return true;
+	}
 	
 	void Spawn()
 	{				
 		pev.movetype = MOVETYPE_FLY;
 		pev.solid = SOLID_TRIGGER;
-		pev.effects = EF_DIMLIGHT;
 		
-		g_EntityFuncs.SetModel( self, "sprites/doom/BAL1.spr" );
+		g_EntityFuncs.SetModel( self, self.pev.model );
 		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -8), Vector(8, 8, 8));
 		
 		g_EngineFuncs.MakeVectors(self.pev.angles);
-		pev.velocity = g_Engine.v_forward*moveSpeed;
+		pev.velocity = g_Engine.v_forward*pev.speed*g_monster_scale;
 		
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, fireSound, 1.0f, 0.5f, 0, 100);
 		
-		pev.scale = 1.4f;
-		pev.frame = 0;
+		pev.scale = g_monster_scale;
+		pev.frame = moveFrameStart;
 		
 		SetThink( ThinkFunction( Think ) );
 		pev.nextthink = g_Engine.time + 0.05;
@@ -54,16 +75,19 @@ class fireball : ScriptBaseAnimating
 		dead = true;
 		pev.velocity = Vector(0,0,0);
 		pev.solid = SOLID_NOT;
-		pev.frame = 2;
-		frameCounter = 2;
+		pev.frame = deathFrameStart;
+		frameCounter = deathFrameStart;
 		pev.nextthink = g_Engine.time + 0.15;
 		
-		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, 20.0f, DMG_BLAST);
+		int damage = Math.RandomLong(damageMin, damageMax);
+		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, damage, DMG_BLAST);
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, boomSound, 1.0f, 0.5f, 0, 100);
 	}
 	
 	void Think()
 	{
+		frameCounter++;
+		
 		if (dead)
 		{
 			pev.frame = frameCounter;
@@ -76,25 +100,23 @@ class fireball : ScriptBaseAnimating
 			int flash_size = 30;
 			int flash_life = 3;
 			int flash_decay = 8;
-			Color flash_color = Color(32, 8, 4);
-			te_dlight(self.pev.origin, flash_size, flash_color, flash_life, flash_decay);
+			Color color = Color(int(flash_color.x/8), int(flash_color.y/8), int(flash_color.z/8));
+			te_dlight(self.pev.origin, flash_size, color, flash_life, flash_decay);
 			
 			pev.nextthink = g_Engine.time + 0.15;
 		}
 		else
 		{
-			pev.frame = (frameCounter / 3) % 2;
+			pev.frame = moveFrameStart + (frameCounter / 3) % ((moveFrameEnd-moveFrameStart) + 1);
 			
 			int flash_size = 20;
 			int flash_life = 1;
 			int flash_decay = 8;
-			Color flash_color = Color(255, 64, 32);
-			te_dlight(self.pev.origin, flash_size, flash_color, flash_life, flash_decay);
+			Color color = Color(flash_color);
+			te_dlight(self.pev.origin, flash_size, color, flash_life, flash_decay);
 			
 			pev.nextthink = g_Engine.time + 0.05;
 		}
-		
-		frameCounter++;
 	}
 }
 
@@ -143,7 +165,11 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool hasMelee = true;
 	bool hasRanged = true;
 	bool isSpectre = false;
+	bool canFly = false;
+	bool isCorpse = false;
+	bool fullBright = false;
 	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
+	float deathBoom = 0;
 	
 	uint frameCounter = 0;
 	uint oldFrameCounter = 0;
@@ -151,25 +177,36 @@ class monster_doom : ScriptBaseMonsterEntity
 	int oldFrameIdx = 0;
 	
 	float walkSpeed = 8.0f;
+	float painChance = 1.0f;
 	float meleeRange = 64.0f;
-	float nextRangeAttack = 0;
+	float minRangeAttackDelay = 1.0f;
+	float maxRangeAttackDelay = 4.0f;
 	
+	float nextRangeAttack = 0;
 	float lastWallReflect = 0;
 	float lastDirChange = 0;
 	float lastEnemy = 0;
 	float deathRemoveDelay = 60.0f; // time before entity is destroyed after death
 	float nextIdleSound = 0;
 	bool dormant = true;
+	
+	bool dashing = false;
+	Vector dashVel;
+	float dashDamage = 0;
+	
 	EHandle h_enemy;
+	EHandle oldEnemy; // remember last enemy
 	
 	array<EHandle> sprites;
 	array<EHandle> renderShowEnts;
 	array<EHandle> renderHideEnts;
 	
 	array<string> idleSounds;
-	string painSound;
 	array<string> deathSounds;
 	array<string> alertSounds;
+	string painSound;
+	string meleeSound;
+	string shootSound;
 	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{
@@ -178,16 +215,38 @@ class monster_doom : ScriptBaseMonsterEntity
 		return true;
 	}
 	
+	void Precache()
+	{
+		for (uint i = 0; i < idleSounds.length(); i++)
+			PrecacheSound(idleSounds[i]);
+		for (uint i = 0; i < deathSounds.length(); i++)
+			PrecacheSound(deathSounds[i]);
+		for (uint i = 0; i < alertSounds.length(); i++)
+			PrecacheSound(alertSounds[i]);
+		PrecacheSound(meleeSound);
+		PrecacheSound(shootSound);
+		PrecacheSound(painSound);
+		PrecacheSound("doom/DSSLOP.wav");
+	}
+	
+	void DoomTouched(CBaseEntity@ ent)
+	{
+		//println("ZOMG TOUCHED " + ent.pev.classname);
+	}
+	
 	void DoomSpawn()
-	{		
-		pev.movetype = MOVETYPE_STEP;
+	{
+		Precache();
+		
+		pev.movetype = canFly ? MOVETYPE_FLY : MOVETYPE_STEP;
 		pev.solid = SOLID_SLIDEBOX;
 		
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
+		g_EntityFuncs.SetSize(self.pev, Vector(-16, -16, 0), Vector(16, 16, 72));
 		
 		self.m_bloodColor = BLOOD_COLOR_RED;
-		self.pev.scale = 1.5f;
+		self.pev.scale = g_monster_scale;
 		pev.takedamage = DAMAGE_YES;
 		
 		self.MonsterInit();
@@ -244,7 +303,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (!dormant)
 			return;
 		SetActivity(ANIM_MOVE);
-		println("IM AWAKE");
+		//println("IM AWAKE");
 		if (alertSounds.length() > 0)
 		{
 			string snd = alertSounds[Math.RandomLong(0, alertSounds.size()-1)];
@@ -265,12 +324,24 @@ class monster_doom : ScriptBaseMonsterEntity
 			g_EntityFuncs.SetModel(self, bodySprite);
 			killClientSprites();
 			pev.renderamt = 255;
-			pev.rendermode = 0;
+			pev.rendermode = 2;
+			if (isSpectre)
+			{
+				pev.renderamt = 32;
+				pev.rendercolor = Vector(1, 1, 1);
+			}
 			pev.solid = SOLID_NOT;
 			bool gib = (bitsDamageType & DMG_BLAST) != 0 or pev.health < -100;
 			SetActivity(gib ? ANIM_GIB : ANIM_DEAD);
 			h_enemy = null;
 			pev.deadflag = DEAD_DYING;
+			
+			if (canFly and deathBoom == 0)
+			{
+				pev.movetype = MOVETYPE_TOSS;
+				pev.velocity.z = -0.1f;
+			}
+			g_EntityFuncs.SetSize(self.pev, Vector(-1, -1, 0), Vector(1, 1, 1));
 			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
 			if (gib)
@@ -279,8 +350,11 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		else
 		{
-			SetActivity(ANIM_PAIN);
-			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, painSound, 1.0f, 0.5f, 0, 100);
+			if (Math.RandomFloat(0, 1) <= painChance)
+			{
+				SetActivity(ANIM_PAIN);
+				g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, painSound, 1.0f, 0.5f, 0, 100);
+			}
 			
 			CBaseEntity@ attacker = g_EntityFuncs.Instance(pevAttacker.get_pContainingEntity());
 			SetEnemy( attacker );
@@ -295,15 +369,24 @@ class monster_doom : ScriptBaseMonsterEntity
 			return;
 		// only switch targets after chasing current one for a while
 		if (!h_enemy.IsValid() or lastEnemy + 10.0f < g_Engine.time)
+		{
+			oldEnemy = h_enemy;
+			if (oldEnemy)
+				println("I will remember to attack " + oldEnemy.GetEntity().pev.classname);
 			h_enemy = EHandle(ent);
-		Wakeup();
-		lastEnemy = g_Engine.time;
+			lastEnemy = g_Engine.time;
+			Wakeup();
+		}
 	}
 	
 	void ClearEnemy()
 	{
-		h_enemy = null;
-		Sleep();
+		h_enemy = oldEnemy;
+		if (h_enemy)
+			println("I will go back to attacking " + h_enemy.GetEntity().pev.classname);
+		oldEnemy = null;
+		if (!h_enemy.IsValid())
+			Sleep();
 	}
 	
 	void Sleep()
@@ -404,6 +487,32 @@ class monster_doom : ScriptBaseMonsterEntity
 		// bullet tracer effects
 		te_tracer(vecSrc, tr.vecEndPos);
 	}
+
+	bool Slash(Vector dir, float damage)
+	{
+		Vector bodyPos = BodyPos();
+		TraceResult tr;
+		Vector attackDir = dir.Normalize();
+		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
+		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
+		//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
+		
+		if (phit !is null)
+		{
+			g_WeaponFuncs.ClearMultiDamage();
+			phit.TraceAttack(pev, damage, attackDir, tr, DMG_SLASH);
+			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+			return true;
+		}
+		return false;
+	}
+	
+	void Dash(Vector velocity, float damage)
+	{
+		dashVel = velocity;
+		dashing = true;
+		dashDamage = damage;
+	}
 	
 	void killClientSprites()
 	{
@@ -431,25 +540,33 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	void DoomThink()
 	{
-		if (pev.deadflag == DEAD_DEAD)
+		//te_beampoints(pev.origin, pev.origin + Vector(0,0,72));
+		
+		if (isCorpse)
 		{
-			g_EntityFuncs.Remove(self);
+			g_EntityFuncs.Remove(self);			
 			return;
 		}
 		
-		int light_level = self.Illumination() + 32;
-		if (brighten > 0)
+		int light_level = 255;
+		if (!fullBright)
 		{
-			brighten--;
-			light_level += brighten*64;
-			if (light_level > 255)
-				light_level = 255;
+			light_level = self.Illumination() + 32;
+			if (brighten > 0)
+			{
+				brighten--;
+				light_level += brighten*64;
+				if (light_level > 255)
+					light_level = 255;
+			}
 		}
 		Vector lightColor = Vector(light_level, light_level, light_level);
+		
 		//pev.rendercolor = lightColor;
 		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
 		
-		pev.velocity.z += -0.1f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
+		if (!canFly)
+			pev.velocity.z += -0.1f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
 		
 		//println("CURENT ANIM: " + currentAnim.frameIndices[0] + " " + currentAnim.lastFrame());
 		frameCounter += 1;
@@ -470,7 +587,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		forward = forward.Normalize();
 		right = right.Normalize();
 		
-		if (activity == ANIM_PAIN and animLoops > 2)
+		if (activity == ANIM_PAIN and animLoops > 3)
 			SetActivity(ANIM_MOVE);
 		
 		if (pev.health > 0)
@@ -478,10 +595,15 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		if (!self.IsAlive())
 		{
-			if (looped or pev.deadflag == DEAD_DEAD)
+			if (looped)
 			{
-				pev.deadflag = DEAD_DEAD;
+				isCorpse = true;
 				pev.frame = currentAnim.lastFrame();
+				if (deathBoom > 0)
+				{
+					g_EntityFuncs.Remove(self);
+					return;
+				}
 				pev.nextthink = g_Engine.time + deathRemoveDelay;
 				return;
 			}
@@ -495,13 +617,29 @@ class monster_doom : ScriptBaseMonsterEntity
 		{
 			Vector bodyPos = BodyPos();
 			
-			if (activity == ANIM_MOVE)
+			if (activity == ANIM_MOVE or dashing)
 			{
-				int canWalk = g_EngineFuncs.WalkMove(self.edict(), pev.angles.y, walkSpeed, int(WALKMOVE_NORMAL));
+				int canWalk = 0;
+				
+				Vector verticalMove = Vector(0,0,0);					
+				if (canFly and h_enemy.IsValid())
+				{
+					CBaseEntity@ enemy = h_enemy;
+					if (enemy.pev.origin.z > bodyPos.z + 36)
+						verticalMove = Vector(0,0,4);
+					else if (enemy.pev.origin.z < bodyPos.z - 36)
+						verticalMove = Vector(0,0,-4);
+				}
+				else
+					canWalk = g_EngineFuncs.WalkMove(self.edict(), pev.angles.y, walkSpeed*g_monster_scale, int(WALKMOVE_NORMAL));
+					
 				if (canWalk != 1)
 				{
 					TraceResult tr;
-					g_Utility.TraceHull( bodyPos, bodyPos + forward*walkSpeed, dont_ignore_monsters, human_hull, self.edict(), tr );
+					Vector moveVel = forward*walkSpeed + verticalMove;
+					if (dashing)
+						moveVel = dashVel;
+					g_Utility.TraceHull( bodyPos, bodyPos + moveVel*g_monster_scale, dont_ignore_monsters, human_hull, self.edict(), tr );
 					if (tr.flFraction >= 1.0f and tr.fAllSolid == 0)
 					{
 						// walkmove doesn't like stepping down things, but this is a legal move
@@ -511,6 +649,16 @@ class monster_doom : ScriptBaseMonsterEntity
 					}
 					else
 					{
+						if (dashing)
+						{
+							dashing = false;
+							CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+							if (pHit !is null)
+							{
+								nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+								pHit.TakeDamage(self.pev, self.pev, dashDamage, DMG_BURN);
+							}
+						}
 						if (lastWallReflect + 0.2f < g_Engine.time)
 						{
 							pev.angles.y += Math.RandomFloat(90, 270);
@@ -524,7 +672,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			if (h_enemy and h_enemy.GetEntity().pev.flags & FL_NOTARGET != 0)
 				ClearEnemy();
 		
-			if (h_enemy)
+			if (h_enemy.IsValid() and !dashing)
 			{
 				CBaseEntity@ enemy = h_enemy;
 				
@@ -554,7 +702,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					if (activity != ANIM_ATTACK)
 					{
 						SetActivity(ANIM_ATTACK);
-						nextRangeAttack = g_Engine.time + Math.RandomFloat(1.0f, 4.0f);
+						nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
 					}
 					else
 					{
@@ -581,9 +729,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				}
 				
 				if (!enemy.IsAlive())
-				{
-					Sleep();
-				}
+					ClearEnemy();
 			}
 			
 			if (nextIdleSound < g_Engine.time)
@@ -689,6 +835,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		oldFrameCounter = frameCounter;
 		oldFrameIdx = frameIdx;
-		pev.nextthink = g_Engine.time + 0.05;
+		pev.nextthink = g_Engine.time + 0.0572;
+		//pev.nextthink = g_Engine.time + 0.02857;
 	}
 };

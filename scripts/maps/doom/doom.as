@@ -89,39 +89,19 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_zombieman", "monster_zombieman" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_shotgunguy", "monster_shotgunguy" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_demon", "monster_demon" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cacodemon", "monster_cacodemon" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_lostsoul", "monster_lostsoul" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_baron", "monster_baron" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 		
-	g_Game.PrecacheModel("sprites/doom/BAL1.spr");
+	g_Game.PrecacheModel("sprites/doom/BAL.spr");
+	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
-	
-	PrecacheSound("doom/DSBGSIT1.wav");
-	PrecacheSound("doom/DSBGSIT2.wav");
 	PrecacheSound("doom/DSFIRSHT.wav");
 	PrecacheSound("doom/DSFIRXPL.wav");
-	PrecacheSound("doom/DSCLAW.wav");
-	PrecacheSound("doom/DSBGACT.wav");
-	PrecacheSound("doom/DSPOPAIN.wav");
-	PrecacheSound("doom/DSBGDTH1.wav");
-	PrecacheSound("doom/DSBGDTH2.wav");
-	PrecacheSound("doom/DSSLOP.wav");
-	PrecacheSound("doom/DSPOSACT.wav");
-	PrecacheSound("doom/DSBGDTH1.wav");
-	PrecacheSound("doom/DSBGDTH2.wav");
-	PrecacheSound("doom/DSPODTH2.wav");
-	PrecacheSound("doom/DSPODTH3.wav");
-	PrecacheSound("doom/DSPODTH1.wav");
-	PrecacheSound("doom/DSPOSIT1.wav");
-	PrecacheSound("doom/DSPOSIT2.wav");
-	PrecacheSound("doom/DSPISTOL.wav");
-	PrecacheSound("doom/DSSHOTGN.wav");
-	PrecacheSound("doom/DSSGTATK.wav");
-	PrecacheSound("doom/DSSGTDTH.wav");
-	PrecacheSound("doom/DSDMACT.wav");
-	PrecacheSound("doom/DSDMPAIN.wav");
-	PrecacheSound("doom/DSSGTSIT.wav");
 }
 
 void MapActivate()
