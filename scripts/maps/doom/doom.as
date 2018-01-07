@@ -1,8 +1,63 @@
-#include "anims"
 #include "monster_doom"
 #include "utils"
 
-EHandle zombo;
+class VisEnt
+{
+	bool visible;
+	EHandle sprite;
+	
+	VisEnt() {}
+	
+	VisEnt(bool visible, EHandle sprite) 
+	{
+		this.visible = visible;
+		this.sprite = sprite;
+	}
+}
+
+class PlayerState
+{
+	EHandle plr;
+	CTextMenu@ menu;
+	dictionary visible_ents;
+	
+	void initMenu(CBasePlayer@ plr, TextMenuPlayerSlotCallback@ callback)
+	{
+		CTextMenu temp(@callback);
+		@menu = @temp;
+	}
+	
+	void openMenu(CBasePlayer@ plr, int time=60) 
+	{
+		if ( menu.Register() == false ) {
+			g_Game.AlertMessage( at_console, "Oh dear menu registration failed\n");
+		}
+		menu.Open(time, 0, plr);
+	}
+	
+	void addVisibleEnt(string entName, EHandle sprite)
+	{
+		sprite.GetEntity().pev.colormap += 1;
+		visible_ents[entName] = VisEnt(true, sprite);
+	}
+	
+	void hideVisibleEnt(string entName)
+	{
+		if (visible_ents.exists(entName))
+		{
+			VisEnt@ vent = cast<VisEnt@>( visible_ents[entName] );
+			vent.sprite.GetEntity().pev.colormap -= 1;
+			visible_ents.delete(entName);
+		}
+	}
+	
+	bool isVisibleEnt(string entName)
+	{
+		return visible_ents.exists(entName);
+	}
+}
+
+dictionary player_states;
 
 array<string> sprite_angles = {
 	"1", "2?8", "3?7", "4?6", "5", "6?4", "7?3", "8?2"
@@ -37,56 +92,10 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
-	
-	
-	for (uint z = 0; z < SPR_ANIM_TROO.length(); z++)
-		for (uint i = 0; i < SPR_ANIM_TROO[z].length(); i++)
-			for (uint k = 0; k < SPR_ANIM_TROO[z][i].length(); k++)
-				g_Game.PrecacheModel( SPR_ANIM_TROO[z][i][k] );
-	for (uint z = 0; z < SPR_ANIM_DEATH_TROO.length(); z++)
-		g_Game.PrecacheModel( SPR_ANIM_DEATH_TROO[z] );
-			
-	for (uint z = 0; z < SPR_ANIM_POSS.length(); z++)
-		for (uint i = 0; i < SPR_ANIM_POSS[z].length(); i++)
-			for (uint k = 0; k < SPR_ANIM_POSS[z][i].length(); k++)
-				g_Game.PrecacheModel( SPR_ANIM_POSS[z][i][k] );
-	for (uint z = 0; z < SPR_ANIM_DEATH_POSS.length(); z++)
-		g_Game.PrecacheModel( SPR_ANIM_DEATH_POSS[z] );
-	
-	for (uint z = 0; z < SPR_ANIM_SPOS.length(); z++)
-		for (uint i = 0; i < SPR_ANIM_SPOS[z].length(); i++)
-			for (uint k = 0; k < SPR_ANIM_SPOS[z][i].length(); k++)
-				g_Game.PrecacheModel( SPR_ANIM_SPOS[z][i][k] );
-	for (uint z = 0; z < SPR_ANIM_DEATH_SPOS.length(); z++)
-		g_Game.PrecacheModel( SPR_ANIM_DEATH_SPOS[z] );
-	/*
-	for (uint z = 0; z < SPR_ANIM_SARG.length(); z++)
-		for (uint i = 0; i < SPR_ANIM_SARG[z].length(); i++)
-			for (uint k = 0; k < SPR_ANIM_SARG[z][i].length(); k++)
-				g_Game.PrecacheModel( SPR_ANIM_SARG[z][i][k] );
-	for (uint z = 0; z < SPR_ANIM_DEATH_SARG.length(); z++)
-		g_Game.PrecacheModel( SPR_ANIM_DEATH_SARG[z] );
-	*/
-	
-	// 3300 max possible sprites if using paths like "d/AAA.spr"
-	// Needed: 16 full monsters (13 normal + 2 boss + 1 player) + 3 partial (one light level)
-	/*
-	for (uint z = 0; z < 3300; z++)
-	{
-		//println("PRECACHE " + "d/" + base36(z));
-		g_Game.PrecacheGeneric("d/" + base36(z) + ".spr");
-	}
-	*/
 		
 	g_Game.PrecacheModel("sprites/doom/BAL1.spr");
-	g_Game.PrecacheModel("sprites/doom/imp/TROO_L0.spr");
-	g_Game.PrecacheModel("sprites/doom/imp/TROO_L1.spr");
-	g_Game.PrecacheModel("sprites/doom/imp/TROO_L2.spr");
-	g_Game.PrecacheModel("sprites/doom/imp/TROO_L3.spr");
-	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L0.spr");
-	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L1.spr");
-	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L2.spr");
-	g_Game.PrecacheModel("sprites/doom/zombieman/POSS_L3.spr");
+	//g_Game.PrecacheModel("sprites/doom/TROO.spr");
+	g_Game.PrecacheModel("sprites/doom/POSS.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	
@@ -114,8 +123,7 @@ void MapInit()
 
 void MapActivate()
 {
-	CBaseEntity@ zombie = g_EntityFuncs.FindEntityByClassname(null, "monster_zombie");
-	zombo = zombie;
+	
 }
 
 int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, Vector lookPos)
@@ -147,8 +155,9 @@ void doTheStatic(CBaseEntity@ ent)
 }
 
 int frame = 0;
-void doEffect()
+void doEffect(CBasePlayer@ plr)
 {
+	/*
 	dictionary keys;
 	keys["origin"] = Vector(256,256,128).ToString();
 	keys["model"] = "d/t.spr";
@@ -157,6 +166,16 @@ void doEffect()
 	CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("env_sprite", keys, false);
 	g_EntityFuncs.DispatchSpawn(fireball.edict());
 	g_Scheduler.SetTimeout("doTheStatic", 1.0f, @fireball);
+	*/
+	
+	plr.pev.view_ofs.z -= 2048.0f;
+	//plr.SetViewMode(ViewMode_ThirdPerson);
+	println("OFSET: " + plr.pev.view_ofs.z);
+	//g_EngineFuncs.SetView(plr.edict(), g_EntityFuncs.FindEntityByClassname(null, "monster_imp").edict());
+	
+	//te_projectile(plr.pev.origin + Vector(0, 0, 73), Vector(0, 0, -10), null, "*2", 10, MSG_ONE_UNRELIABLE, @plr.edict());
+	//te_spray(plr.pev.origin + Vector(32, 0, 0), Vector(0, 0, -10), "*2", 1, 0, 0, 4, MSG_ONE_UNRELIABLE, @plr.edict());
+	//te_explosion(plr.pev.origin, "*1", 10, 0, 15, MSG_ONE_UNRELIABLE, plr.edict());
 }
 
 bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
@@ -165,8 +184,9 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 	{
 		if (args[0] == ".test")
 		{
-			//g_Scheduler.SetInterval("doEffect", 0.1, -1);
-			doEffect();
+			CBaseEntity@ imp = @g_EntityFuncs.FindEntityByClassname(null, "monster_imp");
+			g_Scheduler.SetInterval("doEffect", 0.05, -1, @plr);
+			//doEffect();
 			return true;
 		}
 	}
