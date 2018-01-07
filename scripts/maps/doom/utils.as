@@ -44,6 +44,16 @@ Color WHITE  = Color(255,255,255);
 Color BLACK  = Color(0,0,0);
 Color GRAY  = Color(127,127,127);
 
+// convert output from Vector.ToString() back into a Vector
+Vector parseVector(string s) {
+	array<string> values = s.Split(" ");
+	Vector v(0,0,0);
+	if (values.length() > 0) v.x = atof( values[0] );
+	if (values.length() > 1) v.y = atof( values[1] );
+	if (values.length() > 2) v.z = atof( values[2] );
+	return v;
+}
+
 void te_projectile(Vector pos, Vector velocity, CBaseEntity@ owner=null, 
 	string model="models/grenade.mdl", uint8 life=1, 
 	NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null)
