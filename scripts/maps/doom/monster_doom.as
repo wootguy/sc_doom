@@ -1,4 +1,5 @@
 #include "utils"
+#include "fireball"
 
 enum activities {
 	ANIM_IDLE,
@@ -12,113 +13,6 @@ enum activities {
 array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 
 float g_monster_scale = 1.5f;
-
-class fireball : ScriptBaseAnimating
-{
-	string fireSound = "doom/DSFIRSHT.wav";
-	string boomSound = "doom/DSFIRXPL.wav";
-	bool dead = false;
-	bool oriented = false;
-	int moveFrameStart = 0;
-	int moveFrameEnd = 1;
-	int deathFrameStart = 2;
-	int deathFrameEnd = 4;
-	int frameCounter = 0;
-	int damageMin = 3;
-	int damageMax = 24;
-	Vector flash_color = Vector(255, 64, 32);
-	
-	bool KeyValue( const string& in szKey, const string& in szValue )
-	{
-		if (szKey == "deathFrameStart") deathFrameStart = atoi(szValue);
-		else if (szKey == "deathFrameEnd") deathFrameEnd = atoi(szValue);
-		else if (szKey == "moveFrameStart") moveFrameStart = atoi(szValue);
-		else if (szKey == "moveFrameEnd") moveFrameEnd = atoi(szValue);
-		else if (szKey == "moveFrameEnd") moveFrameEnd = atoi(szValue);
-		else if (szKey == "flash_color") flash_color = parseVector(szValue);
-		else if (szKey == "damage_min") damageMin = atoi(szValue);
-		else if (szKey == "damage_max") damageMax = atoi(szValue);
-		else if (szKey == "oriented") oriented = atoi(szValue) != 0;
-		else return BaseClass.KeyValue( szKey, szValue );
-		return true;
-	}
-	
-	void Spawn()
-	{				
-		pev.movetype = MOVETYPE_FLY;
-		pev.solid = SOLID_TRIGGER;
-		
-		g_EntityFuncs.SetModel( self, self.pev.model );
-		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -8), Vector(8, 8, 8));
-		
-		g_EngineFuncs.MakeVectors(self.pev.angles);
-		pev.velocity = g_Engine.v_forward*pev.speed*g_monster_scale;
-		
-		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, fireSound, 1.0f, 0.5f, 0, 100);
-		
-		pev.scale = g_monster_scale;
-		pev.frame = moveFrameStart;
-		
-		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.05;
-	}
-	
-	void Touch( CBaseEntity@ pOther )
-	{
-		if (dead or (pOther.pev.classname == "fireball"))
-			return;
-			
-		CBaseEntity@ owner = g_EntityFuncs.Instance( self.pev.owner );
-		if (owner !is null and owner.entindex() == pOther.entindex())
-			return;
-			
-		dead = true;
-		pev.velocity = Vector(0,0,0);
-		pev.solid = SOLID_NOT;
-		pev.frame = deathFrameStart;
-		frameCounter = deathFrameStart;
-		pev.nextthink = g_Engine.time + 0.15;
-		
-		int damage = Math.RandomLong(damageMin, damageMax);
-		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, damage, DMG_BLAST);
-		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, boomSound, 1.0f, 0.5f, 0, 100);
-	}
-	
-	void Think()
-	{
-		frameCounter++;
-		
-		if (dead)
-		{
-			pev.frame = frameCounter;
-			if (pev.frame > deathFrameEnd)
-			{
-				g_EntityFuncs.Remove(self);
-				return;
-			}
-			
-			int flash_size = 30;
-			int flash_life = 3;
-			int flash_decay = 8;
-			Color color = Color(int(flash_color.x/8), int(flash_color.y/8), int(flash_color.z/8));
-			te_dlight(self.pev.origin, flash_size, color, flash_life, flash_decay);
-			
-			pev.nextthink = g_Engine.time + 0.15;
-		}
-		else
-		{
-			pev.frame = moveFrameStart + (frameCounter / 3) % ((moveFrameEnd-moveFrameStart) + 1);
-			
-			int flash_size = 20;
-			int flash_life = 1;
-			int flash_decay = 8;
-			Color color = Color(flash_color);
-			te_dlight(self.pev.origin, flash_size, color, flash_life, flash_decay);
-			
-			pev.nextthink = g_Engine.time + 0.05;
-		}
-	}
-}
 
 class AnimInfo
 {
@@ -193,6 +87,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool dashing = false;
 	Vector dashVel;
 	float dashDamage = 0;
+	float dashTimeout = 0;
 	
 	EHandle h_enemy;
 	EHandle oldEnemy; // remember last enemy
@@ -275,7 +170,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			CBaseEntity@ show = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
 			renderShowEnts.insertLast(EHandle(show));
 			
-			rkeys["rendermode"] = "0";
+			rkeys["renderamt"] = "0";
 			CBaseEntity@ hide = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
 			renderHideEnts.insertLast(EHandle(hide));
 		}
@@ -468,12 +363,8 @@ class monster_doom : ScriptBaseMonsterEntity
 					pHit.SetClassification(oldClass2);
 					
 					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
-					
-					Vector knockDir = Vector(0,0,100);
-					Vector knockVel = g_Engine.v_forward*knockDir.z +
-									  g_Engine.v_up*knockDir.y +
-									  g_Engine.v_right*knockDir.x;
-					knockBack(pHit, knockVel);
+
+					knockBack(pHit, g_Engine.v_forward*(100+damage));
 					
 					if (pHit.IsBSPModel()) 
 					{
@@ -502,16 +393,18 @@ class monster_doom : ScriptBaseMonsterEntity
 			g_WeaponFuncs.ClearMultiDamage();
 			phit.TraceAttack(pev, damage, attackDir, tr, DMG_SLASH);
 			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
+			knockBack(phit, attackDir*(100+damage));
 			return true;
 		}
 		return false;
 	}
 	
-	void Dash(Vector velocity, float damage)
+	void Dash(Vector velocity, float damage, float timeout)
 	{
 		dashVel = velocity;
 		dashing = true;
 		dashDamage = damage;
+		dashTimeout = g_Engine.time + timeout;
 	}
 	
 	void killClientSprites()
@@ -565,8 +458,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		//pev.rendercolor = lightColor;
 		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
 		
-		if (!canFly)
-			pev.velocity.z += -0.1f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
+		pev.velocity.z += -0.001f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
 		
 		//println("CURENT ANIM: " + currentAnim.frameIndices[0] + " " + currentAnim.lastFrame());
 		frameCounter += 1;
@@ -612,10 +504,15 @@ class monster_doom : ScriptBaseMonsterEntity
 			pev.rendercolor = lightColor;
 		}
 		
-		
 		if (!dormant and self.IsAlive())
 		{
 			Vector bodyPos = BodyPos();
+			
+			if (dashing and g_Engine.time > dashTimeout)
+			{
+				dashing = false;
+				SetActivity(ANIM_MOVE);
+			}
 			
 			if (activity == ANIM_MOVE or dashing)
 			{
@@ -656,7 +553,11 @@ class monster_doom : ScriptBaseMonsterEntity
 							if (pHit !is null)
 							{
 								nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+								Vector oldVel = pHit.pev.velocity;
 								pHit.TakeDamage(self.pev, self.pev, dashDamage, DMG_BURN);
+								pHit.pev.velocity = oldVel; // prevent vertical launching
+								
+								knockBack(pHit, dashVel.Normalize()*(100 + dashDamage));
 							}
 						}
 						if (lastWallReflect + 0.2f < g_Engine.time)
@@ -709,13 +610,9 @@ class monster_doom : ScriptBaseMonsterEntity
 						if (frameIdx == currentAnim.attackFrameIdx and oldFrameIdx != frameIdx)
 						{
 							if (inMeleeRange)
-							{
 								MeleeAttack(delta);
-							}
-							else if (hasRanged)
-							{								
+							else if (hasRanged)								
 								RangeAttack(delta);
-							}
 						}
 						
 						if (animLoops > 0)
@@ -754,14 +651,8 @@ class monster_doom : ScriptBaseMonsterEntity
 					delta = delta.Normalize();
 					int angleIdx = getSpriteAngle(pos, forward, right, ent.pev.origin);
 						
-					if (dormant and ent.IsAlive())
-					{
-						float dot = DotProduct(forward, delta);
-						if (dot < -0.3f)
-						{
-							SetEnemy(ent);
-						}
-					}
+					if (dormant and ent.IsAlive() and DotProduct(forward, delta) < -0.3f)
+						SetEnemy(ent);
 					
 					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(ent));
 					

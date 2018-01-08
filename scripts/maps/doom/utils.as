@@ -290,7 +290,7 @@ array< array<string> > g_decals = {
 
 void knockBack(CBaseEntity@ target, Vector vel)
 {
-	if (target.IsMonster() and !target.IsMachine())
+	if ((target.IsMonster() or target.IsPlayer()) and !target.IsMachine())
 		target.pev.velocity = target.pev.velocity + vel;
 }
 
