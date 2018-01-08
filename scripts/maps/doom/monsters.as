@@ -172,8 +172,8 @@ class monster_shotgunguy : monster_doom
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
 		
 		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15));
-		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15));
-		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15));
+		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15), false);
+		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15), false);
 	}
 	
 	void Think()
@@ -364,7 +364,7 @@ class monster_baron : monster_doom
 		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
 		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(69, 76, 0.5f, false)); // ANIM_GIB		
+		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
 		
 		idleSounds.insertLast("doom/DSDMACT.wav");
 		painSound = "doom/DSDMPAIN.wav";
@@ -417,6 +417,134 @@ class monster_baron : monster_doom
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @self.edict();
 		g_EntityFuncs.DispatchSpawn(fireball.edict());
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_cyberdemon : monster_doom
+{	
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/CYBR.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 5, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(56, 64, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(56, 64, 0.5f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		animInfo[ANIM_ATTACK].attackFrameIdx = 1;
+		
+		idleSounds.insertLast("doom/DSDMACT.wav");
+		painSound = "doom/DSDMPAIN.wav";
+		deathSounds.insertLast("doom/DSCYBDTH.wav");
+		alertSounds.insertLast("doom/DSCYBSIT.wav");
+		meleeSound = "doom/DSCLAW.wav";
+		walkSound = "doom/DSHOOF.wav";
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		this.painChance = 0.08f;
+		this.walkSpeed = 12.0f;
+		this.constantAttack = true;
+		this.constantAttackMax = 3;
+		
+		self.m_FormattedName = "Cyberdemon";
+		self.pev.health = 4000;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		brighten = 8;
+		
+		Vector bodyPos = BodyPos();
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		
+		dictionary keys;
+		keys["origin"] = bodyPos.ToString();
+		keys["angles"] = angles.ToString();
+		keys["model"] = "sprites/doom/MISL.spr";
+		keys["speed"] = "" + 700;
+		keys["moveFrameStart"] = "0";
+		keys["moveFrameEnd"] = "0";
+		keys["deathFrameStart"] = "8";
+		keys["deathFrameEnd"] = "10";
+		keys["flash_color"] = "255 128 32";
+		keys["damage_min"] = "20";
+		keys["damage_max"] = "160";
+		keys["oriented"] = "1";
+		keys["spawn_sound"] = "doom/DSRLAUNC.wav";
+		keys["death_sound"] = "doom/DSBAREXP.wav";
+		keys["radius_dmg"] = "128";
+		
+		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fireball.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(fireball.edict());
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_spiderdemon : monster_doom
+{
+	void Spawn()
+	{
+		this.bodySprite = "sprites/doom/SPID.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(6, 7, 0.5f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(8, 8, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(72, 81, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(72, 81, 0.25f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK].attackFrameIdx = -1;
+		
+		idleSounds.insertLast("doom/DSDMACT.wav");
+		painSound = "doom/DSDMPAIN.wav";
+		deathSounds.insertLast("doom/DSSPIDTH.wav");
+		alertSounds.insertLast("doom/DSSPISIT.wav");
+		shootSound = "doom/DSSHOTGN.wav";
+		walkSound = "doom/DSMETAL.wav";
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		this.painChance = 0.16f;
+		this.walkSpeed = 12.0f;
+		this.constantAttack = true;
+		
+		self.m_FormattedName = "Spiderdemon";
+		self.pev.health = 3000;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{		
+		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
+		
+		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15));
+		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15), false);
+		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15), false);
 	}
 	
 	void Think()
