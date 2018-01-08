@@ -338,7 +338,7 @@ class monster_lostsoul : monster_doom
 	
 	void RangeAttack(Vector aimDir)
 	{
-		Dash(aimDir.Normalize()*20, Math.RandomLong(3, 24));
+		Dash(aimDir.Normalize()*20, Math.RandomLong(3, 24), 1.0f);
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
 	}
 	
@@ -407,9 +407,9 @@ class monster_baron : monster_doom
 		keys["speed"] = "" + 525;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "1";
-		keys["deathFrameStart"] = "2";
-		keys["deathFrameEnd"] = "4";
-		keys["flash_color"] = "255 64 32";
+		keys["deathFrameStart"] = "16";
+		keys["deathFrameEnd"] = "18";
+		keys["flash_color"] = "64 255 64";
 		keys["damage_min"] = "8";
 		keys["damage_max"] = "64";
 		keys["oriented"] = "1";
