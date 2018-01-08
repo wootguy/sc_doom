@@ -12,14 +12,15 @@ enum activities {
 
 array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 
-float g_monster_scale = 1.5f;
+float g_monster_scale = 0.7f;
+float g_world_scale = 0.5f;
 
 class AnimInfo
 {
 	float framerate;
 	bool looped;
 	array<int> frameIndices;
-	int attackFrameIdx; // frame index where attack is called
+	int attackFrameIdx; // frame index where attack is called (-1 = every frame)
 	
 	AnimInfo() {}
 	
@@ -60,9 +61,9 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool hasRanged = true;
 	bool isSpectre = false;
 	bool canFly = false;
-	bool isCorpse = false;
 	bool fullBright = false;
-	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
+	bool constantAttack = false; // attack until target is obscured
+	int constantAttackMax = 0; // maximum attacks played in sequence
 	float deathBoom = 0;
 	
 	uint frameCounter = 0;
@@ -75,7 +76,9 @@ class monster_doom : ScriptBaseMonsterEntity
 	float meleeRange = 64.0f;
 	float minRangeAttackDelay = 1.0f;
 	float maxRangeAttackDelay = 4.0f;
+	float walkSoundFreq = 0.6f;
 	
+	float nextWalkSound = 0;
 	float nextRangeAttack = 0;
 	float lastWallReflect = 0;
 	float lastDirChange = 0;
@@ -83,7 +86,8 @@ class monster_doom : ScriptBaseMonsterEntity
 	float deathRemoveDelay = 60.0f; // time before entity is destroyed after death
 	float nextIdleSound = 0;
 	bool dormant = true;
-	
+	bool isCorpse = false;
+	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
 	bool dashing = false;
 	Vector dashVel;
 	float dashDamage = 0;
@@ -102,6 +106,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	string painSound;
 	string meleeSound;
 	string shootSound;
+	string walkSound;
 	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{
@@ -121,6 +126,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		PrecacheSound(meleeSound);
 		PrecacheSound(shootSound);
 		PrecacheSound(painSound);
+		PrecacheSound(walkSound);
 		PrecacheSound("doom/DSSLOP.wav");
 	}
 	
@@ -138,7 +144,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
-		g_EntityFuncs.SetSize(self.pev, Vector(-16, -16, 0), Vector(16, 16, 72));
+		//g_EntityFuncs.SetSize(self.pev, Vector(-16, -16, 0), Vector(16, 16, 72));
 		
 		self.m_bloodColor = BLOOD_COLOR_RED;
 		self.pev.scale = g_monster_scale;
@@ -178,6 +184,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 		self.SetClassification(CLASS_ALIEN_MONSTER);
 		SetActivity(ANIM_IDLE);
+		
+		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
 	}
 	
 	void SetActivity(int act)
@@ -236,7 +244,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				pev.movetype = MOVETYPE_TOSS;
 				pev.velocity.z = -0.1f;
 			}
-			g_EntityFuncs.SetSize(self.pev, Vector(-1, -1, 0), Vector(1, 1, 1));
+			g_EntityFuncs.SetSize(self.pev, Vector(-1, -1, -1), Vector(1, 1, 1));
 			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
 			if (gib)
@@ -260,10 +268,10 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	void SetEnemy(CBaseEntity@ ent)
 	{
-		if (!ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0)
+		if (!ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0 or ent.entindex() == self.entindex())
 			return;
 		// only switch targets after chasing current one for a while
-		if (!h_enemy.IsValid() or lastEnemy + 10.0f < g_Engine.time)
+		if (!h_enemy.IsValid() or lastEnemy + 1.0f < g_Engine.time)
 		{
 			oldEnemy = h_enemy;
 			if (oldEnemy)
@@ -296,7 +304,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	Vector BodyPos()
 	{
-		return pev.origin + Vector(0,0,36);
+		return pev.origin + Vector(0,0,36*g_world_scale);
 	}
 	
 	void RangeAttack(Vector aimDir)
@@ -309,17 +317,20 @@ class monster_doom : ScriptBaseMonsterEntity
 		println("Melee attack not implemented!");
 	}
 	
-	void ShootBullet(Vector dir, float spread, float damage)
+	void ShootBullet(Vector dir, float spread, float damage, bool flash=true)
 	{
 		Vector vecSrc = BodyPos();
 		float range = 16384;
 		
-		int flash_size = 20;
-		int flash_life = 1;
-		int flash_decay = 0;
-		Color flash_color = Color(255, 160, 64);
-		te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
-		brighten = 4;
+		if (flash)
+		{
+			int flash_size = 20;
+			int flash_life = 1;
+			int flash_decay = 0;
+			Color flash_color = Color(255, 160, 64);
+			te_dlight(vecSrc, flash_size, flash_color, flash_life, flash_decay);
+			brighten = 4;
+		}
 		
 		Vector vecAiming = spreadDir(dir.Normalize(), spread, SPREAD_GAUSSIAN);
 	
@@ -364,12 +375,12 @@ class monster_doom : ScriptBaseMonsterEntity
 					
 					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
 
-					knockBack(pHit, g_Engine.v_forward*(100+damage));
+					knockBack(pHit, g_Engine.v_forward*(100+damage)*g_world_scale);
 					
 					if (pHit.IsBSPModel()) 
 					{
-						te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-						//te_decal(tr.vecEndPos, pHit, decal);
+						//te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
+						te_decal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
 					}
 				}
 			}
@@ -384,7 +395,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		Vector bodyPos = BodyPos();
 		TraceResult tr;
 		Vector attackDir = dir.Normalize();
-		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange, dont_ignore_monsters, head_hull, self.edict(), tr );
+		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange*g_world_scale, dont_ignore_monsters, head_hull, self.edict(), tr );
 		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
 		//te_beampoints(bodyPos, bodyPos + delta.Normalize()*meleeRange);
 		
@@ -393,7 +404,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			g_WeaponFuncs.ClearMultiDamage();
 			phit.TraceAttack(pev, damage, attackDir, tr, DMG_SLASH);
 			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-			knockBack(phit, attackDir*(100+damage));
+			knockBack(phit, attackDir*(100+damage)*g_world_scale);
 			return true;
 		}
 		return false;
@@ -452,6 +463,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				if (light_level > 255)
 					light_level = 255;
 			}
+			//light_level = 255;
 		}
 		Vector lightColor = Vector(light_level, light_level, light_level);
 		
@@ -468,6 +480,12 @@ class monster_doom : ScriptBaseMonsterEntity
 
 		if (looped)
 			animLoops += 1;
+		
+		if (activity == ANIM_MOVE and walkSound.Length() > 0 and nextWalkSound < g_Engine.time)
+		{
+			nextWalkSound = g_Engine.time + walkSoundFreq;
+			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, walkSound, 1.0f, 0.5f, 0, 100);
+		}
 		
 		//println("FRAME " + frame + " " + currentAnim.minFrame + " " + currentAnim.maxFrame);
 	
@@ -527,7 +545,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					else if (enemy.pev.origin.z < bodyPos.z - 36)
 						verticalMove = Vector(0,0,-4);
 				}
-				else
+				else if (false)
 					canWalk = g_EngineFuncs.WalkMove(self.edict(), pev.angles.y, walkSpeed*g_monster_scale, int(WALKMOVE_NORMAL));
 					
 				if (canWalk != 1)
@@ -536,13 +554,24 @@ class monster_doom : ScriptBaseMonsterEntity
 					Vector moveVel = forward*walkSpeed + verticalMove;
 					if (dashing)
 						moveVel = dashVel;
-					g_Utility.TraceHull( bodyPos, bodyPos + moveVel*g_monster_scale, dont_ignore_monsters, human_hull, self.edict(), tr );
+					Vector hullPos = bodyPos;
+					g_Utility.TraceHull( hullPos, hullPos + moveVel*g_monster_scale, dont_ignore_monsters, human_hull, self.edict(), tr );
+					if (tr.fAllSolid != 0)
+						println("ALL SOLID");
+						
+					//te_beampoints(hullPos, hullPos + moveVel*g_monster_scale);
+					te_beampoints(hullPos + Vector(0,0,36*g_world_scale), hullPos + Vector(0,0,36*g_world_scale) + moveVel*g_monster_scale);
+					te_beampoints(hullPos + Vector(0,0,-36*g_world_scale), hullPos + Vector(0,0,-36*g_world_scale) + moveVel*g_monster_scale);
+					
 					if (tr.flFraction >= 1.0f and tr.fAllSolid == 0)
 					{
 						// walkmove doesn't like stepping down things, but this is a legal move
 						Vector stepPos = tr.vecEndPos;
 						// TODO: Don't step if this is actually a cliff
-						pev.origin = stepPos + Vector(0,0,-36);
+						pev.origin = stepPos + Vector(0,0,-36*g_world_scale);
+						if (!dashing and canFly)
+							pev.velocity = pev.velocity*0.1f;
+						//pev.origin = stepPos + Vector(0,0,8);
 					}
 					else
 					{
@@ -557,7 +586,7 @@ class monster_doom : ScriptBaseMonsterEntity
 								pHit.TakeDamage(self.pev, self.pev, dashDamage, DMG_BURN);
 								pHit.pev.velocity = oldVel; // prevent vertical launching
 								
-								knockBack(pHit, dashVel.Normalize()*(100 + dashDamage));
+								knockBack(pHit, dashVel.Normalize()*(100 + dashDamage)*g_world_scale);
 							}
 						}
 						if (lastWallReflect + 0.2f < g_Engine.time)
@@ -579,7 +608,12 @@ class monster_doom : ScriptBaseMonsterEntity
 				
 				Vector enemyPos = enemy.pev.origin;
 				if (!enemy.IsPlayer())
-					enemyPos.z += (enemy.pev.maxs.z - enemy.pev.mins.z)*0.5f;
+				{
+					if (g_world_scale == 1)
+						enemyPos.z += (enemy.pev.maxs.z - enemy.pev.mins.z)*0.5f;
+					else
+						enemyPos.z += 36*g_world_scale;
+				}
 				Vector delta = enemyPos - bodyPos;
 				if (activity == ANIM_MOVE and lastDirChange + 1.0f < g_Engine.time)
 				{
@@ -596,23 +630,25 @@ class monster_doom : ScriptBaseMonsterEntity
 					lastDirChange = g_Engine.time;
 				}
 				
-				bool inMeleeRange = hasMelee and delta.Length() < meleeRange;
+				bool inMeleeRange = hasMelee and delta.Length() < meleeRange*g_world_scale;
 				if (activity == ANIM_ATTACK or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged))
 				{
 					pev.angles.y = g_EngineFuncs.VecToYaw(delta);
 					if (activity != ANIM_ATTACK)
 					{
 						SetActivity(ANIM_ATTACK);
-						nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
 					}
 					else
 					{
-						if (frameIdx == currentAnim.attackFrameIdx and oldFrameIdx != frameIdx)
+						if ((frameIdx == currentAnim.attackFrameIdx or currentAnim.attackFrameIdx == -1) and oldFrameIdx != frameIdx)
 						{
 							if (inMeleeRange)
 								MeleeAttack(delta);
-							else if (hasRanged)								
+							else if (hasRanged)			
+							{
+								te_beampoints(bodyPos, enemyPos);
 								RangeAttack(delta);
+							}
 						}
 						
 						if (animLoops > 0)
@@ -620,7 +656,22 @@ class monster_doom : ScriptBaseMonsterEntity
 							if (inMeleeRange)
 								SetActivity(ANIM_ATTACK);
 							else
-								SetActivity(ANIM_MOVE);
+							{
+								bool keepAttacking = false;
+								if (constantAttack and (animLoops < constantAttackMax or constantAttackMax == 0))
+								{
+									TraceResult tr;
+									g_Utility.TraceLine( bodyPos, enemy.pev.origin, dont_ignore_monsters, self.edict(), tr );
+									CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+									keepAttacking = pHit !is null and pHit.entindex() == enemy.entindex();
+									
+								}
+								if (!keepAttacking)
+								{
+									nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+									SetActivity(ANIM_MOVE);
+								}
+							}
 						}
 					}
 				}
@@ -651,7 +702,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					delta = delta.Normalize();
 					int angleIdx = getSpriteAngle(pos, forward, right, ent.pev.origin);
 						
-					if (dormant and ent.IsAlive() and DotProduct(forward, delta) < -0.3f)
+					if (dormant and ent.IsAlive() and DotProduct(forward, delta) < -0.3f and ent.FVisible(self, true))
 						SetEnemy(ent);
 					
 					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(ent));
@@ -688,7 +739,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				if (canAnyoneSeeThis)
 				{
 					client_sprite.pev.effects &= ~EF_NODRAW;
-					client_sprite.pev.origin = pev.origin + Vector(0,0,11);// + Vector(0,0,64 + i*32)
+					client_sprite.pev.origin = pev.origin;
 					client_sprite.pev.frame = frame*8 + i;
 					if (!isSpectre)
 						client_sprite.pev.rendercolor = lightColor;
@@ -700,7 +751,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		
 		// react to sounds
-		if (dormant and false)
+		if (dormant)
 		{
 			CSoundEnt@ sndent = GetSoundEntInstance();
 			int activeList = sndent.ActiveList();

@@ -92,16 +92,23 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cacodemon", "monster_cacodemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_lostsoul", "monster_lostsoul" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_baron", "monster_baron" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cyberdemon", "monster_cyberdemon" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_spiderdemon", "monster_spiderdemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 		
 	g_Game.PrecacheModel("sprites/doom/BAL.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
+	g_Game.PrecacheModel("sprites/doom/MISL.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	PrecacheSound("doom/DSFIRSHT.wav");
 	PrecacheSound("doom/DSFIRXPL.wav");
+	PrecacheSound("doom/DSRLAUNC.wav");
+	PrecacheSound("doom/DSBAREXP.wav");
+	
+	g_Scheduler.SetInterval("heightCheck", 0.0);
 }
 
 void MapActivate()
@@ -130,6 +137,21 @@ int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, V
 		return dotR > 0 ? 3 : 5;
 		
 	return 4;
+}
+
+void heightCheck()
+{
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null)
+		{
+			ent.pev.view_ofs.z = 14;
+			ent.pev.scale = 0.5f;
+			//ent.pev.fuser4 = 2;
+			//println("HEIGHT: " + (ent.pev.origin.z + ent.pev.view_ofs.z) + " " + ent.pev.view_ofs.z);
+		}
+	} while (ent !is null);
 }
 
 void doTheStatic(CBaseEntity@ ent)
