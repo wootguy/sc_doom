@@ -1,5 +1,6 @@
 #include "monsters"
 #include "utils"
+#include "func_doom_door"
 
 class VisEnt
 {
@@ -94,9 +95,12 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_baron", "monster_baron" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cyberdemon", "monster_cyberdemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_spiderdemon", "monster_spiderdemon" );
+	
+	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
+	g_Hooks.RegisterHook( Hooks::Player::PlayerUse, @PlayerUse );
 		
 	g_Game.PrecacheModel("sprites/doom/BAL.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
@@ -113,7 +117,41 @@ void MapInit()
 
 void MapActivate()
 {
+	array<CBaseEntity@> doors;
+	array<CBaseEntity@> buttons;
 	
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "func_doom_door");
+		if (ent !is null)
+		{
+			func_doom_door@ door = cast<func_doom_door@>(CastToScriptClass(ent));
+			if (door.isButton)
+				buttons.insertLast(ent);
+			else
+				doors.insertLast(ent);
+		}
+	} while (ent !is null);
+	
+	for (uint i = 0; i < buttons.length(); i++)
+	{
+		for (uint k = 0; k < doors.length(); k++)
+		{
+			if (buttons[i].Intersects(doors[k]))
+			{
+				println("GOT INTERSECT " + buttons[i].pev.targetname + " " + doors[k].pev.targetname);
+				func_doom_door@ button = cast<func_doom_door@>(CastToScriptClass(buttons[i]));
+				func_doom_door@ door = cast<func_doom_door@>(CastToScriptClass(doors[k]));
+				button.dir = door.dir;
+				button.m_flLip = door.m_flLip;
+				button.pev.speed = door.pev.speed;
+				button.m_vecPosition2 = button.pev.origin + Vector(0,0,(button.dir * (door.pev.size.z-2)) - button.dir*button.m_flLip);
+				
+				door.sync_buttons.insertLast(EHandle(buttons[i]));
+				button.parent = ent;
+			}
+		}
+	}
 }
 
 int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, Vector lookPos)
@@ -146,41 +184,56 @@ void heightCheck()
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
 		if (ent !is null)
 		{
-			ent.pev.view_ofs.z = 14;
-			ent.pev.scale = 0.5f;
+			ent.pev.view_ofs.z = 20; // original == 28
+			ent.pev.scale = 0.7f;
 			//ent.pev.fuser4 = 2;
 			//println("HEIGHT: " + (ent.pev.origin.z + ent.pev.view_ofs.z) + " " + ent.pev.view_ofs.z);
 		}
 	} while (ent !is null);
 }
 
+HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
+{	
+	if (plr.m_afButtonPressed & IN_USE != 0)
+	{
+		TraceResult tr = TraceLook(plr, 64);
+		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
+		/*
+		CBaseEntity@ ent = null;
+		do {
+			@ent = g_EntityFuncs.FindEntityByClassname(ent, "func_doom_door");
+			if (ent !is null)
+			{
+				func_doom_door@ door = cast<func_doom_door@>(CastToScriptClass(ent));
+				if (!door.isButton)
+					continue;
+				
+				Vector p = tr.vecEndPos;
+				if (p.x > door.pev.absmin.x and p.x < door.pev.absmax.x and
+					p.y > door.pev.absmin.y and p.y < door.pev.absmax.y and 
+					p.z > door.pev.absmin.z and p.z < door.pev.absmax.z)
+				{
+					println("LE DOOM DOOR");
+					ent.Use(plr, plr, USE_TOGGLE);
+				}
+			}
+		} while (ent !is null);
+		*/
+		phit.Use(plr, plr, USE_TOGGLE);
+	}
+	return HOOK_CONTINUE;
+}
+
+
 void doTheStatic(CBaseEntity@ ent)
 {
 	//g_EngineFuncs.MakeStatic(ent.edict());
 }
 
-int frame = 0;
 void doEffect(CBasePlayer@ plr)
 {
-	/*
-	dictionary keys;
-	keys["origin"] = Vector(256,256,128).ToString();
-	keys["model"] = "d/t.spr";
-	keys["framerate"] = "0";
-	keys["vp_type"] = "3";
-	CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("env_sprite", keys, false);
-	g_EntityFuncs.DispatchSpawn(fireball.edict());
-	g_Scheduler.SetTimeout("doTheStatic", 1.0f, @fireball);
-	*/
-	
-	plr.pev.view_ofs.z -= 2048.0f;
-	//plr.SetViewMode(ViewMode_ThirdPerson);
-	println("OFSET: " + plr.pev.view_ofs.z);
-	//g_EngineFuncs.SetView(plr.edict(), g_EntityFuncs.FindEntityByClassname(null, "monster_imp").edict());
-	
-	//te_projectile(plr.pev.origin + Vector(0, 0, 73), Vector(0, 0, -10), null, "*2", 10, MSG_ONE_UNRELIABLE, @plr.edict());
-	//te_spray(plr.pev.origin + Vector(32, 0, 0), Vector(0, 0, -10), "*2", 1, 0, 0, 4, MSG_ONE_UNRELIABLE, @plr.edict());
-	//te_explosion(plr.pev.origin, "*1", 10, 0, 15, MSG_ONE_UNRELIABLE, plr.edict());
+	//plr.RemoveAllItems(false);
+	//animateDoomWeapon(plr);
 }
 
 bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
@@ -189,8 +242,7 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 	{
 		if (args[0] == ".test")
 		{
-			CBaseEntity@ imp = @g_EntityFuncs.FindEntityByClassname(null, "monster_imp");
-			g_Scheduler.SetInterval("doEffect", 0.05, -1, @plr);
+			g_Scheduler.SetInterval("doEffect", 0.025, -1, @plr);
 			//doEffect();
 			return true;
 		}
