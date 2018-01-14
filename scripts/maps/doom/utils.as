@@ -179,6 +179,20 @@ void te_spray(Vector pos, Vector dir, string sprite="sprites/bubble.spr",
 	m.End();
 }
 
+TraceResult TraceLook(CBasePlayer@ plr, float dist=128, bool bigHull=false)
+{
+	Vector vecSrc = plr.GetGunPosition();
+	Math.MakeVectors( plr.pev.v_angle ); // todo: monster angles
+	
+	TraceResult tr;
+	Vector vecEnd = vecSrc + g_Engine.v_forward * dist;
+	if (bigHull)
+		g_Utility.TraceHull( vecSrc, vecEnd, dont_ignore_monsters, head_hull, plr.edict(), tr );
+	else
+		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, plr.edict(), tr );
+	return tr;
+}
+
 void delay_remove(EHandle ent)
 {
 	g_EntityFuncs.Remove(ent);

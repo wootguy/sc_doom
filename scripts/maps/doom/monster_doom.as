@@ -12,8 +12,8 @@ enum activities {
 
 array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 
-float g_monster_scale = 0.7f;
-float g_world_scale = 0.5f;
+float g_monster_scale = 1.0f;
+float g_world_scale = 0.7f;
 
 class AnimInfo
 {
@@ -185,7 +185,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		self.SetClassification(CLASS_ALIEN_MONSTER);
 		SetActivity(ANIM_IDLE);
 		
-		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
+		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
+		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -16), Vector(8, 8, 42));
 	}
 	
 	void SetActivity(int act)
@@ -210,7 +211,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (alertSounds.length() > 0)
 		{
 			string snd = alertSounds[Math.RandomLong(0, alertSounds.size()-1)];
-			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, snd, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, snd, 1.0f, 0.5f, 0, 100);
 		}
 						
 		dormant = false;
@@ -751,7 +752,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		
 		// react to sounds
-		if (dormant)
+		if (dormant and false)
 		{
 			CSoundEnt@ sndent = GetSoundEntInstance();
 			int activeList = sndent.ActiveList();
