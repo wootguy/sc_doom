@@ -179,6 +179,25 @@ void te_spray(Vector pos, Vector dir, string sprite="sprites/bubble.spr",
 	m.End();
 }
 
+void te_multigunshot(Vector pos, Vector dir, float spreadX=512.0f, 
+	float spreadY=512.0f, uint8 count=8, string decal="{shot4",
+	NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null)
+{   
+	NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);
+	m.WriteByte(TE_MULTIGUNSHOT);
+	m.WriteCoord(pos.x);
+	m.WriteCoord(pos.y);
+	m.WriteCoord(pos.z);
+	m.WriteCoord(dir.x);
+	m.WriteCoord(dir.y);
+	m.WriteCoord(dir.z);
+	m.WriteCoord(spreadX);
+	m.WriteCoord(spreadY);
+	m.WriteByte(count);
+	m.WriteByte(g_EngineFuncs.DecalIndex(decal));
+	m.End();
+}
+
 TraceResult TraceLook(CBasePlayer@ plr, float dist=128, bool bigHull=false)
 {
 	Vector vecSrc = plr.GetGunPosition();
@@ -304,6 +323,9 @@ array< array<string> > g_decals = {
 
 void knockBack(CBaseEntity@ target, Vector vel)
 {
+	float velCap = 0.0f;
+	if (vel.Length() > velCap)
+		vel = vel.Normalize()*velCap;
 	if ((target.IsMonster() or target.IsPlayer()) and !target.IsMachine())
 		target.pev.velocity = target.pev.velocity + vel;
 }
@@ -321,6 +343,68 @@ enum spread_func
 {
 	SPREAD_GAUSSIAN,
 	SPREAD_UNIFORM,
+}
+
+void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, float damage)
+{
+	float range = 16384;
+	
+	Vector vecAiming = spreadDir(dir.Normalize(), spread, SPREAD_GAUSSIAN);
+
+	// Do the bullet collision
+	TraceResult tr;
+	Vector vecEnd = vecSrc + vecAiming * range;
+	g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, attacker.edict(), tr );
+	
+	// do more fancy effects
+	if( tr.flFraction < 1.0 )
+	{
+		if( tr.pHit !is null )
+		{
+			CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+			
+			if( pHit !is null ) 
+			{							
+				CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
+					
+				Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
+				Vector angles = Math.VecToAngles(attackDir);
+				Math.MakeVectors(angles);
+					
+				// damage done before hitgroup multipliers
+				
+				g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
+				pHit.TraceAttack(attacker.pev, damage, attackDir, tr, DMG_BULLET);
+				
+				Vector oldVel = pHit.pev.velocity;
+				
+				// set both classes in case this a pvp map where classes are always changing
+				int oldClass1 = attacker.GetClassification(0);
+				int oldClass2 = pHit.GetClassification(0);
+				attacker.SetClassification(CLASS_PLAYER);
+				pHit.SetClassification(CLASS_ALIEN_MILITARY);
+				
+				g_WeaponFuncs.ApplyMultiDamage(attacker.pev, attacker.pev);
+				
+				attacker.SetClassification(oldClass1);
+				pHit.SetClassification(oldClass2);
+				
+				pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
+
+				knockBack(pHit, g_Engine.v_forward*(100+damage)*g_world_scale);
+				
+				if (pHit.IsBSPModel()) 
+				{
+					//te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
+					//te_decal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
+					te_multigunshot(vecSrc, vecEnd, 0, 0, 1);
+				}
+			}
+		}
+	}
+	
+	// bullet tracer effects
+	//te_tracer(vecSrc, tr.vecEndPos);
 }
 
 // Randomize the direction of a vector by some amount

@@ -1,3 +1,4 @@
+#include "weapons"
 #include "monsters"
 #include "utils"
 #include "func_doom_door"
@@ -97,6 +98,26 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_spiderdemon", "monster_spiderdemon" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
+	
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_fist", "weapon_doom_fist" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_chainsaw", "weapon_doom_chainsaw" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_pistol", "weapon_doom_pistol" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_chaingun", "weapon_doom_chaingun" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_shotgun", "weapon_doom_shotgun" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_supershot", "weapon_doom_supershot" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_rpg", "weapon_doom_rpg" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_plasmagun", "weapon_doom_plasmagun" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_bfg", "weapon_doom_bfg" );
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_fist", "doom", "");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_chainsaw", "doom", "");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_pistol", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_shotgun", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_supershot", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_rpg", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_plasmagun", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_bfg", "doom", "556");
+	
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
@@ -105,12 +126,41 @@ void MapInit()
 	g_Game.PrecacheModel("sprites/doom/BAL.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
 	g_Game.PrecacheModel("sprites/doom/MISL.spr");
+	g_Game.PrecacheModel("sprites/doom/BFE2.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
+	
+	g_Game.PrecacheModel("sprites/doom/fist.spr");
+	g_Game.PrecacheModel("sprites/doom/chainsaw.spr");
+	g_Game.PrecacheModel("sprites/doom/pistol.spr");
+	g_Game.PrecacheModel("sprites/doom/chaingun.spr");
+	g_Game.PrecacheModel("sprites/doom/shotgun.spr");
+	g_Game.PrecacheModel("sprites/doom/supershot.spr");
+	g_Game.PrecacheModel("sprites/doom/rpg.spr");
+	g_Game.PrecacheModel("sprites/doom/plasmagun.spr");
+	g_Game.PrecacheModel("sprites/doom/bfg.spr");
+	
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_fist.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_chainsaw.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_pistol.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_chaingun.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_shotgun.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_supershot.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_rpg.txt");
+	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_bfg.txt");
 	
 	PrecacheSound("doom/DSFIRSHT.wav");
 	PrecacheSound("doom/DSFIRXPL.wav");
 	PrecacheSound("doom/DSRLAUNC.wav");
 	PrecacheSound("doom/DSBAREXP.wav");
+	PrecacheSound("doom/supershot.flac");
+	PrecacheSound("doom/DSPUNCH.wav");
+	PrecacheSound("doom/DSSAWUP.wav");
+	PrecacheSound("doom/DSSAWIDL.wav");
+	PrecacheSound("doom/DSSAWFUL.wav");
+	PrecacheSound("doom/DSSAWHIT.wav");
+	PrecacheSound("doom/DSPLASMA.wav");
+	PrecacheSound("doom/DSRXPLOD.wav");
+	PrecacheSound("doom/DSBFG.wav");
 	
 	g_Scheduler.SetInterval("heightCheck", 0.0);
 }
