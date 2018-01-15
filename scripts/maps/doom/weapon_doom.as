@@ -38,6 +38,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	float lastAttack = 0;
 	int scaleChoice = 0;
 	float sprScale = 1;
+	int itemFrame = 25;
 	
 	// frame info
 	array<FrameInfo> frameInfo;
@@ -96,8 +97,9 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	{
 		ChooseScale(1);
 		Precache();
-		g_EntityFuncs.SetModel( self, hud_sprite );
+		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
 		self.m_iClip = -1;
+		self.pev.frame = itemFrame;
 		self.FallInit();
 	}
 	
@@ -283,7 +285,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			
 		tileFrame += f;
 		
-		println("Tiles: " + tileInfo[tileFrame].x + " " + tileInfo[tileFrame].y);
+		//println("Tiles: " + tileInfo[tileFrame].x + " " + tileInfo[tileFrame].y);
 			
 		wepHeight = int(frameInfo[f].height*sprScale);
 		//frameOffsetX = int((frameInfo[f].width/2 + frameInfo[f].offsetX)*sprScale);
@@ -414,6 +416,60 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			phit.TraceAttack(plr.pev, damage, attackDir, tr, DMG_SLASH);
 			g_WeaponFuncs.ApplyMultiDamage(plr.pev, plr.pev);
 			return !phit.IsBSPModel();
+		}
+		return false;
+	}
+}
+
+class ammo_doom : ScriptBasePlayerAmmoEntity
+{	
+	int itemFrame;
+	int giveAmmo;
+	string ammoType;
+	int maxAmmo;
+	
+	void AmmoSpawn()
+	{
+		g_EntityFuncs.SetModel( self, "models/doom/null.mdl" ); // game crashes if this is a sprite
+		BaseClass.Spawn();
+		
+		// set the model we actually want
+		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		pev.frame = itemFrame;
+		
+		int light_level = self.Illumination();
+		//println("ILLUM " + light_level);
+		pev.rendercolor = Vector(light_level, light_level, light_level);
+		
+		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -8), Vector(8, 8, 8));
+	}
+	
+	void Precache()
+	{
+		BaseClass.Precache();
+	}
+	
+	bool AddAmmo( CBaseEntity@ pOther ) 
+	{
+		if (!pOther.IsPlayer())
+			return false;
+
+		CBasePlayer@ plr = cast<CBasePlayer@>(pOther);
+		
+		// I don't like that you have to code a max ammo in each weapon. So I'm doing the math here.
+		int should_give = giveAmmo;
+		int total_ammo = plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex(ammoType));
+		if (total_ammo >= maxAmmo)
+			return false;
+		else
+			should_give = Math.min(maxAmmo - total_ammo, giveAmmo);
+		
+		int ret = pOther.GiveAmmo( should_give, ammoType, maxAmmo );
+		if (ret != -1)
+		{
+			g_PlayerFuncs.ScreenFade(plr, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
+			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, "doom/DSITEMUP.wav", 1.0f, 0.5f, 0, 100);
+			return true;
 		}
 		return false;
 	}
