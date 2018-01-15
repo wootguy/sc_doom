@@ -14,6 +14,8 @@ class fireball : ScriptBaseAnimating
 	int damageMin = 3;
 	int damageMax = 24;
 	float radiusDamage = 0;
+	float size = 4;
+	bool is_bfg = false;
 	Vector flash_color = Vector(255, 64, 32);
 	
 	array<EHandle> sprites;
@@ -31,9 +33,11 @@ class fireball : ScriptBaseAnimating
 		else if (szKey == "damage_min") damageMin = atoi(szValue);
 		else if (szKey == "damage_max") damageMax = atoi(szValue);
 		else if (szKey == "oriented") oriented = atoi(szValue) != 0;
+		else if (szKey == "is_bfg") is_bfg = atoi(szValue) != 0;
 		else if (szKey == "spawn_sound") spawnSound = szValue;
 		else if (szKey == "death_sound") deathSound = szValue;
 		else if (szKey == "radius_dmg") radiusDamage = atof(szValue);
+		else if (szKey == "bbox_size") size = atof(szValue);
 		else return BaseClass.KeyValue( szKey, szValue );
 		return true;
 	}
@@ -41,16 +45,17 @@ class fireball : ScriptBaseAnimating
 	void Spawn()
 	{				
 		pev.movetype = MOVETYPE_FLY;
-		pev.solid = SOLID_TRIGGER;
+		pev.solid = SOLID_BBOX;
 		
 		g_EntityFuncs.SetModel( self, self.pev.model );
-		float size = 8*g_world_scale;
+		size *= g_world_scale;
 		g_EntityFuncs.SetSize(self.pev, Vector(-size, -size, -size), Vector(size, size, size));
 		
 		g_EngineFuncs.MakeVectors(self.pev.angles);
 		pev.velocity = g_Engine.v_forward*pev.speed*g_monster_scale;
 		
-		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, spawnSound, 1.0f, 0.5f, 0, 100);
+		if (spawnSound.Length() > 0)
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, spawnSound, 1.0f, 0.5f, 0, 100);
 		
 		pev.scale = g_monster_scale;
 		pev.frame = moveFrameStart;
@@ -131,7 +136,7 @@ class fireball : ScriptBaseAnimating
 		frameCounter = deathFrameStart;
 		pev.nextthink = g_Engine.time + 0.15;
 		killClientSprites();
-		pev.effects &= ~EF_NODRAW;
+		pev.effects &= ~EF_NODRAW;		
 		
 		int damage = Math.RandomLong(damageMin, damageMax);
 		Vector oldVel = pOther.pev.velocity;
@@ -141,6 +146,47 @@ class fireball : ScriptBaseAnimating
 		
 		if (radiusDamage > 0)
 			g_WeaponFuncs.RadiusDamage(pev.origin, self.pev, owner is null ? self.pev : owner.pev, radiusDamage, radiusDamage, 0, DMG_BLAST);
+		
+		if (is_bfg and owner !is null)
+		{
+			// do weird bfg tracer stuff
+			float range = 1024;
+			float spread = 45.0f;
+			Vector dir = pev.velocity.Normalize();
+			Vector vecSrc = owner.pev.origin;
+			dictionary targets;
+			
+			for (uint i = 0; i < 40; i++)
+			{
+				Vector vecAiming = spreadDir(dir, spread, SPREAD_UNIFORM);
+
+				// Do the bullet collision
+				TraceResult tr;
+				Vector vecEnd = vecSrc + vecAiming * range;
+				g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, owner.edict(), tr );
+				
+				// do more fancy effects
+				if( tr.flFraction < 1.0 )
+				{
+					CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+					
+					if( pHit !is null and !pHit.IsBSPModel()) 
+					{
+						float rayDamage = Math.RandomLong(47, 87);
+						Vector oldRayVel = pHit.pev.velocity;	
+						pHit.TakeDamage(owner.pev, owner.pev, rayDamage, DMG_SHOCK);
+						pHit.pev.velocity = oldRayVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
+						
+						if (!targets.exists(pHit.entindex()))
+						{
+							targets[pHit.entindex()] = true; // only 1 effect per monstie
+							te_explosion(tr.vecEndPos, "sprites/doom/BFE2.spr", 10, 5, 15);
+						}
+					}
+				}
+			}
+			
+		}
 		
 		pev.velocity = Vector(0,0,0);
 		g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, deathSound, 1.0f, 0.5f, 0, 100);

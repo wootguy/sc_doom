@@ -162,7 +162,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			ckeys["spawnflags"] = "1";
 			ckeys["rendermode"] = "2";
 			ckeys["renderamt"] = "0";
-			ckeys["rendercolor"] = isSpectre ? "1 1 1" : "255 255 255";
+			ckeys["rendercolor"] = "255 255 255";
 			ckeys["scale"] = string(pev.scale);
 			ckeys["targetname"] = "m" + g_monster_idx + "s" + i;
 			CBaseEntity@ client_sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
@@ -172,7 +172,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			dictionary rkeys;
 			rkeys["target"] = string(client_sprite.pev.targetname);
 			rkeys["spawnflags"] = "" + (1 | 4 | 8 | 64);
-			rkeys["renderamt"] = isSpectre ? "32" : "255";
+			rkeys["renderamt"] = isSpectre ? "48" : "255";
 			CBaseEntity@ show = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
 			renderShowEnts.insertLast(EHandle(show));
 			
@@ -231,8 +231,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			pev.rendermode = 2;
 			if (isSpectre)
 			{
-				pev.renderamt = 32;
-				pev.rendercolor = Vector(1, 1, 1);
+				pev.renderamt = 48;
 			}
 			pev.solid = SOLID_NOT;
 			bool gib = (bitsDamageType & DMG_BLAST) != 0 or pev.health < -100;
@@ -248,9 +247,12 @@ class monster_doom : ScriptBaseMonsterEntity
 			g_EntityFuncs.SetSize(self.pev, Vector(-1, -1, -1), Vector(1, 1, 1));
 			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
-			if (gib)
+			bool canGib = animInfo[ANIM_DEAD].frameIndices[0] != animInfo[ANIM_GIB].frameIndices[0];
+			if (gib and canGib)
 				snd = "doom/DSSLOP.wav";
 			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, snd, 1.0f, 0.5f, 0, 100);
+			
+			DoomThink();
 		}
 		else
 		{
@@ -279,6 +281,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				println("I will remember to attack " + oldEnemy.GetEntity().pev.classname);
 			h_enemy = EHandle(ent);
 			lastEnemy = g_Engine.time;
+			nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
 			Wakeup();
 		}
 	}
@@ -335,60 +338,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		Vector vecAiming = spreadDir(dir.Normalize(), spread, SPREAD_GAUSSIAN);
 	
-		// Do the bullet collision
-		TraceResult tr;
-		Vector vecEnd = vecSrc + vecAiming * range;
-		g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, self.edict(), tr );
-		
-		// do more fancy effects
-		if( tr.flFraction < 1.0 )
-		{
-			if( tr.pHit !is null )
-			{
-				CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
-				
-				if( pHit !is null ) 
-				{			
-					
-					CBaseEntity@ ent = g_EntityFuncs.Instance( tr.pHit );
-						
-					Vector attackDir = (tr.vecEndPos - vecSrc).Normalize();
-					Vector angles = Math.VecToAngles(attackDir);
-					Math.MakeVectors(angles);
-						
-					// damage done before hitgroup multipliers
-					
-					g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
-					pHit.TraceAttack(self.pev, damage, attackDir, tr, DMG_BULLET);
-					
-					Vector oldVel = pHit.pev.velocity;
-					
-					// set both classes in case this a pvp map where classes are always changing
-					int oldClass1 = self.GetClassification(0);
-					int oldClass2 = pHit.GetClassification(0);
-					self.SetClassification(CLASS_PLAYER);
-					pHit.SetClassification(CLASS_ALIEN_MILITARY);
-					
-					g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
-					
-					self.SetClassification(oldClass1);
-					pHit.SetClassification(oldClass2);
-					
-					pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
-
-					knockBack(pHit, g_Engine.v_forward*(100+damage)*g_world_scale);
-					
-					if (pHit.IsBSPModel()) 
-					{
-						//te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-						te_decal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-					}
-				}
-			}
-		}
-		
-		// bullet tracer effects
-		te_tracer(vecSrc, tr.vecEndPos);
+		HitScan(self, vecSrc, dir, spread, damage);
 	}
 
 	bool Slash(Vector dir, float damage)
@@ -471,7 +421,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		//pev.rendercolor = lightColor;
 		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
 		
-		pev.velocity.z += -0.001f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
+		//pev.velocity.z += -0.001f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
+		g_EntityFuncs.SetOrigin(self, pev.origin);
 		
 		//println("CURENT ANIM: " + currentAnim.frameIndices[0] + " " + currentAnim.lastFrame());
 		frameCounter += 1;
@@ -561,8 +512,8 @@ class monster_doom : ScriptBaseMonsterEntity
 						println("ALL SOLID");
 						
 					//te_beampoints(hullPos, hullPos + moveVel*g_monster_scale);
-					te_beampoints(hullPos + Vector(0,0,36*g_world_scale), hullPos + Vector(0,0,36*g_world_scale) + moveVel*g_monster_scale);
-					te_beampoints(hullPos + Vector(0,0,-36*g_world_scale), hullPos + Vector(0,0,-36*g_world_scale) + moveVel*g_monster_scale);
+					//te_beampoints(hullPos + Vector(0,0,36*g_world_scale), hullPos + Vector(0,0,36*g_world_scale) + moveVel*g_monster_scale);
+					//te_beampoints(hullPos + Vector(0,0,-36*g_world_scale), hullPos + Vector(0,0,-36*g_world_scale) + moveVel*g_monster_scale);
 					
 					if (tr.flFraction >= 1.0f and tr.fAllSolid == 0)
 					{
@@ -647,7 +598,7 @@ class monster_doom : ScriptBaseMonsterEntity
 								MeleeAttack(delta);
 							else if (hasRanged)			
 							{
-								te_beampoints(bodyPos, enemyPos);
+								//te_beampoints(bodyPos, enemyPos);
 								RangeAttack(delta);
 							}
 						}
@@ -742,8 +693,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					client_sprite.pev.effects &= ~EF_NODRAW;
 					client_sprite.pev.origin = pev.origin;
 					client_sprite.pev.frame = frame*8 + i;
-					if (!isSpectre)
-						client_sprite.pev.rendercolor = lightColor;
+					client_sprite.pev.rendercolor = lightColor;
 				}
 				else
 					client_sprite.pev.effects |= EF_NODRAW;

@@ -511,10 +511,13 @@ class monster_spiderdemon : monster_doom
 		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(6, 7, 0.5f, true)); // ANIM_ATTACK
 		animInfo.insertLast(AnimInfo(8, 8, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(72, 81, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(72, 81, 0.25f, false)); // ANIM_GIB		
+		animInfo.insertLast(AnimInfo(72, 81, 0.18f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(72, 81, 0.18f, false)); // ANIM_GIB		
 		
 		animInfo[ANIM_ATTACK].attackFrameIdx = -1;
+		animInfo[ANIM_DEAD].frameIndices.insertAt(1, 73);
+		animInfo[ANIM_DEAD].frameIndices.insertAt(0, 72);
+		animInfo[ANIM_GIB].frameIndices = animInfo[ANIM_DEAD].frameIndices;
 		
 		idleSounds.insertLast("doom/DSDMACT.wav");
 		painSound = "doom/DSDMPAIN.wav";
