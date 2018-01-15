@@ -110,19 +110,29 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_bfg", "weapon_doom_bfg" );
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_fist", "doom", "");
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_chainsaw", "doom", "");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_pistol", "doom", "556");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom", "556");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_shotgun", "doom", "556");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_supershot", "doom", "556");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_rpg", "doom", "556");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_plasmagun", "doom", "556");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_bfg", "doom", "556");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_pistol", "doom", "bullets", "", "ammo_doom_bullets");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom", "bullets", "", "ammo_doom_bullets");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_shotgun", "doom", "shells", "", "ammo_doom_shells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_supershot", "doom", "shells", "", "ammo_doom_shells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_rpg", "doom", "rockets", "", "ammo_doom_rocket");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_plasmagun", "doom", "cells", "", "ammo_doom_cells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_bfg", "doom", "cells", "", "ammo_doom_cells");
+	
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_bullets", "ammo_doom_bullets" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_bulletbox", "ammo_doom_bulletbox" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_shells", "ammo_doom_shells" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_shellbox", "ammo_doom_shellbox" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_rocket", "ammo_doom_rocket" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_rocketbox", "ammo_doom_rocketbox" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_cells", "ammo_doom_cells" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_cellbox", "ammo_doom_cellbox" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 	g_Hooks.RegisterHook( Hooks::Player::PlayerUse, @PlayerUse );
 		
+	g_Game.PrecacheModel("sprites/doom/objects.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
 	g_Game.PrecacheModel("sprites/doom/MISL.spr");
@@ -161,6 +171,8 @@ void MapInit()
 	PrecacheSound("doom/DSPLASMA.wav");
 	PrecacheSound("doom/DSRXPLOD.wav");
 	PrecacheSound("doom/DSBFG.wav");
+	PrecacheSound("doom/DSITMBK.wav"); // item respawn
+	PrecacheSound("doom/DSITEMUP.wav"); // item collect
 	
 	g_Scheduler.SetInterval("heightCheck", 0.0);
 }
