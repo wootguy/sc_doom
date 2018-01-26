@@ -1,5 +1,6 @@
 #include "weapons"
 #include "monsters"
+#include "items"
 #include "utils"
 #include "func_doom_door"
 
@@ -22,6 +23,7 @@ class PlayerState
 	EHandle plr;
 	CTextMenu@ menu;
 	dictionary visible_ents;
+	float lastAttack; // time this player last attacked with a weapon (used to temporarily disable invisibility)
 	
 	void initMenu(CBasePlayer@ plr, TextMenuPlayerSlotCallback@ callback)
 	{
@@ -126,6 +128,20 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_rocketbox", "ammo_doom_rocketbox" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_cells", "ammo_doom_cells" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_cellbox", "ammo_doom_cellbox" );
+	
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_stimpak", "item_doom_stimpak" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_medkit", "item_doom_medkit" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_potion", "item_doom_potion" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_armor_bonus", "item_doom_armor_bonus" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_armor", "item_doom_armor" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_megaarmor", "item_doom_megaarmor" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_megasphere", "item_doom_megasphere" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_soulsphere", "item_doom_soulsphere" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_god", "item_doom_god" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_berserk", "item_doom_berserk" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_invis", "item_doom_invis" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_suit", "item_doom_suit" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_goggles", "item_doom_goggles" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	

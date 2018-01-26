@@ -52,7 +52,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	int frameIdx = 0;
 	bool constantAttack = false; // attack every frame
 	float lastAttackButton = 0; // attack button held? (needed for laggy players)
-	int lastHudX, lastHudY, lastHudFrame, lastHudLightLevel;
+	int lastHudX, lastHudY, lastHudFrame, lastHudLightLevel, lastHudOpacity;
 	
 	// HUD sprite vars
 	float wepx = 0;
@@ -172,8 +172,11 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		if (light_level > 255)
 			light_level = 255;
 			
+		int opacity = plr.pev.rendermode == 0 ? 255 : int(plr.pev.renderamt);
+		
 		bool needsUpdate = true;
-		if (lastHudX == int(wepx + wepOffsetXScaled) and lastHudY == int(wepy + frameOffsetY) and lastHudLightLevel == light_level)
+		if (lastHudX == int(wepx + wepOffsetXScaled) and lastHudY == int(wepy + frameOffsetY) and lastHudLightLevel == light_level and
+			lastHudOpacity == opacity)
 		{
 			needsUpdate = false;
 		}
@@ -183,9 +186,10 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			HUDSpriteParams params;
 			params.spritename = hud_sprite.SubString("sprites/".Length());
 			params.width = 0;
-			params.flags = HUD_SPR_MASKED | HUD_ELEM_SCR_CENTER_X | HUD_ELEM_ABSOLUTE_X | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_NO_BORDER;
+			int renderFlag = opacity == 255 ? int(HUD_SPR_MASKED) : 0;
+			params.flags = renderFlag | HUD_ELEM_SCR_CENTER_X | HUD_ELEM_ABSOLUTE_X | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_NO_BORDER;
 			params.holdTime = 99999.0f;
-			params.color1 = RGBA( light_level, light_level, light_level, 255 );
+			params.color1 = RGBA( light_level, light_level, light_level, opacity );
 			
 			for (int y = 0; y < 2; y++)
 			{
@@ -234,6 +238,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		lastHudY = int(wepy + frameOffsetY);
 		lastHudFrame = frame;
 		lastHudLightLevel = light_level;
+		lastHudOpacity = opacity;
 		
 		lastHud = g_Engine.time;
 	}
@@ -323,6 +328,10 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	
 	void Shoot()
 	{
+		CBasePlayer@ plr = getPlayer();
+		PlayerState@ state = getPlayerState(plr);
+		state.lastAttack = g_Engine.time;
+		
 		frameIdx = 0;
 		SetFrame(shootFrames[0]);
 		
