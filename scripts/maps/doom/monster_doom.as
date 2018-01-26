@@ -655,7 +655,18 @@ class monster_doom : ScriptBaseMonsterEntity
 					int angleIdx = getSpriteAngle(pos, forward, right, ent.pev.origin);
 						
 					if (dormant and ent.IsAlive() and DotProduct(forward, delta) < -0.3f and ent.FVisible(self, true))
-						SetEnemy(ent);
+					{
+						bool visible = true;
+						if (ent.IsPlayer())
+						{
+							CBasePlayer@ plr = cast<CBasePlayer@>(ent);
+							PlayerState@ state = getPlayerState(plr);
+							visible = ent.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
+						}
+
+						if (visible)
+							SetEnemy(ent);
+					}
 					
 					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(ent));
 					

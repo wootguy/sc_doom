@@ -286,6 +286,8 @@ class weapon_doom_rpg : weapon_doom
 
 class weapon_doom_fist : weapon_doom
 {
+	int damage_min = 2;
+	int damage_max = 20;
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/fist.spr";
@@ -334,7 +336,7 @@ class weapon_doom_fist : weapon_doom
 	
 	void Attack()
 	{
-		if (Slash(Math.RandomLong(2,20)))
+		if (Slash(Math.RandomLong(damage_min, damage_max)))
 			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
 		
 	}
