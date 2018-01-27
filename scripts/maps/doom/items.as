@@ -1,12 +1,13 @@
 
-void invulnerability(EHandle h_plr, float startTime, bool flicker)
+void invulnerability(EHandle h_plr, bool flicker)
 {
 	if (!h_plr.IsValid())
 		return;
 		
 	CBaseEntity@ plr = h_plr;
+	PlayerState@ state = getPlayerState(cast<CBasePlayer@>(plr));
 		
-	float timeLeft = 30.0f - (g_Engine.time - startTime);
+	float timeLeft = state.godTimeLeft();
 	if (timeLeft > 0 and plr.IsAlive())
 	{
 		Vector color(64, 255, 128);
@@ -28,17 +29,18 @@ void invulnerability(EHandle h_plr, float startTime, bool flicker)
 		return;
 	}
 		
-	g_Scheduler.SetTimeout("invulnerability", 0.5f, h_plr, startTime, flicker);
+	g_Scheduler.SetTimeout("invulnerability", 0.5f, h_plr, flicker);
 }
 
-void invisibility(EHandle h_plr, float startTime, bool flicker)
+void invisibility(EHandle h_plr, bool flicker)
 {
 	if (!h_plr.IsValid())
 		return;
 		
 	CBaseEntity@ plr = h_plr;
+	PlayerState@ state = getPlayerState(cast<CBasePlayer@>(plr));
 		
-	float timeLeft = 60.0f - (g_Engine.time - startTime);
+	float timeLeft = state.invisTimeLeft();
 	if (timeLeft > 0 and plr.IsAlive())
 	{
 		float renderAmt = 64;
@@ -59,17 +61,18 @@ void invisibility(EHandle h_plr, float startTime, bool flicker)
 		return;
 	}
 		
-	g_Scheduler.SetTimeout("invisibility", 0.5f, h_plr, startTime, flicker);
+	g_Scheduler.SetTimeout("invisibility", 0.5f, h_plr, flicker);
 }
 
-void suitprotect(EHandle h_plr, float startTime, bool flicker)
+void suitprotect(EHandle h_plr, bool flicker)
 {
 	if (!h_plr.IsValid())
 		return;
 		
 	CBaseEntity@ plr = h_plr;
-		
-	float timeLeft = 60.0f - (g_Engine.time - startTime);
+	PlayerState@ state = getPlayerState(cast<CBasePlayer@>(plr));
+	
+	float timeLeft = state.suitTimeLeft();
 	if (timeLeft > 0 and plr.IsAlive() and plr.pev.takedamage != DAMAGE_NO)
 	{
 		Vector color(0, 128, 0);
@@ -84,17 +87,18 @@ void suitprotect(EHandle h_plr, float startTime, bool flicker)
 		return;
 	}
 		
-	g_Scheduler.SetTimeout("suitprotect", 0.5f, h_plr, startTime, flicker);
+	g_Scheduler.SetTimeout("suitprotect", 0.5f, h_plr, flicker);
 }
 
-void goggles(EHandle h_plr, float startTime, bool flicker)
+void goggles(EHandle h_plr, bool flicker)
 {
 	if (!h_plr.IsValid())
 		return;
 		
 	CBaseEntity@ plr = h_plr;
+	PlayerState@ state = getPlayerState(cast<CBasePlayer@>(plr));
 		
-	float timeLeft = 120.0f - (g_Engine.time - startTime);
+	float timeLeft = state.goggleTimeLeft();
 	if (timeLeft > 0 and plr.IsAlive())
 	{
 		plr.pev.effects |= EF_BRIGHTLIGHT;
@@ -108,7 +112,7 @@ void goggles(EHandle h_plr, float startTime, bool flicker)
 		return;
 	}
 		
-	g_Scheduler.SetTimeout("goggles", 0.5f, h_plr, startTime, flicker);
+	g_Scheduler.SetTimeout("goggles", 0.5f, h_plr, flicker);
 }
 
 
@@ -174,6 +178,7 @@ class item_doom : ScriptBaseItemEntity
 			return;
 		
 		CBasePlayer@ plr = cast<CBasePlayer@>(pOther);
+		PlayerState@ state = getPlayerState(plr);
 		
 		bool pickedUp = false;
 		if (giveHealth > 0)
@@ -199,7 +204,9 @@ class item_doom : ScriptBaseItemEntity
 		
 		if (giveGod)
 		{
-			g_Scheduler.SetTimeout("invulnerability", 0.0f, EHandle(pOther), g_Engine.time, true);
+			if (state.godTimeLeft() <= 0)
+				g_Scheduler.SetTimeout("invulnerability", 0.0f, EHandle(pOther), true);
+			state.lastGod = g_Engine.time;
 			pickedUp = true;
 		}
 		if (giveBerserk)
@@ -216,17 +223,23 @@ class item_doom : ScriptBaseItemEntity
 		}
 		if (giveInvis)
 		{
-			g_Scheduler.SetTimeout("invisibility", 0.0f, EHandle(pOther), g_Engine.time, true);
+			if (state.godTimeLeft() <= 0)
+				g_Scheduler.SetTimeout("invisibility", 0.0f, EHandle(pOther), true);
+			state.lastInvis = g_Engine.time;
 			pickedUp = true;
 		}
 		if (giveSuit)
 		{
-			g_Scheduler.SetTimeout("suitprotect", 0.0f, EHandle(pOther), g_Engine.time, true);
+			if (state.suitTimeLeft() <= 0)
+				g_Scheduler.SetTimeout("suitprotect", 0.0f, EHandle(pOther), true);
+			state.lastSuit = g_Engine.time;
 			pickedUp = true;
 		}
 		if (giveGoggles)
 		{
-			g_Scheduler.SetTimeout("goggles", 0.0f, EHandle(pOther), g_Engine.time, true);
+			if (state.goggleTimeLeft() <= 0)
+				g_Scheduler.SetTimeout("goggles", 0.0f, EHandle(pOther), true);
+			state.lastGoggles = g_Engine.time;
 			pickedUp = true;
 		}
 		

@@ -3,6 +3,7 @@
 #include "items"
 #include "utils"
 #include "func_doom_door"
+#include "func_doom_water"
 
 class VisEnt
 {
@@ -24,6 +25,11 @@ class PlayerState
 	CTextMenu@ menu;
 	dictionary visible_ents;
 	float lastAttack; // time this player last attacked with a weapon (used to temporarily disable invisibility)
+	float lastSuit = 0; // last time suit was picked up
+	float lastGoggles = 0; // last time suit was picked up
+	float lastGod = 0;
+	float lastInvis = 0;
+	
 	
 	void initMenu(CBasePlayer@ plr, TextMenuPlayerSlotCallback@ callback)
 	{
@@ -59,6 +65,11 @@ class PlayerState
 	{
 		return visible_ents.exists(entName);
 	}
+	
+	float suitTimeLeft() { return 60.0f - (g_Engine.time - lastSuit); }
+	float goggleTimeLeft() { return 120.0f - (g_Engine.time - lastGoggles); }
+	float godTimeLeft() { return 30.0f - (g_Engine.time - lastGod); }
+	float invisTimeLeft() { return 60.0f - (g_Engine.time - lastInvis); }
 }
 
 dictionary player_states;
@@ -100,6 +111,7 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_spiderdemon", "monster_spiderdemon" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_water", "func_doom_water" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_fist", "weapon_doom_fist" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_chainsaw", "weapon_doom_chainsaw" );
@@ -269,6 +281,16 @@ void heightCheck()
 		}
 	} while (ent !is null);
 }
+
+void player_killed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	if (!pCaller.IsPlayer())
+		return;
+	CBasePlayer@ plr = cast<CBasePlayer@>(pCaller);
+	PlayerState@ state = getPlayerState(plr);
+	state.lastSuit = state.lastGoggles = state.lastGod = state.lastInvis = 0;
+}
+
 
 HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 {	
