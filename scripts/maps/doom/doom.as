@@ -159,12 +159,14 @@ void MapInit()
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 	g_Hooks.RegisterHook( Hooks::Player::PlayerUse, @PlayerUse );
+	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientJoin );
 		
 	g_Game.PrecacheModel("sprites/doom/objects.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
 	g_Game.PrecacheModel("sprites/doom/MISL.spr");
 	g_Game.PrecacheModel("sprites/doom/BFE2.spr");
+	g_Game.PrecacheModel("sprites/doom/PUFF.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	g_Game.PrecacheModel("sprites/doom/fist.spr");
@@ -274,8 +276,8 @@ void heightCheck()
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
 		if (ent !is null)
 		{
-			ent.pev.view_ofs.z = 20; // original == 28
-			ent.pev.scale = 0.7f;
+			//ent.pev.view_ofs.z = 20; // original == 28
+			//ent.pev.scale = 0.7f;
 			//ent.pev.fuser4 = 2;
 			//println("HEIGHT: " + (ent.pev.origin.z + ent.pev.view_ofs.z) + " " + ent.pev.view_ofs.z);
 		}
@@ -291,12 +293,11 @@ void player_killed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 	state.lastSuit = state.lastGoggles = state.lastGod = state.lastInvis = 0;
 }
 
-
 HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 {	
 	if (plr.m_afButtonPressed & IN_USE != 0)
 	{
-		TraceResult tr = TraceLook(plr, 64);
+		TraceResult tr = TraceLook(plr, 90);
 		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
 		/*
 		CBaseEntity@ ent = null;
@@ -324,6 +325,18 @@ HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 	return HOOK_CONTINUE;
 }
 
+void clientCommand(CBaseEntity@ plr, string cmd)
+{
+	NetworkMessage m(MSG_ONE, NetworkMessages::NetworkMessageType(9), plr.edict());
+		m.WriteString(cmd);
+	m.End();
+}
+
+HookReturnCode ClientJoin( CBasePlayer@ plr )
+{
+	clientCommand(plr, "cl_forwardspeed 9000;cl_sidespeed 9000;cl_backspeed 9000");
+	return HOOK_CONTINUE;
+}
 
 void doTheStatic(CBaseEntity@ ent)
 {
@@ -342,7 +355,7 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 	{
 		if (args[0] == ".test")
 		{
-			g_Scheduler.SetInterval("doEffect", 0.025, -1, @plr);
+			//g_Scheduler.SetInterval("doEffect", 0.025, -1, @plr);
 			//doEffect();
 			return true;
 		}

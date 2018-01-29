@@ -12,8 +12,8 @@ enum activities {
 
 array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 
-float g_monster_scale = 1.0f;
-float g_world_scale = 0.7f;
+float g_monster_scale = 1.42857f; // 1 / 0.7
+float g_world_scale = 1.0f;
 
 class AnimInfo
 {
@@ -73,7 +73,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	float walkSpeed = 8.0f;
 	float painChance = 1.0f;
-	float meleeRange = 64.0f;
+	float meleeRange = 64.0f*g_monster_scale;
 	float minRangeAttackDelay = 1.0f;
 	float maxRangeAttackDelay = 4.0f;
 	float walkSoundFreq = 0.6f;
@@ -186,7 +186,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		SetActivity(ANIM_IDLE);
 		
 		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
-		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -16), Vector(8, 8, 42));
+		g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
 	}
 	
 	void SetActivity(int act)
@@ -497,56 +497,55 @@ class monster_doom : ScriptBaseMonsterEntity
 					else if (enemy.pev.origin.z < bodyPos.z - 36)
 						verticalMove = Vector(0,0,-4);
 				}
-				else if (false)
+				else
+				{
 					canWalk = g_EngineFuncs.WalkMove(self.edict(), pev.angles.y, walkSpeed*g_monster_scale, int(WALKMOVE_NORMAL));
-					
+				}
+				
 				if (canWalk != 1)
 				{
 					TraceResult tr;
+					
+					TraceResult tr_fall;
 					Vector moveVel = forward*walkSpeed + verticalMove;
 					if (dashing)
 						moveVel = dashVel;
-					Vector hullPos = bodyPos;
-					g_Utility.TraceHull( hullPos, hullPos + moveVel*g_monster_scale, dont_ignore_monsters, human_hull, self.edict(), tr );
-					if (tr.fAllSolid != 0)
-						println("ALL SOLID");
-						
-					//te_beampoints(hullPos, hullPos + moveVel*g_monster_scale);
-					//te_beampoints(hullPos + Vector(0,0,36*g_world_scale), hullPos + Vector(0,0,36*g_world_scale) + moveVel*g_monster_scale);
-					//te_beampoints(hullPos + Vector(0,0,-36*g_world_scale), hullPos + Vector(0,0,-36*g_world_scale) + moveVel*g_monster_scale);
+					Vector targetPos = bodyPos + moveVel*g_monster_scale;
+					g_Utility.TraceHull( bodyPos, targetPos, dont_ignore_monsters, human_hull, self.edict(), tr );
 					
-					if (tr.flFraction >= 1.0f and tr.fAllSolid == 0)
+					g_Utility.TraceHull( bodyPos, bodyPos + Vector(0,0,-0.1f), dont_ignore_monsters, human_hull, self.edict(), tr_fall );
+					if (tr.fAllSolid != 0)
 					{
-						// walkmove doesn't like stepping down things, but this is a legal move
-						Vector stepPos = tr.vecEndPos;
-						// TODO: Don't step if this is actually a cliff
-						pev.origin = stepPos + Vector(0,0,-36*g_world_scale);
-						if (!dashing and canFly)
-							pev.velocity = pev.velocity*0.1f;
-						//pev.origin = stepPos + Vector(0,0,8);
+						te_beampoints(bodyPos, targetPos);
+						println("ALL SOLID");
 					}
-					else
+						
+					//if (tr_fall.flFraction >= 1.0f and pev.velocity.z == 0)
+					//	pev.velocity.z = -0.1f;
+						
+					//te_beampoints(bodyPos, bodyPos + moveVel*g_monster_scale);
+					//te_beampoints(bodyPos + Vector(0,0,36*g_world_scale), bodyPos + Vector(0,0,36*g_world_scale) + moveVel*g_monster_scale);
+					//te_beampoints(bodyPos + Vector(0,0,-36*g_world_scale), bodyPos + Vector(0,0,-36*g_world_scale) + moveVel*g_monster_scale);
+									
+					if (dashing)
 					{
-						if (dashing)
+						dashing = false;
+						CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+						if (pHit !is null)
 						{
-							dashing = false;
-							CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
-							if (pHit !is null)
-							{
-								nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
-								Vector oldVel = pHit.pev.velocity;
-								pHit.TakeDamage(self.pev, self.pev, dashDamage, DMG_BURN);
-								pHit.pev.velocity = oldVel; // prevent vertical launching
-								
-								knockBack(pHit, dashVel.Normalize()*(100 + dashDamage)*g_world_scale);
-							}
+							nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+							Vector oldVel = pHit.pev.velocity;
+							pHit.TakeDamage(self.pev, self.pev, dashDamage, DMG_BURN);
+							pHit.pev.velocity = oldVel; // prevent vertical launching
+							
+							knockBack(pHit, dashVel.Normalize()*(100 + dashDamage)*g_world_scale);
 						}
-						if (lastWallReflect + 0.2f < g_Engine.time)
-						{
-							pev.angles.y += Math.RandomFloat(90, 270);
-							lastWallReflect = g_Engine.time;
-							lastDirChange = g_Engine.time;
-						}
+					}
+					if (lastWallReflect + 0.2f < g_Engine.time)
+					{
+						pev.angles.y += Math.RandomFloat(90, 270);
+						lastWallReflect = g_Engine.time;
+						lastDirChange = g_Engine.time;
 					}
 				}
 			}
@@ -583,7 +582,12 @@ class monster_doom : ScriptBaseMonsterEntity
 				}
 				
 				bool inMeleeRange = hasMelee and delta.Length() < meleeRange*g_world_scale;
-				if (activity == ANIM_ATTACK or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged))
+				
+				TraceResult tr_sight;
+				g_Utility.TraceLine( bodyPos, enemy.pev.origin, ignore_monsters, self.edict(), tr_sight );
+				bool lineOfSight = tr_sight.flFraction >= 1.0f;
+				
+				if (activity == ANIM_ATTACK or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged and lineOfSight))
 				{
 					pev.angles.y = g_EngineFuncs.VecToYaw(delta);
 					if (activity != ANIM_ATTACK)
@@ -598,7 +602,7 @@ class monster_doom : ScriptBaseMonsterEntity
 								MeleeAttack(delta);
 							else if (hasRanged)			
 							{
-								//te_beampoints(bodyPos, enemyPos);
+								//te_beampoints(bodyPos, enemyPos);								
 								RangeAttack(delta);
 							}
 						}
@@ -616,7 +620,6 @@ class monster_doom : ScriptBaseMonsterEntity
 									g_Utility.TraceLine( bodyPos, enemy.pev.origin, dont_ignore_monsters, self.edict(), tr );
 									CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
 									keepAttacking = pHit !is null and pHit.entindex() == enemy.entindex();
-									
 								}
 								if (!keepAttacking)
 								{

@@ -124,7 +124,9 @@ class func_doom_door : ScriptBaseEntity
 	}
 	
 	void Touch(CBaseEntity@ other)
-	{	
+	{
+		if (isButton)
+			return;
 		if (m_toggle_state != TS_AT_BOTTOM and m_toggle_state != TS_AT_TOP)
 			return;
 			
@@ -169,6 +171,9 @@ class func_doom_door : ScriptBaseEntity
 	
 	int DoorActivate()
 	{
+		if (m_flWait == -1 and m_toggle_state == TS_AT_TOP)
+			return 1;
+			
 		if ((pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) && m_toggle_state == TS_AT_TOP)
 			DoorGoDown();
 		else

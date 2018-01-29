@@ -354,6 +354,7 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 	// Do the bullet collision
 	TraceResult tr;
 	Vector vecEnd = vecSrc + vecAiming * range;
+	//te_beampoints(vecSrc, vecEnd);
 	g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, attacker.edict(), tr );
 	
 	// do more fancy effects
@@ -396,8 +397,7 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 				if (pHit.IsBSPModel()) 
 				{
 					//te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-					//te_decal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
-					te_multigunshot(vecSrc, vecEnd, 0, 0, 1);
+					doomBulletImpact(tr.vecEndPos, tr.vecPlaneNormal, pHit);
 				}
 			}
 		}
@@ -405,6 +405,17 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 	
 	// bullet tracer effects
 	//te_tracer(vecSrc, tr.vecEndPos);
+}
+
+void doomBulletImpact(Vector pos, Vector normal, CBaseEntity@ phit)
+{
+	te_decal(pos, phit, getDecal(DECAL_SMALLSHOT));
+	// no idea why sprite is so far off on different angles...
+	if (normal.z < -0.1f)
+		normal = normal * 3.0f;
+	else if (normal.z > 0.1f)
+		normal = normal * 0;
+	te_explosion(pos + normal*4, "sprites/doom/PUFF.spr", 14, 10, 15);
 }
 
 // Randomize the direction of a vector by some amount
