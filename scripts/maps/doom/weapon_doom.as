@@ -420,7 +420,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		if (phit !is null and tr.flFraction < 1.0f)
 		{
 			if (phit.IsBSPModel())
-				te_multigunshot(vecSrc, attackDir, 0, 0, 1);
+				doomBulletImpact(tr.vecEndPos, tr.vecPlaneNormal, phit);
 			g_WeaponFuncs.ClearMultiDamage();
 			phit.TraceAttack(plr.pev, damage, attackDir, tr, DMG_SLASH);
 			g_WeaponFuncs.ApplyMultiDamage(plr.pev, plr.pev);
@@ -445,12 +445,13 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 		// set the model we actually want
 		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
 		pev.frame = itemFrame;
+		pev.scale = g_monster_scale;
 		
 		int light_level = self.Illumination();
 		//println("ILLUM " + light_level);
 		pev.rendercolor = Vector(light_level, light_level, light_level);
 		
-		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -8), Vector(8, 8, 8));
+		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -4), Vector(8, 8, 8));
 	}
 	
 	void Precache()

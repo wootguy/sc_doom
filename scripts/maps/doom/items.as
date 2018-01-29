@@ -138,14 +138,18 @@ class item_doom : ScriptBaseItemEntity
 		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
 		BaseClass.Spawn();
 		pev.frame = itemFrame;
+		pev.scale = g_monster_scale;
 		if (itemFrameMax == -1)
 			itemFrameMax = itemFrame;
+		
+		//pev.movetype = MOVETYPE_NONE;
+		//pev.solid = SOLID_NOT;
 		
 		int light_level = self.Illumination();
 		//println("ILLUM " + light_level);
 		pev.rendercolor = Vector(light_level, light_level, light_level);
 		
-		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -8), Vector(8, 8, 8));
+		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -4), Vector(8, 8, 8));
 		
 		if (itemFrameMax != itemFrame)
 			pev.nextthink = g_Engine.time;

@@ -24,6 +24,8 @@ class weapon_doom_pistol : weapon_doom
 
 		accurateFirstShot = true;
 		
+		self.m_iDefaultAmmo = 50;
+		
 		DoomSpawn();
 		
 		SetThink( ThinkFunction( Think ) );
@@ -38,7 +40,7 @@ class weapon_doom_pistol : weapon_doom
 		info.iSlot 		= 1;
 		info.iPosition 	= 10;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 3;
 		
 		return true;
 	}
@@ -88,6 +90,8 @@ class weapon_doom_shotgun : weapon_doom
 		cooldown = 1.0f;
 		frameRate = 0.12;
 		
+		self.m_iDefaultAmmo = 8;
+		
 		DoomSpawn();
 		
 		SetThink( ThinkFunction( Think ) );
@@ -102,7 +106,7 @@ class weapon_doom_shotgun : weapon_doom
 		info.iSlot 		= 2;
 		info.iPosition 	= 10;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 4;
 		
 		return true;
 	}
@@ -160,6 +164,8 @@ class weapon_doom_supershot : weapon_doom
 		frameRate = 0.15;
 		ammoPerShot = 2;
 		
+		self.m_iDefaultAmmo = 8;
+		
 		DoomSpawn();
 		
 		SetThink( ThinkFunction( Think ) );
@@ -174,7 +180,7 @@ class weapon_doom_supershot : weapon_doom
 		info.iSlot 		= 2;
 		info.iPosition 	= 11;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 6;
 		
 		return true;
 	}
@@ -225,6 +231,7 @@ class weapon_doom_rpg : weapon_doom
 		spread = 9.8f;
 		cooldown = 0.5f;
 		frameRate = 0.1;
+		self.m_iDefaultAmmo = 2;
 		
 		DoomSpawn();
 		
@@ -240,7 +247,7 @@ class weapon_doom_rpg : weapon_doom
 		info.iSlot 		= 4;
 		info.iPosition 	= 10;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 7;
 		
 		return true;
 	}
@@ -329,7 +336,7 @@ class weapon_doom_fist : weapon_doom
 		info.iSlot 		= 0;
 		info.iPosition 	= 10;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 1;
 		
 		return true;
 	}
@@ -400,7 +407,7 @@ class weapon_doom_chainsaw : weapon_doom
 		info.iSlot 		= 0;
 		info.iPosition 	= 11;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 2;
 		
 		return true;
 	}
@@ -464,6 +471,8 @@ class weapon_doom_chaingun : weapon_doom
 		constantAttack = true;
 		frameRate = 0.12;
 		cooldown = 0.22f;
+		
+		self.m_iDefaultAmmo = 50;
 		
 		DoomSpawn();
 		
@@ -541,7 +550,7 @@ class weapon_doom_plasmagun : weapon_doom
 		info.iSlot 		= 5;
 		info.iPosition 	= 11;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 8;
 		
 		return true;
 	}
@@ -631,7 +640,7 @@ class weapon_doom_bfg : weapon_doom
 		info.iSlot 		= 5;
 		info.iPosition 	= 12;
 		info.iFlags 	= 6;
-		info.iWeight 	= 5;
+		info.iWeight 	= 9;
 		
 		return true;
 	}
@@ -686,6 +695,7 @@ class weapon_doom_bfg : weapon_doom
 		WeaponThink();
 	}
 }
+
 
 class ammo_doom_bullets : ammo_doom
 {
