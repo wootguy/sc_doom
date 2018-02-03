@@ -403,7 +403,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			Color flash_color = Color(255, 160, 64);
 			te_dlight(pev.origin, flash_size, flash_color, flash_life, flash_decay);
 			
-			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
 		}
 	}
 
@@ -446,6 +446,7 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
 		pev.frame = itemFrame;
 		pev.scale = g_monster_scale;
+		pev.gravity = 4;
 		
 		int light_level = self.Illumination();
 		//println("ILLUM " + light_level);
@@ -479,6 +480,7 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 		{
 			g_PlayerFuncs.ScreenFade(plr, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
 			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, "doom/DSITEMUP.wav", 1.0f, 0.5f, 0, 100);
+			g_EntityFuncs.Remove(self);
 			return true;
 		}
 		return false;

@@ -139,6 +139,9 @@ class func_doom_door : ScriptBaseEntity
 		if (string(pev.targetname).Length() > 0)
 			return;
 			
+		if (1==1)
+			return; // never touch open
+			
 		DoorActivate();
 	}
 	

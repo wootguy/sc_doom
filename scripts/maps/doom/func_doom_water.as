@@ -1,13 +1,24 @@
 
+void weird_think_bug_workaround(EHandle h_ent)
+{
+	if (!h_ent.IsValid())
+		return;
+	func_doom_water@ ent = cast<func_doom_water@>(CastToScriptClass(h_ent.GetEntity()));
+	
+	ent.WaterThink();
+}
+
 class func_doom_water : ScriptBaseEntity
 {
 	float damage = 0;
+	int maxFrame = 2;
 	dictionary lastTouches;
 	dictionary lastPains;
 	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{		
 		if (szKey == "damage") damage = atof(szValue);
+		if (szKey == "maxFrame") maxFrame = atoi(szValue);
 		else return BaseClass.KeyValue( szKey, szValue );
 		
 		return true;
@@ -17,19 +28,23 @@ class func_doom_water : ScriptBaseEntity
 	{		
 		pev.movetype = MOVETYPE_PUSH;
 		pev.solid = SOLID_BSP;
+		pev.effects = EF_FRAMEANIMTEXTURES;
 		
 		g_EntityFuncs.SetOrigin(self, pev.origin);
 		g_EntityFuncs.SetModel(self, pev.model);
 		
 		SetTouch( TouchFunction(Touch) );
-		SetThink( ThinkFunction(Think) );
-		pev.nextthink = g_Engine.time;
+		SetThink( ThinkFunction(WaterThink) );
+		WaterThink();
 	}
 	
-	void Think()
+	void WaterThink()
 	{
 		pev.frame += 1;
-		pev.nextthink = g_Engine.time + 0.5f;
+		if (pev.frame > maxFrame)
+			pev.frame = 0;
+		g_Scheduler.SetTimeout("weird_think_bug_workaround", 0.25f, EHandle(self));
+		
 	}
 	
 	void Touch(CBaseEntity@ other)
