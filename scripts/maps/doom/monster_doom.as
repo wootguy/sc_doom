@@ -65,6 +65,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool constantAttack = false; // attack until target is obscured
 	int constantAttackMax = 0; // maximum attacks played in sequence
 	float deathBoom = 0;
+	string dropItem; // item spawned on death
 	
 	uint frameCounter = 0;
 	uint oldFrameCounter = 0;
@@ -149,6 +150,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		self.m_bloodColor = BLOOD_COLOR_RED;
 		self.pev.scale = g_monster_scale;
 		pev.takedamage = DAMAGE_YES;
+		pev.flags |= FL_MONSTERCLIP;
 		
 		self.MonsterInit();
 		
@@ -246,6 +248,17 @@ class monster_doom : ScriptBaseMonsterEntity
 			}
 			g_EntityFuncs.SetSize(self.pev, Vector(-1, -1, -1), Vector(1, 1, 1));
 			
+			if (dropItem.Length() > 0)
+			{
+				Vector delta = (pevAttacker.origin - pev.origin).Normalize()*32;
+				dictionary keys;
+				keys["origin"] = (pev.origin + Vector(0,0,8)).ToString();
+				keys["velocity"] = Vector(delta.x,delta.y,512).ToString();
+				g_EntityFuncs.CreateEntity(dropItem, keys, true);
+			}
+			
+			g_kills += 1;
+			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
 			bool canGib = animInfo[ANIM_DEAD].frameIndices[0] != animInfo[ANIM_GIB].frameIndices[0];
 			if (gib and canGib)
@@ -274,11 +287,12 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (!ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0 or ent.entindex() == self.entindex())
 			return;
 		// only switch targets after chasing current one for a while
-		if (!h_enemy.IsValid() or lastEnemy + 1.0f < g_Engine.time)
+		if (!h_enemy.IsValid() or lastEnemy + 10.0f < g_Engine.time)
 		{
-			oldEnemy = h_enemy;
+			if (h_enemy.IsValid() and h_enemy.GetEntity().IsPlayer())
+				oldEnemy = h_enemy;
 			if (oldEnemy)
-				println("I will remember to attack " + oldEnemy.GetEntity().pev.classname);
+				println("I will remember to attack " + oldEnemy.GetEntity().pev.netname);
 			h_enemy = EHandle(ent);
 			lastEnemy = g_Engine.time;
 			nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
@@ -643,40 +657,52 @@ class monster_doom : ScriptBaseMonsterEntity
 			}
 		}
 		
-		// render sprite for each player
+				// render sprite for each player
 		if (self.IsAlive())
 		{
+			dictionary pvsClients;
+			edict_t@ edt = g_EngineFuncs.FindClientInPVS(self.edict());
+			while (edt !is null)
+			{
+				CBasePlayer@ plr = cast<CBasePlayer@>(g_EntityFuncs.Instance( edt ));
+				if (plr !is null)
+				{
+					pvsClients[plr.entindex()] = true;
+					@edt = @plr.pev.chain;
+				}
+				else
+					break;
+			}
+			
 			CBaseEntity@ ent = null;
 			do {
 				@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
 				if (ent !is null)
 				{
+					CBasePlayer@ plr = cast<CBasePlayer@>(ent);
 					Vector pos = pev.origin + Vector(0,0,0);
-					
-					Vector delta = pos - ent.pev.origin;
-					delta = delta.Normalize();
-					int angleIdx = getSpriteAngle(pos, forward, right, ent.pev.origin);
 						
-					if (dormant and ent.IsAlive() and DotProduct(forward, delta) < -0.3f and ent.FVisible(self, true))
+					Vector delta = pos - plr.pev.origin;
+					delta = delta.Normalize();
+					int angleIdx = getSpriteAngle(pos, forward, right, plr.pev.origin);
+						
+					if (dormant and plr.IsAlive() and DotProduct(forward, delta) < -0.3f and plr.FVisible(self, true))
 					{
 						bool visible = true;
-						if (ent.IsPlayer())
-						{
-							CBasePlayer@ plr = cast<CBasePlayer@>(ent);
-							PlayerState@ state = getPlayerState(plr);
-							visible = ent.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
-						}
+						PlayerState@ state = getPlayerState(plr);
+						visible = plr.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
 
 						if (visible)
-							SetEnemy(ent);
+							SetEnemy(plr);
 					}
 					
-					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(ent));
+					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(plr));
+					bool clientInPVS = pvsClients.exists(plr.entindex());
 					
 					for (int i = 0; i < 8; i++)
 					{
 						CBaseEntity@ client_sprite = sprites[i];
-						bool shouldVisible = i == angleIdx;
+						bool shouldVisible = i == angleIdx and clientInPVS;
 						
 						if (shouldVisible != state.isVisibleEnt(client_sprite.pev.targetname))
 						{
@@ -684,13 +710,13 @@ class monster_doom : ScriptBaseMonsterEntity
 							if (shouldVisible)
 							{
 								CBaseEntity@ renderent = renderShowEnts[i];
-								renderent.Use(ent, ent, USE_TOGGLE);
+								renderent.Use(plr, plr, USE_TOGGLE);
 								state.addVisibleEnt(client_sprite.pev.targetname, EHandle(client_sprite));
 							}
 							else
 							{
 								CBaseEntity@ renderent = renderHideEnts[i];
-								renderent.Use(ent, ent, USE_TOGGLE);
+								renderent.Use(plr, plr, USE_TOGGLE);
 								state.hideVisibleEnt(client_sprite.pev.targetname);
 							}
 						}
@@ -705,7 +731,8 @@ class monster_doom : ScriptBaseMonsterEntity
 				if (canAnyoneSeeThis)
 				{
 					client_sprite.pev.effects &= ~EF_NODRAW;
-					client_sprite.pev.origin = pev.origin;
+					//client_sprite.pev.origin = pev.origin;
+					g_EntityFuncs.SetOrigin(client_sprite, pev.origin);
 					client_sprite.pev.frame = frame*8 + i;
 					client_sprite.pev.rendercolor = lightColor;
 				}

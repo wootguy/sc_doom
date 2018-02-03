@@ -5,6 +5,25 @@
 #include "func_doom_door"
 #include "func_doom_water"
 
+// TODO:
+// monsters should open doors, react to sounds without sight
+// items don't get correct brightness
+// player models should be doom guy sprite (colored?)
+// rocket trails
+// end level screen
+// disable footsteps (IMPOSSIBLE?)
+// hitboxes aren't quite right
+// rewrite takedamage+traceattack :<
+// health/armor/ammo hud?
+
+float g_level_time = 0;
+int g_secrets = 0;
+int g_kills = 0;
+int g_item_gets = 0;
+int g_total_secrets = 0;
+int g_total_monsters = 0;
+int g_total_items = 0;
+
 class VisEnt
 {
 	bool visible;
@@ -203,8 +222,18 @@ void MapInit()
 	PrecacheSound("doom/DSBFG.wav");
 	PrecacheSound("doom/DSITMBK.wav"); // item respawn
 	PrecacheSound("doom/DSITEMUP.wav"); // item collect
+	PrecacheSound("doom/dssecret.flac"); // secret revealed
 	
 	g_Scheduler.SetInterval("heightCheck", 0.0);
+	
+	dictionary keys;
+	keys["origin"] = Vector(0,0,0).ToString();
+	keys["targetname"] = "secret_revealed";
+	keys["m_iszScriptFile"] = "doom/doom.as";
+	keys["m_iszScriptFunctionName"] = "secret_revealed";
+	keys["m_iMode"] = "1";
+	keys["delay"] = "0";
+	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
 }
 
 void MapActivate()
@@ -231,7 +260,7 @@ void MapActivate()
 		{
 			if (buttons[i].Intersects(doors[k]))
 			{
-				println("GOT INTERSECT " + buttons[i].pev.targetname + " " + doors[k].pev.targetname);
+				//println("GOT INTERSECT " + buttons[i].pev.targetname + " " + doors[k].pev.targetname);
 				func_doom_door@ button = cast<func_doom_door@>(CastToScriptClass(buttons[i]));
 				func_doom_door@ door = cast<func_doom_door@>(CastToScriptClass(doors[k]));
 				button.dir = door.dir;
@@ -293,6 +322,204 @@ void player_killed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 	state.lastSuit = state.lastGoggles = state.lastGod = state.lastInvis = 0;
 }
 
+void secret_revealed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	g_SoundSystem.PlaySound(pActivator.edict(), CHAN_STATIC, "doom/dssecret.flac", 1.0f, ATTN_NONE, 0, 100);
+	g_PlayerFuncs.PrintKeyBindingStringAll("A SECRET IS REVEALED!\n");
+	g_secrets += 1;
+}
+
+void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	println("LEVEL STARTED");
+	g_level_time = g_Engine.time;
+	g_secrets = 0;
+	
+	Vector level_min = g_EntityFuncs.FindEntityByTargetname(null, "map01_mins").pev.origin;
+	Vector level_max = g_EntityFuncs.FindEntityByTargetname(null, "map01_maxs").pev.origin;
+	
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "*");
+		if (ent !is null)
+		{
+			if (ent.pev.absmin.x > level_min.x and ent.pev.absmin.y > level_min.y and ent.pev.absmin.z > level_min.z and
+				ent.pev.absmax.x < level_max.x and ent.pev.absmax.y < level_max.y and ent.pev.absmax.z < level_max.z)
+			{
+				if (ent.pev.classname == "trigger_once" and ent.pev.target == "secret_revealed")
+					g_total_secrets += 1;
+				
+				if (string(ent.pev.classname).Find("monster_") == 0)
+					g_total_monsters += 1;
+					
+				if (string(ent.pev.classname).Find("item_doom_") == 0)
+				{
+					item_doom@ item = cast<item_doom@>(CastToScriptClass(ent));
+					if (item.intermission)
+						g_total_items += 1;
+				}
+			}
+		}
+	} while(ent !is null);
+}
+
+void next_level()
+{
+	array<string> sprItems = {"kills", "items", "secret", "time", "par"};
+	for (uint i = 0; i < sprItems.length(); i++)
+	{
+		CBaseEntity@ label = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + sprItems[i] + "_spr");
+		if (label !is null)
+			label.pev.effects |= EF_NODRAW;
+		for (uint k = 0; k < 5; k++)
+		{
+			CBaseEntity@ spr = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + sprItems[i] + "_spr" + k);
+			if (spr !is null)
+				spr.pev.effects |= EF_NODRAW;
+		}
+	}
+	
+	CBaseEntity@ trans = g_EntityFuncs.FindEntityByTargetname(null, "inter_fin_spr");
+	CBaseEntity@ lvl = g_EntityFuncs.FindEntityByTargetname(null, "inter_lvl_spr");
+	
+	Vector temp = trans.pev.origin;
+	trans.pev.origin = lvl.pev.origin;
+	lvl.pev.origin = temp;
+	
+	trans.pev.frame = 52;
+	lvl.pev.frame += 1;
+	
+	g_EntityFuncs.FireTargets("next_level", null, null, USE_TOGGLE);
+}
+
+void tally_time(string item, int time, int targetTime, bool playSound)
+{
+	if (time > targetTime)
+		time = targetTime;
+		
+	CBaseEntity@ minTens = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr0");
+	CBaseEntity@ minOnes = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr1");
+	CBaseEntity@ colon = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr2");
+	CBaseEntity@ secTens = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr3");
+	CBaseEntity@ secOnes = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr4");
+	
+	int numFrameStart = 57;
+	
+	colon.pev.effects &= ~EF_NODRAW;
+	secOnes.pev.effects &= ~EF_NODRAW;
+	secTens.pev.effects &= ~EF_NODRAW;
+	minOnes.pev.effects &= ~EF_NODRAW;
+	
+	if (time >= 60*10)
+		minTens.pev.effects &= ~EF_NODRAW;
+	
+	// don't loop around
+	int showTime = time;
+	if (showTime > 60*99 + 59)
+		showTime = 60*99 + 59;
+	
+	colon.pev.frame = 51;
+	secOnes.pev.frame = numFrameStart + ((showTime % 60) % 10);
+	secTens.pev.frame = numFrameStart + (((showTime % 60) / 10) % 10);
+	minOnes.pev.frame = numFrameStart + ((showTime / 60) % 10);
+	minTens.pev.frame = numFrameStart + (((showTime / 60) / 10) % 10);
+	
+	if (time < targetTime)
+	{
+		if (playSound)
+			g_SoundSystem.PlaySound(colon.edict(), CHAN_STATIC, "doom/DSPISTOL.wav", 1.0f, 1.0f, 0, 100);
+		int step = Math.max(targetTime / 15, 3);
+		g_Scheduler.SetTimeout("tally_time", 0.05, item, time+step, targetTime, !playSound);
+	}
+	else
+	{
+		g_SoundSystem.PlaySound(secOnes.edict(), CHAN_STATIC, "doom/DSBAREXP.wav", 1.0f, 1.0f, 0, 100);
+		if (item == "time")
+			g_Scheduler.SetTimeout("tally_time", 0.8, "par", 0, 30, !playSound);
+		if (item == "par")
+			g_Scheduler.SetTimeout("next_level", 4.0);
+	}
+}
+
+void tally_score(string item, int percentage, int targetPercent, bool playSound)
+{
+	if (percentage > targetPercent)
+		percentage = targetPercent;
+		
+	CBaseEntity@ hundreds = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr0");
+	CBaseEntity@ tens = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr1");
+	CBaseEntity@ ones = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr2");
+	CBaseEntity@ percent = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + item + "_spr3");
+	
+	int numFrameStart = 40;
+	
+	percent.pev.effects &= ~EF_NODRAW;
+	
+	ones.pev.effects &= ~EF_NODRAW;
+	if (percentage >= 10)
+		tens.pev.effects &= ~EF_NODRAW;
+	if (percentage >= 100)
+		hundreds.pev.effects &= ~EF_NODRAW;
+		
+	percent.pev.frame = 50;
+	hundreds.pev.frame = numFrameStart + ((percentage/100) % 10);
+	tens.pev.frame = numFrameStart + ((percentage/10) % 10);
+	ones.pev.frame = numFrameStart + (percentage % 10);
+	
+	if (percentage < targetPercent)
+	{
+		if (playSound)
+			g_SoundSystem.PlaySound(ones.edict(), CHAN_STATIC, "doom/DSPISTOL.wav", 1.0f, 1.0f, 0, 100);
+		g_Scheduler.SetTimeout("tally_score", 0.05, item, percentage+13, targetPercent, !playSound);
+	}
+	else
+	{
+		g_SoundSystem.PlaySound(tens.edict(), CHAN_STATIC, "doom/DSBAREXP.wav", 1.0f, 1.0f, 0, 100);
+		
+		if (item == "kills")
+		{
+			int itemPercentage = 100;
+			if (g_total_items > 0)
+				itemPercentage = int((g_item_gets / float(g_total_items))*100);
+			g_Scheduler.SetTimeout("tally_score", 0.8f, "items", 0, itemPercentage, true);
+		}
+		if (item == "items")
+		{
+			int secretPercent = 100;
+			if (g_total_secrets > 0)
+				secretPercent = int((g_secrets / float(g_total_secrets))*100);
+			g_Scheduler.SetTimeout("tally_score", 0.8f, "secret", 0, secretPercent, true);
+		}
+		if (item == "secret")
+			g_Scheduler.SetTimeout("tally_time", 0.8, "time", 0, int(g_level_time), !playSound);
+	}
+}
+
+void intermission(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	CBaseEntity@ trans = g_EntityFuncs.FindEntityByTargetname(null, "inter_fin_spr");
+	CBaseEntity@ lvl = g_EntityFuncs.FindEntityByTargetname(null, "inter_lvl_spr");
+	trans.pev.effects &= ~EF_NODRAW;
+	lvl.pev.effects &= ~EF_NODRAW;
+	
+	array<string> sprItems = {"kills", "items", "secret", "time", "par"};
+	for (uint i = 0; i < sprItems.length(); i++)
+	{
+		CBaseEntity@ label = g_EntityFuncs.FindEntityByTargetname(null, "inter_" + sprItems[i] + "_spr");
+		if (label !is null)
+			label.pev.effects &= ~EF_NODRAW;
+	}
+	
+	g_level_time = g_Engine.time - g_level_time;
+	
+	int killPercent = 100;
+	if (g_total_monsters > 0)
+		killPercent = int((g_kills / float(g_total_monsters))*100);
+	
+	g_Scheduler.SetTimeout("tally_score", 1.5f, "kills", 0, killPercent, true);
+	//tally_time("time", 0, 60*8 + 26, true);
+}
+
 HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 {	
 	if (plr.m_afButtonPressed & IN_USE != 0)
@@ -345,8 +572,7 @@ void doTheStatic(CBaseEntity@ ent)
 
 void doEffect(CBasePlayer@ plr)
 {
-	//plr.RemoveAllItems(false);
-	//animateDoomWeapon(plr);
+
 }
 
 bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
@@ -356,7 +582,7 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 		if (args[0] == ".test")
 		{
 			//g_Scheduler.SetInterval("doEffect", 0.025, -1, @plr);
-			//doEffect();
+			doEffect(plr);
 			return true;
 		}
 	}

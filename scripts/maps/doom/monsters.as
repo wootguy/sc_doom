@@ -104,6 +104,7 @@ class monster_zombieman : monster_doom
 		this.hasMelee = false;
 		this.hasRanged = true;
 		this.painChance = 0.78f;
+		this.dropItem = "ammo_doom_bullets";
 		
 		self.m_FormattedName = "Zombie Man";
 		self.pev.health = 20;

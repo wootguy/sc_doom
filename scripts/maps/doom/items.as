@@ -129,6 +129,7 @@ class item_doom : ScriptBaseItemEntity
 	bool giveInvis = false;
 	bool giveSuit = false;
 	bool giveGoggles = false;
+	bool intermission = false;
 	
 	int animDir = 1;
 	
@@ -249,6 +250,8 @@ class item_doom : ScriptBaseItemEntity
 		
 		if (pickedUp)
 		{
+			if (intermission)
+				g_item_gets += 1;
 			g_PlayerFuncs.ScreenFade(pOther, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
 			g_SoundSystem.PlaySound(pOther.edict(), CHAN_WEAPON, "doom/DSITEMUP.wav", 1.0f, 0.5f, 0, 100);
 			g_EntityFuncs.Remove(self);
@@ -298,6 +301,7 @@ class item_doom_potion : item_doom
 		giveHealthMax = 200;
 		itemFrame = 17;
 		itemFrameMax = 20;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -316,6 +320,7 @@ class item_doom_armor_bonus : item_doom
 		giveArmorMax = 200;
 		itemFrame = 21;
 		itemFrameMax = 23;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -372,6 +377,7 @@ class item_doom_megasphere : item_doom
 		giveArmorMax = 200;
 		itemFrame = 82;
 		itemFrameMax = 85;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -407,6 +413,7 @@ class item_doom_god : item_doom
 		giveGod = true;
 		itemFrame = 91;
 		itemFrameMax = 94;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -425,6 +432,7 @@ class item_doom_berserk : item_doom
 		giveHealthMax = 100;
 		giveBerserk = true;
 		itemFrame = 110;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -442,6 +450,7 @@ class item_doom_invis : item_doom
 		giveInvis = true;
 		itemFrame = 87;
 		itemFrameMax = 90;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -476,6 +485,7 @@ class item_doom_goggles : item_doom
 		giveGoggles = true;
 		itemFrame = 111;
 		itemFrameMax = 112;
+		intermission = true;
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
