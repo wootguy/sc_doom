@@ -21,6 +21,8 @@ class func_doom_door : ScriptBaseEntity
 	float m_flWait;
 	bool m_bIsReopening;
 	bool isButton;
+	bool always_use;
+	int lock = 0; // keys required to open (bitfield)
 	int sounds = 0;
 	string sync;
 	
@@ -39,6 +41,8 @@ class func_doom_door : ScriptBaseEntity
 		else if (szKey == "speed") pev.speed = atof(szValue);
 		else if (szKey == "sounds") sounds = atoi(szValue);
 		else if (szKey == "sync") sync = szValue;
+		else if (szKey == "always_use") always_use = atoi(szValue) != 0;
+		else if (szKey == "lock") lock = atoi(szValue);
 		else return BaseClass.KeyValue( szKey, szValue );
 		
 		return true;
@@ -153,6 +157,19 @@ class func_doom_door : ScriptBaseEntity
 	
 	void Use( CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value )
 	{
+		if (g_keys & lock != lock)
+		{
+			if (pActivator.IsPlayer())
+			{
+				string keyname = "blue";
+				if (lock & 10 != 0)
+					keyname = "yellow";
+				if (lock & 36 != 0)
+					keyname = "red";
+				g_PlayerFuncs.PrintKeyBindingString(cast<CBasePlayer@>(pActivator), "You need a " + keyname + " key to activate this\n");
+			}
+			return;
+		}
 		// if not ready to be used, ignore "use" command.
 		if (isButton)
 		{
@@ -167,8 +184,24 @@ class func_doom_door : ScriptBaseEntity
 		}
 		else if (m_toggle_state == TS_AT_BOTTOM or (pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) and m_toggle_state == TS_AT_TOP)
 		{
-			if (string(pev.targetname).Length() == 0 or !pCaller.IsPlayer())
-				DoorActivate();
+			if ((string(pev.targetname).Length() == 0 or always_use) or !pCaller.IsPlayer())
+			{
+				if (string(pev.targetname).Length() != 0 and always_use)
+				{
+					// door synced with others
+					CBaseEntity@ ent = null;
+					do {
+						@ent = g_EntityFuncs.FindEntityByTargetname(ent, pev.targetname);
+						if (ent !is null)
+						{
+							func_doom_door@ door = cast<func_doom_door@>(CastToScriptClass(ent));
+							door.DoorActivate();
+						}
+					} while (ent !is null);
+				}
+				else
+					DoorActivate();
+			}
 		}
 	}
 	

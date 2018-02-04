@@ -69,7 +69,7 @@ class func_doom_water : ScriptBaseEntity
 		else
 		{
 			diff = g_Engine.time - lastPain;
-			if (state.suitTimeLeft() <= 0 and diff > 0.8f)
+			if (damage != 0 and state.suitTimeLeft() <= 0 and diff > 0.8f)
 			{
 				other.TakeDamage( pev, pev, damage, DMG_ACID);
 				lastPain = g_Engine.time;

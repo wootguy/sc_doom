@@ -112,6 +112,9 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	void RenderHUD()
 	{
 		CBasePlayer@ plr = getPlayer();
+		PlayerState@ state = getPlayerState(plr);
+		if (state.uiScale != scaleChoice)
+			ChooseScale(state.uiScale);
 		
 		float delta = g_Engine.time - lastHud;
 		float timeScale = delta / 0.025;
@@ -254,6 +257,9 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		lastHud = g_Engine.time;
 		
 		CBasePlayer@ plr = getPlayer();
+		PlayerState@ state = getPlayerState(plr);
+		ChooseScale(state.uiScale);
+		
 		if (deploySound.Length() > 0)
 			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, deploySound, 1.0f, 0.5f, 0, 100);
 		
@@ -436,6 +442,7 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 	int giveAmmo;
 	string ammoType;
 	int maxAmmo;
+	string giveWeapon; // give this weapon if player doesn't have it already
 	
 	void AmmoSpawn()
 	{
@@ -467,6 +474,16 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 
 		CBasePlayer@ plr = cast<CBasePlayer@>(pOther);
 		
+		bool playPickupSound = true;
+		if (giveWeapon.Length() > 0)
+		{
+			if (@plr.HasNamedPlayerItem(giveWeapon) == null)
+			{
+				plr.GiveNamedItem(giveWeapon, 0, 0);
+				playPickupSound = false;
+			}
+		}
+		
 		// I don't like that you have to code a max ammo in each weapon. So I'm doing the math here.
 		int should_give = giveAmmo;
 		int total_ammo = plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex(ammoType));
@@ -479,7 +496,11 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 		if (ret != -1)
 		{
 			g_PlayerFuncs.ScreenFade(plr, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
-			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, "doom/DSITEMUP.wav", 1.0f, 0.5f, 0, 100);
+			if (playPickupSound)
+			{
+				string pickupSound = giveWeapon.Length() > 0 ? "doom/DSWPNUP.wav" : "doom/DSITEMUP.wav";
+				g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, pickupSound, 1.0f, 0.5f, 0, 100);
+			}
 			g_EntityFuncs.Remove(self);
 			return true;
 		}

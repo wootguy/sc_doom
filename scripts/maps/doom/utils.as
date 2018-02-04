@@ -197,6 +197,21 @@ void te_multigunshot(Vector pos, Vector dir, float spreadX=512.0f,
 	m.WriteByte(g_EngineFuncs.DecalIndex(decal));
 	m.End();
 }
+void te_bloodsprite(Vector pos, string sprite1="sprites/bloodspray.spr",
+	string sprite2="sprites/blood.spr", uint8 color=70, uint8 scale=3,
+	NetworkMessageDest msgType=MSG_BROADCAST, edict_t@ dest=null)
+{
+	NetworkMessage m(msgType, NetworkMessages::SVC_TEMPENTITY, dest);
+	m.WriteByte(TE_BLOODSPRITE);
+	m.WriteCoord(pos.x);
+	m.WriteCoord(pos.y);
+	m.WriteCoord(pos.z);
+	m.WriteShort(g_EngineFuncs.ModelIndex(sprite1));
+	m.WriteShort(g_EngineFuncs.ModelIndex(sprite2));
+	m.WriteByte(color);
+	m.WriteByte(scale);
+	m.End();
+}
 
 TraceResult TraceLook(CBasePlayer@ plr, float dist=128, bool bigHull=false)
 {
@@ -375,7 +390,7 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 				// damage done before hitgroup multipliers
 				
 				g_WeaponFuncs.ClearMultiDamage(); // fixes TraceAttack() crash for some reason
-				pHit.TraceAttack(attacker.pev, damage, attackDir, tr, DMG_BULLET);
+				TraceAttack(pHit, attacker.pev, damage, attackDir, tr, DMG_BULLET);
 				
 				Vector oldVel = pHit.pev.velocity;
 				
@@ -394,7 +409,7 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 
 				knockBack(pHit, g_Engine.v_forward*(100+damage)*g_world_scale);
 				
-				if (pHit.IsBSPModel()) 
+				if (pHit.IsBSPModel() or pHit.pev.classname == "item_barrel") 
 				{
 					//te_gunshotdecal(tr.vecEndPos, pHit, getDecal(DECAL_SMALLSHOT));
 					doomBulletImpact(tr.vecEndPos, tr.vecPlaneNormal, pHit);
@@ -407,9 +422,242 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 	//te_tracer(vecSrc, tr.vecEndPos);
 }
 
+Vector g_vecAttackDir;
+
+float DamageForce( CBaseEntity@ ent, float damage )
+{ 
+	float force = damage * ((32 * 32 * 72.0) / (ent.pev.size.x * ent.pev.size.y * ent.pev.size.z)) * 5;
+	return force > 1000.0f ? 1000.0f : force;
+}
+
+// armor should only absord a reasonable of damage, not all of it.
+int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType)
+{
+	if (!ent.IsPlayer())
+		return ent.TakeDamage( pevAttacker, pevAttacker, flDamage, bitsDamageType);
+	
+	float	flTake;
+	Vector	vecDir;
+
+	if (ent.pev.takedamage == DAMAGE_NO or ent.pev.flags & FL_GODMODE != 0)
+		return 0;
+
+	if ( ent.pev.deadflag == DEAD_NO )
+	{
+		// no pain sound during death animation.
+		g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSPLPAIN.wav", 1.0f, 1.0f, 0, 100);
+		g_PlayerFuncs.ScreenFade(ent, Vector(255, 0, 0), 0.2f, 0, 32, FFADE_IN);
+	}
+
+	//!!!LATER - make armor consideration here!
+	flTake = flDamage;
+
+	// grab the vector of the incoming attack. ( pretend that the inflictor is a little lower than it really is, so the body will tend to fly upward a bit).
+	vecDir = Vector( 0, 0, 0 );
+	if (pevInflictor !is null)
+	{
+		CBaseEntity@ pInflictor = g_EntityFuncs.Instance( pevInflictor );
+		if (pInflictor !is null)
+		{
+			vecDir = ( pInflictor.Center() - Vector ( 0, 0, 10 ) - ent.Center() ).Normalize();
+			vecDir = g_vecAttackDir = vecDir.Normalize();
+		}
+	}
+
+	// if this is a player, move him around!
+	if ( pevInflictor !is null && (ent.pev.movetype == MOVETYPE_WALK) && (pevAttacker is null || pevAttacker.solid != SOLID_TRIGGER) )
+		ent.pev.velocity = ent.pev.velocity + vecDir * -DamageForce(ent, flDamage );
+
+	// do the damage	
+	float armorAbsorb = Math.min(ent.pev.armorvalue, int(flTake*0.33f));
+	flTake -= armorAbsorb;
+	ent.pev.armorvalue -= armorAbsorb;
+	ent.pev.health -= flTake;
+	
+	// do minimum damage needed to show the red directional hud thingies
+	g_WeaponFuncs.ClearMultiDamage();
+	g_WeaponFuncs.AddMultiDamage(pevInflictor, ent, 1.0f, bitsDamageType);
+	g_WeaponFuncs.ApplyMultiDamage(pevInflictor, pevAttacker);
+
+	if ( ent.pev.health <= 0 )
+	{
+		if ( bitsDamageType & DMG_ALWAYSGIB != 0 )
+		{
+			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSSLOP.wav", 1.0f, 1.0f, 0, 100);
+			ent.Killed( pevAttacker, GIB_ALWAYS );
+		}
+		else if ( bitsDamageType & DMG_NEVERGIB != 0 )
+		{
+			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSPLDETH.wav", 1.0f, 1.0f, 0, 100);
+			ent.Killed( pevAttacker, GIB_NEVER );
+		}
+		else
+		{
+			// TODO: What's the normal gib damage amount?
+			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSPLDETH.wav", 1.0f, 1.0f, 0, 100);
+			ent.Killed( pevAttacker, GIB_NORMAL );
+		}
+		return 0;
+	}
+
+	return 1;
+}
+
+void TraceAttack(CBaseEntity@ victim, entvars_t@ pevAttacker, float flDamage, Vector vecDir, TraceResult tr, int bitsDamageType)
+{
+	Vector vecOrigin = tr.vecEndPos - vecDir * 4;
+	
+	g_vecAttackDir = vecDir;
+
+	if ( victim.pev.takedamage != DAMAGE_NO )
+	{
+		if (victim.IsPlayer())
+		{
+			doomTakeDamage(victim, pevAttacker, pevAttacker, flDamage, bitsDamageType);
+		}
+		else
+			g_WeaponFuncs.AddMultiDamage( pevAttacker, victim, flDamage, bitsDamageType );
+
+		int blood = victim.BloodColor();
+		
+		if ( blood != DONT_BLEED )
+		{
+			te_bloodsprite(vecOrigin, "sprites/doom/BLUD.spr", "sprites/blood.spr", 70, 5);
+			//te_explosion(vecOrigin, "sprites/doom/BLUD.spr", 10, 10, 15);
+		}
+	}
+}
+
+// a basic set of directions for a sphere (up/down/left/right/front/back with 1 in-between step)
+// This isn't good enough for large explosions, but hopefully FindEntityInSphere will work at that point.
+array<Vector> sphereDirs = {Vector(1,0,0).Normalize(), Vector(0,1,0).Normalize(), Vector(0,0,1).Normalize(),
+							  Vector(-1,0,0).Normalize(), Vector(0,-1,0).Normalize(), Vector(0,0,-1).Normalize(),
+							  Vector(1,1,0).Normalize(), Vector(-1,1,0).Normalize(), Vector(1,-1,0).Normalize(), Vector(-1,-1,0).Normalize(),
+							  Vector(1,0,1).Normalize(), Vector(-1,0,1).Normalize(), Vector(1,0,-1).Normalize(), Vector(-1,0,-1).Normalize(),
+							  Vector(0,1,1).Normalize(), Vector(0,-1,1).Normalize(), Vector(0,1,-1).Normalize(), Vector(0,-1,-1).Normalize()};
+
+void RadiusDamage( Vector vecSrc, entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, float flRadius, int iClassIgnore, int bitsDamageType )
+{
+	CBaseEntity@ pEntity = null;
+	TraceResult	tr;
+	float flAdjustedDamage, falloff;
+	Vector vecSpot;
+
+	if ( flRadius > 0 )
+		falloff = flDamage / flRadius;
+	else
+		falloff = 1.0;
+
+	bool bInWater = (g_EngineFuncs.PointContents(vecSrc) == CONTENTS_WATER);
+
+	vecSrc.z += 1;// in case grenade is lying on the ground
+
+	if ( pevAttacker is null )
+		@pevAttacker = @pevInflictor;
+	
+	dictionary attacked;
+	// iterate on all entities in the vicinity.
+	while ((@pEntity = g_EntityFuncs.FindEntityInSphere( pEntity, vecSrc, flRadius, "*", "classname" )) != null)
+	{
+		attacked[pEntity.entindex()] = true;
+		if ( pEntity.pev.takedamage != DAMAGE_NO )
+		{
+			// UNDONE: this should check a damage mask, not an ignore
+			if ( iClassIgnore != CLASS_NONE && pEntity.Classify() == iClassIgnore )
+			{// houndeyes don't hurt other houndeyes with their attack
+				continue;
+			}
+
+			// blast's don't tavel into or out of water
+			if (bInWater && pEntity.pev.waterlevel == 0)
+				continue;
+			if (!bInWater && pEntity.pev.waterlevel == 3)
+				continue;
+
+			vecSpot = pEntity.BodyTarget( vecSrc );
+			
+			g_Utility.TraceLine( vecSrc, vecSpot, dont_ignore_monsters, g_EntityFuncs.Instance(pevInflictor).edict(), tr );
+
+			if ( tr.flFraction == 1.0 || g_EntityFuncs.Instance(tr.pHit).entindex() == g_EntityFuncs.Instance(pEntity.edict()).entindex() )
+			{// the explosion can 'see' this entity, so hurt them!
+				if (tr.fStartSolid != 0)
+				{
+					// if we're stuck inside them, fixup the position and distance
+					tr.vecEndPos = vecSrc;
+					tr.flFraction = 0.0;
+				}
+				
+				// decrease damage for an ent that's farther from the bomb.
+				flAdjustedDamage = ( vecSrc - tr.vecEndPos ).Length() * falloff;
+				flAdjustedDamage = flDamage - flAdjustedDamage;
+			
+				if ( flAdjustedDamage < 0 )
+				{
+					flAdjustedDamage = 0;
+				}
+			
+				if (tr.flFraction != 1.0)
+				{
+					g_WeaponFuncs.ClearMultiDamage( );
+					TraceAttack(pEntity, pevInflictor, flAdjustedDamage, (tr.vecEndPos - vecSrc).Normalize( ), tr, bitsDamageType );
+					g_WeaponFuncs.ApplyMultiDamage( pevInflictor, pevAttacker );
+				}
+				else
+				{
+					doomTakeDamage(pEntity, pevAttacker, pevAttacker, flAdjustedDamage, bitsDamageType);
+				}
+			}
+		}
+	}
+
+	// Now cast a few rays to make sure we hit the obvious targets. This is needed 
+	// for things like tall func_breakables. For example, if the origin is at the 
+	// bottom but the explosion origin is at the top. FindEntityInSphere won't  
+	// detect it even if the explosion is touching the surface of the brush.
+	for (uint i = 0; i < sphereDirs.size(); i++)
+	{
+		//te_beampoints(vecSrc, vecSrc + sphereDirs[i]*flRadius);
+		g_Utility.TraceLine( vecSrc, vecSrc + sphereDirs[i]*flRadius, dont_ignore_monsters, g_EntityFuncs.Instance(pevInflictor).edict(), tr );
+		CBaseEntity@ pHit = g_EntityFuncs.Instance(tr.pHit);
+		if (pHit is null or attacked.exists(pHit.entindex()) or pHit.entindex() == 0)
+			continue;
+			
+		attacked[pHit.entindex()] = true;
+		
+		if (tr.fStartSolid != 0)
+		{
+			// if we're stuck inside them, fixup the position and distance
+			tr.vecEndPos = vecSrc;
+			tr.flFraction = 0.0;
+		}
+		
+		// decrease damage for an ent that's farther from the bomb.
+		flAdjustedDamage = ( vecSrc - tr.vecEndPos ).Length() * falloff;
+		flAdjustedDamage = flDamage - flAdjustedDamage;
+	
+		if ( flAdjustedDamage < 0 )
+		{
+			flAdjustedDamage = 0;
+		}
+	
+		if (tr.flFraction != 1.0)
+		{
+			g_WeaponFuncs.ClearMultiDamage( );
+			TraceAttack(pHit, pevInflictor, flAdjustedDamage, (tr.vecEndPos - vecSrc).Normalize( ), tr, bitsDamageType );
+			g_WeaponFuncs.ApplyMultiDamage( pevInflictor, pevAttacker );
+		}
+		else
+		{
+			doomTakeDamage(pHit, pevAttacker, pevAttacker, flAdjustedDamage, bitsDamageType);
+		}
+	}
+	
+}
+
 void doomBulletImpact(Vector pos, Vector normal, CBaseEntity@ phit)
 {
-	te_decal(pos, phit, getDecal(DECAL_SMALLSHOT));
+	if (phit.pev.classname != "item_barrel")
+		te_decal(pos, phit, getDecal(DECAL_SMALLSHOT));
 	// no idea why sprite is so far off on different angles...
 	if (normal.z < -0.1f)
 		normal = normal * 3.0f;

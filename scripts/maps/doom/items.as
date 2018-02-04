@@ -115,6 +115,98 @@ void goggles(EHandle h_plr, bool flicker)
 	g_Scheduler.SetTimeout("goggles", 0.5f, h_plr, flicker);
 }
 
+class item_barrel : ScriptBaseEntity
+{
+	int animFrameStart = 6;
+	int animFrameMax = 7;
+	
+	bool dead = false;
+	
+	int animDir = 1;
+	
+	void Spawn()
+	{
+		// set the model we actually want
+		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
+		//g_EntityFuncs.SetModel(self, "models/w_357.mdl");
+		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		
+		//pev.frame = 5;
+		pev.scale = g_monster_scale;
+		
+		pev.movetype = MOVETYPE_PUSHSTEP;
+		pev.solid = SOLID_BBOX;
+		pev.health = 20;
+		pev.takedamage = DAMAGE_YES;
+		
+		int light_level = self.Illumination();
+		//println("ILLUM " + light_level);
+		pev.rendercolor = Vector(light_level, light_level, light_level);
+		
+		g_EntityFuncs.SetSize(self.pev, Vector(-16, -16, -4), Vector(16, 16, 40));
+		pev.nextthink = g_Engine.time;
+		SetThink(ThinkFunction(Think));
+	}
+	
+	int TakeDamage( entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType )
+	{
+		if (dead)
+			return 0;
+		Vector delta = (pevAttacker.origin - pev.origin).Normalize();
+		pev.basevelocity = delta*-128;
+		
+		pev.health -= flDamage;
+		
+		if (pev.health <= 0)
+		{
+			dead = true;
+			pev.frame = 9;
+			animFrameStart = 9;
+			animFrameMax = 11;
+			animDir = 1;
+			pev.nextthink = g_Engine.time + 0.17f;
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, "doom/DSBAREXP.wav", 1.0f, 1.0f, 0, 100);
+		}
+		
+		return 0;
+	}
+	
+	void Precache()
+	{
+		BaseClass.Precache();
+	}
+	
+	bool CustomPickup()
+	{
+		return false;
+	}
+	
+	void Think()
+	{
+		pev.frame += animDir;
+		if (dead and pev.frame > animFrameMax)
+		{
+			g_EntityFuncs.Remove(self);
+			return;
+		}
+		if (pev.frame > animFrameMax)
+		{
+			pev.frame = animFrameMax-1;
+			animDir = -1;
+		}
+		if (pev.frame < animFrameStart)
+		{
+			pev.frame = animFrameStart+1;
+			animDir = 1;
+		}
+		if (dead and pev.frame == 11)
+		{
+			RadiusDamage(pev.origin, self.pev, self.pev, 128, 128*g_monster_scale, 0, DMG_BLAST);
+			println("ZOMG BLOW");
+		}
+		pev.nextthink = g_Engine.time + 0.17f;
+	}
+}
 
 class item_doom : ScriptBaseItemEntity
 {	
@@ -130,6 +222,7 @@ class item_doom : ScriptBaseItemEntity
 	bool giveSuit = false;
 	bool giveGoggles = false;
 	bool intermission = false;
+	string pickupSnd = "doom/DSITEMUP.wav";
 	
 	int animDir = 1;
 	
@@ -161,6 +254,11 @@ class item_doom : ScriptBaseItemEntity
 		BaseClass.Precache();
 	}
 	
+	bool CustomPickup()
+	{
+		return false;
+	}
+	
 	void ItemThink()
 	{
 		pev.frame += animDir;
@@ -185,7 +283,7 @@ class item_doom : ScriptBaseItemEntity
 		CBasePlayer@ plr = cast<CBasePlayer@>(pOther);
 		PlayerState@ state = getPlayerState(plr);
 		
-		bool pickedUp = false;
+		bool pickedUp = CustomPickup();
 		if (giveHealth > 0)
 		{
 			if (pOther.pev.health < giveHealthMax)
@@ -253,7 +351,7 @@ class item_doom : ScriptBaseItemEntity
 			if (intermission)
 				g_item_gets += 1;
 			g_PlayerFuncs.ScreenFade(pOther, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
-			g_SoundSystem.PlaySound(pOther.edict(), CHAN_WEAPON, "doom/DSITEMUP.wav", 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(pOther.edict(), CHAN_WEAPON, pickupSnd, 1.0f, 0.5f, 0, 100);
 			g_EntityFuncs.Remove(self);
 		}
 		
@@ -378,6 +476,7 @@ class item_doom_megasphere : item_doom
 		itemFrame = 82;
 		itemFrameMax = 85;
 		intermission = true;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -396,6 +495,7 @@ class item_doom_soulsphere : item_doom
 		giveHealthMax = 200;
 		itemFrame = 136;
 		itemFrameMax = 139;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -414,6 +514,7 @@ class item_doom_god : item_doom
 		itemFrame = 91;
 		itemFrameMax = 94;
 		intermission = true;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -433,6 +534,7 @@ class item_doom_berserk : item_doom
 		giveBerserk = true;
 		itemFrame = 110;
 		intermission = true;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -451,6 +553,7 @@ class item_doom_invis : item_doom
 		itemFrame = 87;
 		itemFrameMax = 90;
 		intermission = true;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -468,6 +571,7 @@ class item_doom_suit : item_doom
 		giveSuit = true;
 		itemFrame = 141;
 		itemFrameMax = 141;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -486,6 +590,7 @@ class item_doom_goggles : item_doom
 		itemFrame = 111;
 		itemFrameMax = 112;
 		intermission = true;
+		pickupSnd = "doom/DSGETPOW.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -493,5 +598,137 @@ class item_doom_goggles : item_doom
 	void Think()
 	{
 		ItemThink();
+	}
+}
+
+class item_doom_key_red : item_doom
+{
+	void Spawn()
+	{
+		itemFrame = 113;
+		itemFrameMax = 114;
+		SetThink(ThinkFunction(Think));
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
+	}
+	
+	bool CustomPickup()
+	{
+		g_keys |= KEY_RED;
+		return true;
+	}
+}
+
+class item_doom_key_blue : item_doom
+{
+	void Spawn()
+	{
+		itemFrame = 15;
+		itemFrameMax = 16;
+		SetThink(ThinkFunction(Think));
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
+	}
+	
+	bool CustomPickup()
+	{
+		g_keys |= KEY_BLUE;
+		return true;
+	}
+}
+
+class item_doom_key_yellow : item_doom
+{
+	void Spawn()
+	{
+		itemFrame = 164;
+		itemFrameMax = 165;
+		SetThink(ThinkFunction(Think));
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
+	}
+	
+	bool CustomPickup()
+	{
+		g_keys |= KEY_YELLOW;
+		return true;
+	}
+}
+
+class item_doom_skull_red : item_doom
+{
+	void Spawn()
+	{
+		itemFrame = 116;
+		itemFrameMax = 117;
+		SetThink(ThinkFunction(Think));
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
+	}
+	
+	bool CustomPickup()
+	{
+		g_keys |= SKULL_RED;
+		return true;
+	}
+}
+
+class item_doom_skull_blue : item_doom
+{
+	void Spawn()
+	{
+		itemFrame = 28;
+		itemFrameMax = 29;
+		SetThink(ThinkFunction(Think));
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
+	}
+	
+	bool CustomPickup()
+	{
+		g_keys |= SKULL_BLUE;
+		return true;
+	}
+}
+
+class item_doom_skull_yellow : item_doom
+{
+	void Spawn()
+	{
+		itemFrame = 166;
+		itemFrameMax = 167;
+		SetThink(ThinkFunction(Think));
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
+	}
+	
+	bool CustomPickup()
+	{
+		g_keys |= SKULL_YELLOW;
+		return true;
 	}
 }
