@@ -158,6 +158,7 @@ class monster_shotgunguy : monster_doom
 		this.hasMelee = false;
 		this.hasRanged = true;
 		this.painChance = 0.66f;
+		this.dropItem = "ammo_doom_shotgun";
 		
 		self.m_FormattedName = "Shotgun Guy";
 		self.pev.health = 30;

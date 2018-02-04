@@ -10,11 +10,10 @@
 // items don't get correct brightness
 // player models should be doom guy sprite (colored?)
 // rocket trails
-// end level screen
-// disable footsteps (IMPOSSIBLE?)
 // hitboxes aren't quite right
 // rewrite takedamage+traceattack :<
 // health/armor/ammo hud?
+// weapon picksound is shotgun?
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -23,6 +22,17 @@ int g_item_gets = 0;
 int g_total_secrets = 0;
 int g_total_monsters = 0;
 int g_total_items = 0;
+int g_keys = 0;
+
+enum key_types
+{
+	KEY_BLUE = 1,
+	KEY_YELLOW = 2,
+	KEY_RED = 4,
+	SKULL_BLUE = 8,
+	SKULL_YELLOW = 16,
+	SKULL_RED = 32,
+}
 
 class VisEnt
 {
@@ -48,6 +58,7 @@ class PlayerState
 	float lastGoggles = 0; // last time suit was picked up
 	float lastGod = 0;
 	float lastInvis = 0;
+	int uiScale = 1;
 	
 	
 	void initMenu(CBasePlayer@ plr, TextMenuPlayerSlotCallback@ callback)
@@ -131,6 +142,7 @@ void MapInit()
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_water", "func_doom_water" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_barrel", "item_barrel" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_fist", "weapon_doom_fist" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_chainsaw", "weapon_doom_chainsaw" );
@@ -159,6 +171,7 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_rocketbox", "ammo_doom_rocketbox" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_cells", "ammo_doom_cells" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_cellbox", "ammo_doom_cellbox" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_shotgun", "ammo_doom_shotgun" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_stimpak", "item_doom_stimpak" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_medkit", "item_doom_medkit" );
@@ -173,6 +186,12 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_invis", "item_doom_invis" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_suit", "item_doom_suit" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_goggles", "item_doom_goggles" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_key_red", "item_doom_key_red" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_key_blue", "item_doom_key_blue" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_key_yellow", "item_doom_key_yellow" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_skull_red", "item_doom_skull_red" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_skull_blue", "item_doom_skull_blue" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "item_doom_skull_yellow", "item_doom_skull_yellow" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "fireball", "fireball" );
 	
@@ -181,11 +200,14 @@ void MapInit()
 	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientJoin );
 		
 	g_Game.PrecacheModel("sprites/doom/objects.spr");
+	g_Game.PrecacheModel("sprites/doom/keys.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL.spr");
 	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
 	g_Game.PrecacheModel("sprites/doom/MISL.spr");
 	g_Game.PrecacheModel("sprites/doom/BFE2.spr");
 	g_Game.PrecacheModel("sprites/doom/PUFF.spr");
+	g_Game.PrecacheModel("sprites/doom/BLUD.spr");
+	g_Game.PrecacheModel("sprites/doom/TFOG.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	g_Game.PrecacheModel("sprites/doom/fist.spr");
@@ -220,6 +242,11 @@ void MapInit()
 	PrecacheSound("doom/DSPLASMA.wav");
 	PrecacheSound("doom/DSRXPLOD.wav");
 	PrecacheSound("doom/DSBFG.wav");
+	PrecacheSound("doom/DSGETPOW.wav");
+	PrecacheSound("doom/DSTELEPT.wav");
+	PrecacheSound("doom/DSSKLDTH.wav"); // player use
+	PrecacheSound("doom/DSPLPAIN.wav"); // player pain
+	PrecacheSound("doom/DSPLDETH.wav"); // player death
 	PrecacheSound("doom/DSITMBK.wav"); // item respawn
 	PrecacheSound("doom/DSITEMUP.wav"); // item collect
 	PrecacheSound("doom/dssecret.flac"); // secret revealed
@@ -233,6 +260,10 @@ void MapInit()
 	keys["m_iszScriptFunctionName"] = "secret_revealed";
 	keys["m_iMode"] = "1";
 	keys["delay"] = "0";
+	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
+	
+	keys["targetname"] = "teleport_thing";
+	keys["m_iszScriptFunctionName"] = "teleport_thing";
 	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
 }
 
@@ -305,6 +336,47 @@ void heightCheck()
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
 		if (ent !is null)
 		{
+			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
+			PlayerState@ state = getPlayerState(plr);
+			
+			HUDSpriteParams params;
+			string hud_sprite = "sprites/doom/keys.spr"; 
+			params.spritename = hud_sprite.SubString("sprites/".Length()); // so resguy doesn't get confused
+			params.width = 0;
+			params.flags = HUD_SPR_MASKED | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_ABSOLUTE_X;
+			params.holdTime = 99999.0f;
+			params.color1 = RGBA( 255, 255, 255, 255 );
+			
+			float sprScale = g_spr_scales[state.uiScale];
+			int sprHeight = int(sprScale*6);
+			float baseX = -sprScale*5*2;
+			float baseY = 50;
+			params.x = baseX;
+			params.y = baseY;
+			
+			for (uint i = 0; i < 6; i++)
+			{
+				params.channel = 9+i;
+				params.frame = state.uiScale*6 + i;
+				if (i == 3) // skull keys
+				{
+					params.y = baseY - sprScale*2;
+					params.x = baseX + sprScale*9;
+				}
+
+				if (g_keys & (1 << i) == 0)
+					continue;
+				
+				g_PlayerFuncs.HudCustomSprite(plr, params);
+				
+				params.y += sprScale*2 + sprHeight;
+			}
+			
+			//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step3.wav");
+			//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step6.wav");
+			
+			//g_PlayerFuncs.HudToggleElement(plr, tile, false);
+			
 			//ent.pev.view_ofs.z = 20; // original == 28
 			//ent.pev.scale = 0.7f;
 			//ent.pev.fuser4 = 2;
@@ -329,9 +401,33 @@ void secret_revealed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE use
 	g_secrets += 1;
 }
 
+void teleport_thing(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	CBaseEntity@ target = g_EntityFuncs.FindEntityByTargetname(null, pCaller.pev.netname);
+	if (target !is null)
+	{
+		
+		Vector offset = pActivator.IsPlayer() ? Vector(0,0,36) : Vector(0,0,0);
+		te_explosion(pActivator.pev.origin - offset, "sprites/doom/TFOG.spr", 10, 5, 15);
+		g_EntityFuncs.SetOrigin(pActivator, target.pev.origin + offset);
+		
+		g_EngineFuncs.MakeVectors(target.pev.angles);
+		te_explosion(pActivator.pev.origin - offset + g_Engine.v_forward*32, "sprites/doom/TFOG.spr", 10, 5, 15);
+		
+		g_SoundSystem.PlaySound(pCaller.edict(), CHAN_STATIC, "doom/DSTELEPT.wav", 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(target.edict(), CHAN_STATIC, "doom/DSTELEPT.wav", 1.0f, 1.0f, 0, 100);
+		
+		pActivator.pev.velocity = Vector(0,0,0);
+		pActivator.pev.angles = target.pev.angles;
+		pActivator.pev.v_angle = target.pev.angles;
+		pActivator.pev.fixangle = FAM_FORCEVIEWANGLES;
+	}
+	else
+		println("Bad teleport destination: " + pCaller.pev.netname);
+}
+
 void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
 {
-	println("LEVEL STARTED");
 	g_level_time = g_Engine.time;
 	g_secrets = 0;
 	
@@ -575,6 +671,54 @@ void doEffect(CBasePlayer@ plr)
 
 }
 
+void playerMenuCallback(CTextMenu@ menu, CBasePlayer@ plr, int page, const CTextMenuItem@ item)
+{
+	if (item is null)
+		return;
+	string action;
+	item.m_pUserData.retrieve(action);
+	PlayerState@ state = getPlayerState(plr);
+	
+	if (action == "scale-tiny")
+	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nTINY\n");
+		state.uiScale = 3;
+	}
+	if (action == "scale-small")
+	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nSMALL\n");
+		state.uiScale = 2;
+	}
+	if (action == "scale-large")
+	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nLARGE\n");
+		state.uiScale = 1;
+	}
+	if (action == "scale-xl")
+	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nX-LARGE\n");
+		state.uiScale = 0;
+	}
+	
+	g_Scheduler.SetTimeout("openPlayerMenu", 0, @plr);
+	menu.Unregister();
+	@menu = null;
+}
+
+void openPlayerMenu(CBasePlayer@ plr)
+{
+	PlayerState@ state = getPlayerState(plr);
+	state.initMenu(plr, playerMenuCallback);
+
+	state.menu.SetTitle("UI Scale:\n");
+	state.menu.AddItem("Tiny       (for resolutions near 800x600)", any("scale-tiny"));
+	state.menu.AddItem("Small     (for resolutions near 1024x768)", any("scale-small"));
+	state.menu.AddItem("Large     (for resolutions near 1920x1080)", any("scale-large"));
+	state.menu.AddItem("X-Large  (for resolutions near 2560x1440)", any("scale-xl"));
+	
+	state.openMenu(plr);
+}
+
 bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 {	
 	if ( args.ArgC() > 0 )
@@ -583,6 +727,11 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 		{
 			//g_Scheduler.SetInterval("doEffect", 0.025, -1, @plr);
 			doEffect(plr);
+			return true;
+		}
+		if (args[0] == ".options")
+		{
+			openPlayerMenu(plr);
 			return true;
 		}
 	}

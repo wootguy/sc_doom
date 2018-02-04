@@ -76,7 +76,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	float painChance = 1.0f;
 	float meleeRange = 64.0f*g_monster_scale;
 	float minRangeAttackDelay = 1.0f;
-	float maxRangeAttackDelay = 4.0f;
+	float maxRangeAttackDelay = 3.0f;
 	float walkSoundFreq = 0.6f;
 	
 	float nextWalkSound = 0;
@@ -367,7 +367,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (phit !is null)
 		{
 			g_WeaponFuncs.ClearMultiDamage();
-			phit.TraceAttack(pev, damage, attackDir, tr, DMG_SLASH);
+			TraceAttack(phit, pev, damage, attackDir, tr, DMG_SLASH);
 			g_WeaponFuncs.ApplyMultiDamage(self.pev, self.pev);
 			knockBack(phit, attackDir*(100+damage)*g_world_scale);
 			return true;
@@ -530,8 +530,8 @@ class monster_doom : ScriptBaseMonsterEntity
 					g_Utility.TraceHull( bodyPos, bodyPos + Vector(0,0,-0.1f), dont_ignore_monsters, human_hull, self.edict(), tr_fall );
 					if (tr.fAllSolid != 0)
 					{
-						te_beampoints(bodyPos, targetPos);
-						println("ALL SOLID");
+						//te_beampoints(bodyPos, targetPos);
+						//println("ALL SOLID");
 					}
 						
 					//if (tr_fall.flFraction >= 1.0f and pev.velocity.z == 0)
@@ -743,7 +743,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		
 		// react to sounds
-		if (dormant and false)
+		if (dormant)
 		{
 			CSoundEnt@ sndent = GetSoundEntInstance();
 			int activeList = sndent.ActiveList();

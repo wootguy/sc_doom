@@ -792,3 +792,16 @@ class ammo_doom_cellbox : ammo_doom
 		AmmoSpawn();
 	}
 }
+
+class ammo_doom_shotgun : ammo_doom
+{
+	void Spawn()
+	{
+		ammoType = "shells";
+		giveWeapon = "weapon_doom_shotgun";
+		giveAmmo = 4;
+		maxAmmo = 100;
+		itemFrame = 121;
+		AmmoSpawn();
+	}
+}

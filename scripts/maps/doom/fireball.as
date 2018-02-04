@@ -145,7 +145,7 @@ class fireball : ScriptBaseAnimating
 		knockBack(pOther, pev.velocity.Normalize()*(100 + damage*2)*g_world_scale);
 		
 		if (radiusDamage > 0)
-			g_WeaponFuncs.RadiusDamage(pev.origin, self.pev, owner is null ? self.pev : owner.pev, radiusDamage, radiusDamage, 0, DMG_BLAST);
+			RadiusDamage(pev.origin, self.pev, owner is null ? self.pev : owner.pev, radiusDamage, radiusDamage*g_monster_scale, 0, DMG_BLAST);
 		
 		if (is_bfg and owner !is null)
 		{
