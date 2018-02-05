@@ -805,3 +805,16 @@ class ammo_doom_shotgun : ammo_doom
 		AmmoSpawn();
 	}
 }
+
+class ammo_doom_chaingun : ammo_doom
+{
+	void Spawn()
+	{
+		ammoType = "bullets";
+		giveWeapon = "weapon_doom_chaingun";
+		giveAmmo = 10;
+		maxAmmo = 200;
+		itemFrame = 86;
+		AmmoSpawn();
+	}
+}

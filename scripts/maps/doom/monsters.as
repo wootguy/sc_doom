@@ -86,7 +86,8 @@ class monster_zombieman : monster_doom
 		animInfo.insertLast(AnimInfo(56, 60, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(61, 69, 0.5f, false)); // ANIM_GIB		
 		
-		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(2);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
@@ -141,7 +142,9 @@ class monster_shotgunguy : monster_doom
 		animInfo.insertLast(AnimInfo(56, 60, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(61, 69, 0.5f, false)); // ANIM_GIB		
 		
-		animInfo[ANIM_ATTACK].attackFrameIdx = 2;
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(2);
+		
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
@@ -176,6 +179,68 @@ class monster_shotgunguy : monster_doom
 		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15));
 		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15), false);
 		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15), false);
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_hwdude : monster_doom
+{
+	void Spawn()
+	{
+		this.bodySprite = "sprites/doom/CPOS.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 5, 0.5f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(56, 62, 0.5f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(63, 68, 0.5f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(3);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(4);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 4);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 4);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 4);
+		this.constantAttackLoopFrame = 3;
+		//animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
+		//animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		
+		idleSounds.insertLast("doom/DSPOSACT.wav");
+		painSound = "doom/DSPOPAIN.wav";
+		deathSounds.insertLast("doom/DSPODTH2.wav");
+		deathSounds.insertLast("doom/DSPODTH3.wav");
+		deathSounds.insertLast("doom/DSPODTH1.wav");
+		alertSounds.insertLast("doom/DSPOSIT1.wav");
+		alertSounds.insertLast("doom/DSPOSIT2.wav");
+		alertSounds.insertLast("doom/DSPOSIT3.wav");
+		shootSound = "doom/DSSHOTGN.wav";
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		this.painChance = 0.66f;
+		this.constantAttack = true;
+		
+		this.dropItem = "ammo_doom_chaingun";
+		
+		self.m_FormattedName = "Heavy Weapon Dude";
+		self.pev.health = 70;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{		
+		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
+		
+		ShootBullet(aimDir, 22.0f, Math.RandomLong(3, 15));
 	}
 	
 	void Think()
@@ -440,8 +505,9 @@ class monster_cyberdemon : monster_doom
 		animInfo.insertLast(AnimInfo(56, 64, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(56, 64, 0.5f, false)); // ANIM_GIB		
 		
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
-		animInfo[ANIM_ATTACK].attackFrameIdx = 1;
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(1);
 		
 		idleSounds.insertLast("doom/DSDMACT.wav");
 		painSound = "doom/DSDMPAIN.wav";
@@ -516,7 +582,9 @@ class monster_spiderdemon : monster_doom
 		animInfo.insertLast(AnimInfo(72, 81, 0.18f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(72, 81, 0.18f, false)); // ANIM_GIB		
 		
-		animInfo[ANIM_ATTACK].attackFrameIdx = -1;
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(1);
 		animInfo[ANIM_DEAD].frameIndices.insertAt(1, 73);
 		animInfo[ANIM_DEAD].frameIndices.insertAt(0, 72);
 		animInfo[ANIM_GIB].frameIndices = animInfo[ANIM_DEAD].frameIndices;

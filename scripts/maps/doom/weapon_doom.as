@@ -372,11 +372,6 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		}
 	}
 	
-	void TertiaryAttack()
-	{
-		ChooseScale(2);
-	}
-	
 	void WeaponThink()
 	{
 		if (!active)

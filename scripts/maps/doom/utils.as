@@ -445,12 +445,12 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	if ( ent.pev.deadflag == DEAD_NO )
 	{
 		// no pain sound during death animation.
-		g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSPLPAIN.wav", 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(ent.edict(), CHAN_STATIC, "doom/DSPLPAIN.wav", 1.0f, 1.0f, 0, 100);
 		g_PlayerFuncs.ScreenFade(ent, Vector(255, 0, 0), 0.2f, 0, 32, FFADE_IN);
 	}
 
 	//!!!LATER - make armor consideration here!
-	flTake = flDamage;
+	flTake = flDamage - 1; // account for multidamage
 
 	// grab the vector of the incoming attack. ( pretend that the inflictor is a little lower than it really is, so the body will tend to fly upward a bit).
 	vecDir = Vector( 0, 0, 0 );
