@@ -24,6 +24,8 @@ class func_doom_door : ScriptBaseEntity
 	bool always_use;
 	int lock = 0; // keys required to open (bitfield)
 	int sounds = 0;
+	bool touch_opens = false;
+	bool isCrusher = false;
 	string sync;
 	
 	string switchSnd;
@@ -42,6 +44,8 @@ class func_doom_door : ScriptBaseEntity
 		else if (szKey == "sounds") sounds = atoi(szValue);
 		else if (szKey == "sync") sync = szValue;
 		else if (szKey == "always_use") always_use = atoi(szValue) != 0;
+		else if (szKey == "touch_opens") touch_opens = atoi(szValue) != 0;
+		else if (szKey == "crusher") isCrusher = atoi(szValue) != 0;
 		else if (szKey == "lock") lock = atoi(szValue);
 		else return BaseClass.KeyValue( szKey, szValue );
 		
@@ -75,6 +79,9 @@ class func_doom_door : ScriptBaseEntity
 		if (pev.speed == 0)
 			pev.speed = 100;
 			
+		if (isCrusher)
+			m_flWait = 0.001f;
+			
 		m_vecPosition1	= pev.origin;
 		// Subtract 2 from size because the engine expands bboxes by 1 in all directions making the size too big
 		m_vecPosition2	= m_vecPosition1 + Vector(0,0,(dir * (pev.size.z-2)) - dir*m_flLip);
@@ -104,9 +111,14 @@ class func_doom_door : ScriptBaseEntity
 				openSnd = "doom/DSPSTART.wav";
 				closeSnd = "doom/DSPSTOP.wav";
 			}
-			else
+			else if (sounds == 3)
 			{
 				openSnd = "doom/DSSTNMOV.wav";
+				closeSnd = "doom/DSPSTOP.wav";
+			}
+			else if (sounds == 4)
+			{
+				openSnd = "doom/DSPSTOP.wav";
 				closeSnd = "doom/DSPSTOP.wav";
 			}
 		}
@@ -143,7 +155,7 @@ class func_doom_door : ScriptBaseEntity
 		if (string(pev.targetname).Length() > 0)
 			return;
 			
-		if (1==1)
+		if (!touch_opens)
 			return; // never touch open
 			
 		DoorActivate();
@@ -157,7 +169,7 @@ class func_doom_door : ScriptBaseEntity
 	
 	void Use( CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value )
 	{
-		if (g_keys & lock != lock)
+		if (lock != 0 and g_keys & lock != lock)
 		{
 			if (pActivator.IsPlayer())
 			{
@@ -220,7 +232,7 @@ class func_doom_door : ScriptBaseEntity
 	
 	void DoorGoUp()
 	{
-		if (!isButton)
+		if (!isButton and openSnd.Length() > 0)
 			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, 1.0f, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
 		m_toggle_state = TS_GOING_UP;
 		LinearMove(m_vecPosition2, pev.speed);
@@ -237,7 +249,7 @@ class func_doom_door : ScriptBaseEntity
 	
 	void DoorHitTop()
 	{
-		if (sounds == 2 or sounds == 3)
+		if ((sounds == 2 or sounds == 3 or sounds == 4) and closeSnd.Length() > 0)
 			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
 		m_toggle_state = TS_AT_TOP;
 		m_bIsReopening = false;
@@ -246,7 +258,7 @@ class func_doom_door : ScriptBaseEntity
 		if (!isButton and pev.spawnflags & SF_DOOR_NO_AUTO_RETURN == 0)
 		{
 			// In flWait seconds, DoorGoDown will fire, unless wait is -1, then door stays open
-			pev.nextthink = pev.ltime + m_flWait;
+			pev.nextthink = pev.ltime + m_flWait;				
 			SetThink( ThinkFunction(DoorGoDown) );
 
 			if ( m_flWait == -1 )
@@ -259,8 +271,11 @@ class func_doom_door : ScriptBaseEntity
 		if (!isButton)
 		{
 			if (sounds == 2 or sounds == 3)
-				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, 1.0f, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
-			else
+			{
+				if (openSnd.Length() > 0)
+					g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, 1.0f, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
+			}
+			else if (closeSnd.Length() > 0)
 				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
 		}
 		m_toggle_state = TS_GOING_DOWN;
@@ -278,9 +293,12 @@ class func_doom_door : ScriptBaseEntity
 
 	void DoorHitBottom()
 	{
-		if (sounds == 2 or sounds == 3)
+		if ((sounds == 2 or sounds == 3) and closeSnd.Length() > 0)
 			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
 		m_toggle_state = TS_AT_BOTTOM;
+		
+		if (isCrusher)
+			DoorActivate();
 	}
 	
 	void Blocked( CBaseEntity@ pOther )

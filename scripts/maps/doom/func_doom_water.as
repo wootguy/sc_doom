@@ -63,7 +63,6 @@ class func_doom_water : ScriptBaseEntity
 		float diff = g_Engine.time - lastTouch;
 		if (diff > 0.5f)
 		{
-			println("JUST STARTED TOUCHING");
 			lastPain = g_Engine.time - 0.5f; // player just started touching, don't hurt yet
 		}
 		else
@@ -71,7 +70,7 @@ class func_doom_water : ScriptBaseEntity
 			diff = g_Engine.time - lastPain;
 			if (damage != 0 and state.suitTimeLeft() <= 0 and diff > 0.8f)
 			{
-				other.TakeDamage( pev, pev, damage, DMG_ACID);
+				doomTakeDamage( other, pev, pev, damage, DMG_ACID);
 				lastPain = g_Engine.time;
 			}
 		}

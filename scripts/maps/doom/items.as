@@ -208,6 +208,96 @@ class item_barrel : ScriptBaseEntity
 	}
 }
 
+class item_prop : ScriptBaseEntity
+{
+	int frameStart = 159;
+	int frameMax = 159;
+	int thing_type = 44;
+	int animDir = 1;
+	
+	bool KeyValue( const string& in szKey, const string& in szValue )
+	{		
+		if (szKey == "thing_type") thing_type = atoi(szValue);
+		else return BaseClass.KeyValue( szKey, szValue );
+		
+		return true;
+	}
+	
+	void Spawn()
+	{
+		// set the model we actually want
+		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
+		//g_EntityFuncs.SetModel(self, "models/w_357.mdl");
+		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		
+		//pev.frame = 5;
+		pev.scale = g_monster_scale;
+		
+		pev.movetype = MOVETYPE_NONE;
+		pev.solid = SOLID_NOT;
+		pev.takedamage = DAMAGE_NO;
+		
+		
+		//println("ILLUM " + light_level);
+		
+		setFrames();
+		
+		if (frameStart != frameMax)
+		{
+			pev.nextthink = g_Engine.time;
+			SetThink(ThinkFunction(Think));
+		}
+	}
+	
+	void setFrames()
+	{
+		int light_level = self.Illumination();
+		
+		switch(thing_type)
+		{
+			case 44:
+				frameStart = 142;
+				frameMax = 145;
+				light_level = 255;
+				break;
+			case 45:
+				frameStart = 146;
+				frameMax = 149;
+				light_level = 255;
+				break;
+			case 79: case 80:
+				frameStart = 100;
+				frameMax = 100;
+				break;
+			default:
+				println("Unhandled prop type: " + thing_type);
+				break;
+		}
+		
+		pev.rendercolor = Vector(light_level, light_level, light_level);
+		pev.frame = frameStart;
+	}
+	
+	void Precache()
+	{
+		BaseClass.Precache();
+	}
+	
+	bool CustomPickup()
+	{
+		return false;
+	}
+	
+	void Think()
+	{
+		pev.frame += animDir;
+		if (pev.frame > frameMax)
+			pev.frame = frameStart;
+		pev.nextthink = g_Engine.time + 0.17f;
+	}
+}
+
+
 class item_doom : ScriptBaseItemEntity
 {	
 	int itemFrame = 0;
@@ -222,6 +312,7 @@ class item_doom : ScriptBaseItemEntity
 	bool giveSuit = false;
 	bool giveGoggles = false;
 	bool intermission = false;
+	bool giveBackpack = false;
 	string pickupSnd = "doom/DSITEMUP.wav";
 	
 	int animDir = 1;
@@ -305,6 +396,15 @@ class item_doom : ScriptBaseItemEntity
 			}
 		}
 		
+		if (giveBackpack)
+		{
+			plr.GiveAmmo(10, "bullets", 200, false);
+			plr.GiveAmmo(4, "shells", 100, false);
+			plr.GiveAmmo(1, "rockets", 100, false);
+			plr.GiveAmmo(20, "cells", 400, false);
+			pickedUp = true;
+		}
+		
 		if (giveGod)
 		{
 			if (state.godTimeLeft() <= 0)
@@ -357,6 +457,21 @@ class item_doom : ScriptBaseItemEntity
 		
 		if (giveBerserk)
 			g_PlayerFuncs.ScreenFade(pOther, Vector(255, 0, 0), 30.0f, 0, 32, FFADE_IN);
+	}
+}
+
+class item_doom_backpack : item_doom
+{
+	void Spawn()
+	{
+		giveBackpack = true;
+		itemFrame = 25;
+		ItemSpawn();
+	}
+	
+	void Think()
+	{
+		ItemThink();
 	}
 }
 

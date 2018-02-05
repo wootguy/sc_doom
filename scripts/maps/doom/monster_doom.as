@@ -20,7 +20,7 @@ class AnimInfo
 	float framerate;
 	bool looped;
 	array<int> frameIndices;
-	int attackFrameIdx; // frame index where attack is called (-1 = every frame)
+	array<int> attackFrames; // frame index where attack is called (-1 = every frame)
 	
 	AnimInfo() {}
 	
@@ -28,7 +28,7 @@ class AnimInfo
 	{
 		this.framerate = rate;
 		this.looped = loop;
-		this.attackFrameIdx = max - min;
+		this.attackFrames.insertLast(max - min);
 		
 		for (int i = min; i <= max; i++)
 			frameIndices.insertLast(i);
@@ -40,6 +40,16 @@ class AnimInfo
 		int newIdx = int(frameCounter*framerate) % frameIndices.length();
 		looped = oldIdx > newIdx or frameIndices.length() == 1;
 		return newIdx;
+	}
+	
+	bool isAttackFrame(int idx)
+	{
+		for (uint i = 0; i < attackFrames.length(); i++)
+		{
+			if (attackFrames[i] == idx)
+				return true;
+		}
+		return false;
 	}
 	
 	int lastFrame()
@@ -64,6 +74,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool fullBright = false;
 	bool constantAttack = false; // attack until target is obscured
 	int constantAttackMax = 0; // maximum attacks played in sequence
+	int constantAttackLoopFrame = 0; // restart at this frame when attacking again
 	float deathBoom = 0;
 	string dropItem; // item spawned on death
 	
@@ -87,6 +98,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	float deathRemoveDelay = 60.0f; // time before entity is destroyed after death
 	float nextIdleSound = 0;
 	bool dormant = true;
+	bool superDormant = true; // not even loaded yet
 	bool isCorpse = false;
 	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
 	bool dashing = false;
@@ -129,6 +141,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		PrecacheSound(painSound);
 		PrecacheSound(walkSound);
 		PrecacheSound("doom/DSSLOP.wav");
+		g_Game.PrecacheModel(bodySprite);
 	}
 	
 	void DoomTouched(CBaseEntity@ ent)
@@ -141,7 +154,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		Precache();
 		
 		pev.movetype = canFly ? MOVETYPE_FLY : MOVETYPE_STEP;
-		pev.solid = SOLID_SLIDEBOX;
+		pev.solid = SOLID_NOT;
 		
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
@@ -154,8 +167,24 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		self.MonsterInit();
 		
-		g_monster_idx++;
+		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
+		self.SetClassification(CLASS_ALIEN_MONSTER);
+		SetActivity(ANIM_IDLE);
 		
+		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
+		g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
+	}
+	
+	void Setup()
+	{
+		superDormant = false;
+		pev.solid = SOLID_SLIDEBOX;
+		CreateRenderSprites();
+		pev.nextthink = g_Engine.time;
+	}
+	
+	void CreateRenderSprites()
+	{
 		for (uint i = 0; i < 8; i++)
 		{
 			dictionary ckeys;
@@ -169,26 +198,24 @@ class monster_doom : ScriptBaseMonsterEntity
 			ckeys["targetname"] = "m" + g_monster_idx + "s" + i;
 			CBaseEntity@ client_sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
 			//println("MAKE LE SPRITE " + client_sprite.pev.targetname);
+			g_EntityFuncs.SetOrigin(client_sprite, pev.origin);
 			sprites.insertLast(EHandle(client_sprite));
-			
+
 			dictionary rkeys;
 			rkeys["target"] = string(client_sprite.pev.targetname);
 			rkeys["spawnflags"] = "" + (1 | 4 | 8 | 64);
 			rkeys["renderamt"] = isSpectre ? "48" : "255";
 			CBaseEntity@ show = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
+			g_EntityFuncs.SetOrigin(show, pev.origin);
 			renderShowEnts.insertLast(EHandle(show));
 			
 			rkeys["renderamt"] = "0";
 			CBaseEntity@ hide = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
+			g_EntityFuncs.SetOrigin(hide, pev.origin);
 			renderHideEnts.insertLast(EHandle(hide));
 		}
 		
-		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
-		self.SetClassification(CLASS_ALIEN_MONSTER);
-		SetActivity(ANIM_IDLE);
-		
-		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
-		g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
+		g_monster_idx++;
 	}
 	
 	void SetActivity(int act)
@@ -409,6 +436,8 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	void DoomThink()
 	{
+		if (superDormant)
+			return;
 		//te_beampoints(pev.origin, pev.origin + Vector(0,0,72));
 		
 		if (isCorpse)
@@ -439,13 +468,27 @@ class monster_doom : ScriptBaseMonsterEntity
 		g_EntityFuncs.SetOrigin(self, pev.origin);
 		
 		//println("CURENT ANIM: " + currentAnim.frameIndices[0] + " " + currentAnim.lastFrame());
+		
 		frameCounter += 1;
 		bool looped = false;
 		int frameIdx = currentAnim.getFrameIdx(frameCounter, oldFrameCounter, looped);
 		int frame = currentAnim.frameIndices[frameIdx];
 
 		if (looped)
+		{
+			if (activity == ANIM_ATTACK and constantAttack)
+			{
+				// increment frame until we get to the one we want
+				while (frameIdx != constantAttackLoopFrame)
+				{
+					frameCounter += 1;
+					frameIdx = currentAnim.getFrameIdx(frameCounter, oldFrameCounter, looped);
+					frame = currentAnim.frameIndices[frameIdx];
+				}
+				looped = true;
+			}
 			animLoops += 1;
+		}
 		
 		if (activity == ANIM_MOVE and walkSound.Length() > 0 and nextWalkSound < g_Engine.time)
 		{
@@ -610,7 +653,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					}
 					else
 					{
-						if ((frameIdx == currentAnim.attackFrameIdx or currentAnim.attackFrameIdx == -1) and oldFrameIdx != frameIdx)
+						if ((currentAnim.isAttackFrame(frameIdx)) and oldFrameIdx != frameIdx)
 						{
 							if (inMeleeRange)
 								MeleeAttack(delta);
@@ -691,6 +734,7 @@ class monster_doom : ScriptBaseMonsterEntity
 						bool visible = true;
 						PlayerState@ state = getPlayerState(plr);
 						visible = plr.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
+						visible = visible and g_EngineFuncs.PointContents(plr.pev.origin) != CONTENTS_SOLID;
 
 						if (visible)
 							SetEnemy(plr);
