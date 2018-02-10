@@ -9,6 +9,7 @@ class monster_imp : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(69, 76, 0.5f, false)); // ANIM_GIB		
@@ -82,6 +83,7 @@ class monster_zombieman : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(56, 60, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(61, 69, 0.5f, false)); // ANIM_GIB		
@@ -91,6 +93,7 @@ class monster_zombieman : monster_doom
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		
 		idleSounds.insertLast("doom/DSPOSACT.wav");
 		painSound = "doom/DSPOPAIN.wav";
@@ -138,16 +141,17 @@ class monster_shotgunguy : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 4, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(56, 60, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(61, 69, 0.5f, false)); // ANIM_GIB		
 		
 		animInfo[ANIM_ATTACK].attackFrames.resize(0);
 		animInfo[ANIM_ATTACK].attackFrames.insertLast(2);
-		
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		
 		idleSounds.insertLast("doom/DSPOSACT.wav");
 		painSound = "doom/DSPOPAIN.wav";
@@ -196,6 +200,7 @@ class monster_hwdude : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 5, 0.5f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 5, 0.5f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(56, 62, 0.5f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(63, 68, 0.5f, false)); // ANIM_GIB		
@@ -206,6 +211,7 @@ class monster_hwdude : monster_doom
 		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 4);
 		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 4);
 		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 4);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		this.constantAttackLoopFrame = 3;
 		//animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
 		//animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
@@ -260,6 +266,7 @@ class monster_demon : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.5f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(7, 7, 0.0125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(64, 69, 0.5f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(64, 69, 0.5f, false)); // ANIM_GIB		
@@ -307,6 +314,7 @@ class monster_cacodemon : monster_doom
 		animInfo.insertLast(AnimInfo(0, 0, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 0, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(1, 3, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(1, 3, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(4, 4, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(48, 53, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(48, 53, 0.5f, false)); // ANIM_GIB		
@@ -377,6 +385,7 @@ class monster_lostsoul : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.25f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 1, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(2, 3, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(2, 3, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(4, 4, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(40, 45, 0.5f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(40, 45, 0.5f, false)); // ANIM_GIB		
@@ -429,6 +438,7 @@ class monster_baron : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
@@ -492,6 +502,180 @@ class monster_baron : monster_doom
 	}
 }
 
+class monster_hellknight : monster_doom
+{	
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/BOS2.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 6, 0.25f, true)); // ANIM_ATTACK2
+		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
+		
+		idleSounds.insertLast("doom/DSDMACT.wav");
+		painSound = "doom/DSDMPAIN.wav";
+		deathSounds.insertLast("doom/DSKNTDTH.wav");
+		alertSounds.insertLast("doom/DSKNTSIT.wav");
+		meleeSound = "doom/DSCLAW.wav";
+		
+		this.hasMelee = true;
+		this.hasRanged = true;
+		this.painChance = 0.50f;
+		
+		self.m_FormattedName = "Hell Knight";
+		self.pev.health = 500;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void MeleeAttack(Vector aimDir)
+	{
+		if (Slash(aimDir, Math.RandomLong(10, 80)))
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		brighten = 8;
+		
+		Vector bodyPos = BodyPos();
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		
+		dictionary keys;
+		keys["origin"] = bodyPos.ToString();
+		keys["angles"] = angles.ToString();
+		keys["model"] = "sprites/doom/BAL7.spr";
+		keys["speed"] = "" + 525;
+		keys["moveFrameStart"] = "0";
+		keys["moveFrameEnd"] = "1";
+		keys["deathFrameStart"] = "16";
+		keys["deathFrameEnd"] = "18";
+		keys["flash_color"] = "64 255 64";
+		keys["damage_min"] = "8";
+		keys["damage_max"] = "64";
+		keys["oriented"] = "1";
+		
+		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fireball.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(fireball.edict());
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_revenant : monster_doom
+{	
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/SKEL.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 5, 0.5f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(6, 8, 1.0f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(9, 10, 0.5f, true)); // ANIM_ATTACK2
+		animInfo.insertLast(AnimInfo(11, 11, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(96, 100, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(96, 100, 0.5f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(8);
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(8);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(1, 7);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(1, 7);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(6);
+		
+		animInfo[ANIM_ATTACK2].frameIndices.insertLast(10);
+		animInfo[ANIM_ATTACK2].frameIndices.insertLast(10);
+		animInfo[ANIM_ATTACK2].frameIndices.insertAt(0, 9);
+		animInfo[ANIM_ATTACK2].frameIndices.insertAt(0, 9);
+		animInfo[ANIM_ATTACK2].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK2].attackFrames.insertLast(3);
+		
+		idleSounds.insertLast("doom/DSSKEACT.wav");
+		painSound = "doom/DSPOPAIN.wav";
+		deathSounds.insertLast("doom/DSSKEDTH.wav");
+		alertSounds.insertLast("doom/DSSKESIT.wav");
+		meleeSound = "doom/DSSKEPCH.wav";
+		meleeWindupSound = "doom/DSSKESWG.wav";
+		
+		this.hasMelee = true;
+		this.hasRanged = true;
+		this.painChance = 0.39f;
+		this.walkSpeed = 10.0f;
+		this.rangeWhenMeleeFails = false;
+		
+		self.m_FormattedName = "Revenant";
+		self.pev.health = 300;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttackStart()
+	{
+		brighten = 8;
+	}
+	
+	void MeleeAttack(Vector aimDir)
+	{
+		if (Slash(aimDir, Math.RandomLong(8, 64)))
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{		
+		Vector bodyPos = BodyPos();
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		
+		dictionary keys;
+		keys["origin"] = bodyPos.ToString();
+		keys["angles"] = angles.ToString();
+		keys["model"] = "sprites/doom/FATB.spr";
+		keys["speed"] = "" + 350;
+		keys["moveFrameStart"] = "0";
+		keys["moveFrameEnd"] = "1";
+		keys["deathFrameStart"] = "16";
+		keys["deathFrameEnd"] = "18";
+		keys["flash_color"] = "255 64 32";
+		keys["damage_min"] = "10";
+		keys["damage_max"] = "80";
+		keys["oriented"] = "1";
+		keys["spawn_sound"] = "doom/DSSKEATK.wav";
+		keys["death_sound"] = "doom/DSBAREXP.wav";
+		keys["trail_sprite"] = "sprites/doom/PUFF.spr";
+		
+		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fireball.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(fireball.edict());
+		
+		fireball@ ball = cast<fireball@>(CastToScriptClass(fireball));
+		ball.h_followEnt = h_enemy;
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
 class monster_cyberdemon : monster_doom
 {	
 	void Spawn()
@@ -501,6 +685,7 @@ class monster_cyberdemon : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(4, 5, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(4, 5, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(56, 64, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(56, 64, 0.5f, false)); // ANIM_GIB		
@@ -508,6 +693,7 @@ class monster_cyberdemon : monster_doom
 		animInfo[ANIM_ATTACK].attackFrames.resize(0);
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK].attackFrames.insertLast(1);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		
 		idleSounds.insertLast("doom/DSDMACT.wav");
 		painSound = "doom/DSDMPAIN.wav";
@@ -557,6 +743,7 @@ class monster_cyberdemon : monster_doom
 		keys["spawn_sound"] = "doom/DSRLAUNC.wav";
 		keys["death_sound"] = "doom/DSBAREXP.wav";
 		keys["radius_dmg"] = "128";
+		keys["trail_sprite"] = "sprites/doom/PUFF.spr";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @self.edict();
@@ -578,6 +765,7 @@ class monster_spiderdemon : monster_doom
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
 		animInfo.insertLast(AnimInfo(6, 7, 0.5f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 7, 0.5f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(8, 8, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(72, 81, 0.18f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(72, 81, 0.18f, false)); // ANIM_GIB		
@@ -585,6 +773,8 @@ class monster_spiderdemon : monster_doom
 		animInfo[ANIM_ATTACK].attackFrames.resize(0);
 		animInfo[ANIM_ATTACK].attackFrames.insertLast(0);
 		animInfo[ANIM_ATTACK].attackFrames.insertLast(1);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
+		
 		animInfo[ANIM_DEAD].frameIndices.insertAt(1, 73);
 		animInfo[ANIM_DEAD].frameIndices.insertAt(0, 72);
 		animInfo[ANIM_GIB].frameIndices = animInfo[ANIM_DEAD].frameIndices;

@@ -276,6 +276,7 @@ class weapon_doom_rpg : weapon_doom
 		keys["spawn_sound"] = "doom/DSRLAUNC.wav";
 		keys["death_sound"] = "doom/DSBAREXP.wav";
 		keys["radius_dmg"] = "128";
+		keys["trail_sprite"] = "sprites/doom/PUFF.spr";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @plr.edict();
@@ -535,6 +536,7 @@ class weapon_doom_plasmagun : weapon_doom
 		spread = 9.8f;
 		cooldown = 0.075f;
 		frameRate = 0.05f;
+		self.m_iDefaultAmmo = 40;
 		
 		DoomSpawn();
 		

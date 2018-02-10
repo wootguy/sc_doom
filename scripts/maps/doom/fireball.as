@@ -4,6 +4,7 @@ class fireball : ScriptBaseAnimating
 {
 	string spawnSound = "doom/DSFIRSHT.wav";
 	string deathSound = "doom/DSFIRXPL.wav";
+	string trailSprite;
 	bool dead = false;
 	bool oriented = false;
 	int moveFrameStart = 0;
@@ -16,7 +17,9 @@ class fireball : ScriptBaseAnimating
 	float radiusDamage = 0;
 	float size = 4;
 	bool is_bfg = false;
+	bool trailFrame = false;
 	Vector flash_color = Vector(255, 64, 32);
+	EHandle h_followEnt;
 	
 	array<EHandle> sprites;
 	array<EHandle> renderShowEnts;
@@ -38,6 +41,7 @@ class fireball : ScriptBaseAnimating
 		else if (szKey == "death_sound") deathSound = szValue;
 		else if (szKey == "radius_dmg") radiusDamage = atof(szValue);
 		else if (szKey == "bbox_size") size = atof(szValue);
+		else if (szKey == "trail_sprite") trailSprite = szValue;
 		else return BaseClass.KeyValue( szKey, szValue );
 		return true;
 	}
@@ -286,6 +290,42 @@ class fireball : ScriptBaseAnimating
 			
 			if (oriented)
 				RenderOriented();
+				
+			if (h_followEnt)
+			{
+				CBaseEntity@ followEnt = h_followEnt;
+				Vector dir = pev.velocity.Normalize();
+				Vector targetDir = ((followEnt.pev.origin + followEnt.pev.view_ofs) - pev.origin).Normalize();
+			
+				float speed = pev.velocity.Length();	
+	
+				Vector axis = CrossProduct(dir, targetDir).Normalize();
+				
+				float dot = DotProduct(targetDir, dir);
+				float angle = -acos(dot);
+				if (dot == -1)
+					angle = Math.PI / 2.0f;
+				if (dot == 1 or angle != angle)
+					angle = 0;
+				float maxAngle = 10.0f * Math.PI / 180.0f;
+				angle = Math.max(-maxAngle, Math.min(maxAngle, angle));
+				
+				if (abs(angle) > 0.001f)
+				{
+					// Apply rotation around arbitrary axis
+					array<float> rotMat = rotationMatrix(axis, angle);
+					dir = matMultVector(rotMat, dir).Normalize();
+					pev.velocity = dir*speed;
+					g_EngineFuncs.VecToAngles(pev.velocity, pev.angles);	
+				}
+			}
+			
+			if (trailSprite.Length() > 0)
+			{
+				if (trailFrame)
+					te_explosion(pev.origin+Vector(0,0,8) - pev.velocity.Normalize(), trailSprite, 14, 10, 15);
+				trailFrame = !trailFrame;
+			}
 			
 			pev.nextthink = g_Engine.time + 0.05;
 		}

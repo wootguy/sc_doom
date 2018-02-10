@@ -4,6 +4,7 @@
 #include "utils"
 #include "func_doom_door"
 #include "func_doom_water"
+#include "trigger_doom_teleport"
 
 // TODO:
 // monsters should open doors, react to sounds without sight
@@ -18,6 +19,12 @@
 // 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
 // teleport effects dont show when in different vis area
 // lite textures need editing (full bar)
+// cacodemon sprite has transparency in blue mouth
+// cacdemon gets stuck at tiny lips when it could easily float around them
+// solid fireballs bounce off each other
+// replace gib sound with slop
+// teleports dont work in old maps
+// crushers should go past monsters or go up after a while
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -29,7 +36,7 @@ int g_total_items = 0;
 int g_keys = 0;
 int g_map_num = 1;
 
-array<int> g_par_times = {30, 90, 120};
+array<int> g_par_times = {30, 90, 120, 120, 90};
 
 enum key_types
 {
@@ -145,11 +152,14 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cacodemon", "monster_cacodemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_lostsoul", "monster_lostsoul" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_baron", "monster_baron" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_hellknight", "monster_hellknight" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cyberdemon", "monster_cyberdemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_spiderdemon", "monster_spiderdemon" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_revenant", "monster_revenant" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_water", "func_doom_water" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "trigger_doom_teleport", "trigger_doom_teleport" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_barrel", "item_barrel" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_prop", "item_prop" );
 	
@@ -219,6 +229,7 @@ void MapInit()
 	g_Game.PrecacheModel("sprites/doom/PUFF.spr");
 	g_Game.PrecacheModel("sprites/doom/BLUD.spr");
 	g_Game.PrecacheModel("sprites/doom/TFOG.spr");
+	g_Game.PrecacheModel("sprites/doom/FATB.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	g_Game.PrecacheModel("sprites/doom/fist.spr");
@@ -251,6 +262,7 @@ void MapInit()
 	PrecacheSound("doom/DSSAWFUL.wav");
 	PrecacheSound("doom/DSSAWHIT.wav");
 	PrecacheSound("doom/DSPLASMA.wav");
+	PrecacheSound("doom/DSSKEATK.wav");
 	PrecacheSound("doom/DSRXPLOD.wav");
 	PrecacheSound("doom/DSBFG.wav");
 	PrecacheSound("doom/DSGETPOW.wav");
@@ -315,10 +327,6 @@ void MapActivate()
 	keys["m_iMode"] = "1";
 	keys["delay"] = "0";
 	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
-	
-	keys["targetname"] = "teleport_thing";
-	keys["m_iszScriptFunctionName"] = "teleport_thing";
-	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
 }
 
 int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, Vector lookPos)
@@ -361,6 +369,13 @@ void heightCheck()
 			params.flags = HUD_SPR_MASKED | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_ABSOLUTE_X;
 			params.holdTime = 99999.0f;
 			params.color1 = RGBA( 255, 255, 255, 255 );
+			
+			if (false and plr.pev.flags & FL_ONGROUND == 0)
+			{
+				println("DUCK TIME");
+				plr.pev.flDuckTime = 26*2;
+				plr.pev.flags |= FL_DUCKING;
+			}
 			
 			float sprScale = g_spr_scales[state.uiScale];
 			int sprHeight = int(sprScale*6);
@@ -414,31 +429,6 @@ void secret_revealed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE use
 	g_SoundSystem.PlaySound(pActivator.edict(), CHAN_STATIC, "doom/dssecret.flac", 1.0f, ATTN_NONE, 0, 100);
 	g_PlayerFuncs.PrintKeyBindingStringAll("A SECRET IS REVEALED!\n");
 	g_secrets += 1;
-}
-
-void teleport_thing(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
-{
-	CBaseEntity@ target = g_EntityFuncs.FindEntityByTargetname(null, pCaller.pev.netname);
-	if (target !is null)
-	{
-		
-		Vector offset = pActivator.IsPlayer() ? Vector(0,0,36) : Vector(0,0,0);
-		te_explosion(pActivator.pev.origin - offset, "sprites/doom/TFOG.spr", 10, 5, 15);
-		g_EntityFuncs.SetOrigin(pActivator, target.pev.origin + offset);
-		
-		g_EngineFuncs.MakeVectors(target.pev.angles);
-		te_explosion(pActivator.pev.origin - offset + g_Engine.v_forward*32, "sprites/doom/TFOG.spr", 10, 5, 15);
-		
-		g_SoundSystem.PlaySound(pCaller.edict(), CHAN_STATIC, "doom/DSTELEPT.wav", 1.0f, 1.0f, 0, 100);
-		g_SoundSystem.PlaySound(target.edict(), CHAN_STATIC, "doom/DSTELEPT.wav", 1.0f, 1.0f, 0, 100);
-		
-		pActivator.pev.velocity = Vector(0,0,0);
-		pActivator.pev.angles = target.pev.angles;
-		pActivator.pev.v_angle = target.pev.angles;
-		pActivator.pev.fixangle = FAM_FORCEVIEWANGLES;
-	}
-	else
-		println("Bad teleport destination: " + pCaller.pev.netname);
 }
 
 void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
@@ -738,7 +728,19 @@ void doTheStatic(CBaseEntity@ ent)
 
 void doEffect(CBasePlayer@ plr)
 {
-
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "*");
+		if (ent !is null)
+		{
+			if (string(ent.pev.classname).Find("monster_") == 0)
+			{
+				monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(ent));
+				if (mon !is null)
+					mon.Setup();
+			}
+		}
+	} while(ent !is null);
 }
 
 void playerMenuCallback(CTextMenu@ menu, CBasePlayer@ plr, int page, const CTextMenuItem@ item)
