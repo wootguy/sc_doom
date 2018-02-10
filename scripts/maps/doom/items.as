@@ -214,6 +214,7 @@ class item_prop : ScriptBaseEntity
 	int frameMax = 159;
 	int thing_type = 44;
 	int animDir = 1;
+	float animSpeed = 0.17f;
 	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{		
@@ -255,6 +256,17 @@ class item_prop : ScriptBaseEntity
 		
 		switch(thing_type)
 		{
+			case 24:
+				frameStart = frameMax = 107;
+				break;
+			case 26:
+				frameStart = 108;
+				frameMax = 109;
+				animSpeed = 0.2f;
+				break;
+			case 27:
+				frameStart = frameMax = 106;
+				break;
 			case 44:
 				frameStart = 142;
 				frameMax = 145;
@@ -265,9 +277,38 @@ class item_prop : ScriptBaseEntity
 				frameMax = 149;
 				light_level = 255;
 				break;
+			case 46:
+				frameStart = 160;
+				frameMax = 163;
+				light_level = 255;
+				break;
+			case 53:
+				frameStart = frameMax = 60;
+				break;
+			case 56:
+				frameStart = 126;
+				frameMax = 129;
+				light_level = 255;
+				break;
+			case 75:
+				frameStart = frameMax = 63;
+				break;
+			case 78:
+				frameStart = frameMax = 66;
+				break;
 			case 79: case 80:
 				frameStart = 100;
 				frameMax = 100;
+				break;
+			case 85:
+				frameStart = 150;
+				frameMax = 153;
+				light_level = 255;
+				break;
+			case 86:
+				frameStart = 154;
+				frameMax = 157;
+				light_level = 255;
 				break;
 			default:
 				println("Unhandled prop type: " + thing_type);
@@ -289,11 +330,11 @@ class item_prop : ScriptBaseEntity
 	}
 	
 	void Think()
-	{
+	{		
 		pev.frame += animDir;
 		if (pev.frame > frameMax)
 			pev.frame = frameStart;
-		pev.nextthink = g_Engine.time + 0.17f;
+		pev.nextthink = g_Engine.time + animSpeed;
 	}
 }
 

@@ -19,6 +19,7 @@ class func_doom_door : ScriptBaseEntity
 	int dir;
 	float m_flLip;
 	float m_flWait;
+	float lastCrush;
 	bool m_bIsReopening;
 	bool isButton;
 	bool always_use;
@@ -26,6 +27,7 @@ class func_doom_door : ScriptBaseEntity
 	int sounds = 0;
 	bool touch_opens = false;
 	bool isCrusher = false;
+	Vector useDir;
 	string sync;
 	
 	string switchSnd;
@@ -47,6 +49,7 @@ class func_doom_door : ScriptBaseEntity
 		else if (szKey == "touch_opens") touch_opens = atoi(szValue) != 0;
 		else if (szKey == "crusher") isCrusher = atoi(szValue) != 0;
 		else if (szKey == "lock") lock = atoi(szValue);
+		else if (szKey == "use_dir") useDir = parseVector(szValue);
 		else return BaseClass.KeyValue( szKey, szValue );
 		
 		return true;
@@ -182,6 +185,24 @@ class func_doom_door : ScriptBaseEntity
 			}
 			return;
 		}
+		
+		if (pCaller.IsPlayer())
+		{
+			if (useDir != g_vecZero)
+			{
+				Vector doorOri = pev.absmin + (pev.absmax - pev.absmin)*0.5f;
+				Vector delta = (doorOri - pCaller.pev.origin).Normalize();
+				//println("USE DIR: " + useDir.ToString() + " == " + delta.ToString());
+				if (DotProduct(delta, useDir) > 0)
+					return;
+			}
+			//println("Z DELTA: " + (pev.absmax.z-pCaller.pev.absmin.z));
+			if (pCaller.pev.absmin.z + 4 > pev.absmax.z)
+			{
+				return; // don't allow using floors from above (MAP05 secret)
+			}
+		}
+		
 		// if not ready to be used, ignore "use" command.
 		if (isButton)
 		{
@@ -194,7 +215,8 @@ class func_doom_door : ScriptBaseEntity
 					g_Scheduler.SetTimeout("reset_but", m_flWait, EHandle(self));
 			}
 		}
-		else if (m_toggle_state == TS_AT_BOTTOM or (pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) and m_toggle_state == TS_AT_TOP)
+		else if ((m_toggle_state == TS_AT_BOTTOM and useType != USE_OFF) or 
+				(pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) and m_toggle_state == TS_AT_TOP or useType == USE_OFF)
 		{
 			if ((string(pev.targetname).Length() == 0 or always_use) or !pCaller.IsPlayer())
 			{
@@ -207,22 +229,33 @@ class func_doom_door : ScriptBaseEntity
 						if (ent !is null)
 						{
 							func_doom_door@ door = cast<func_doom_door@>(CastToScriptClass(ent));
-							door.DoorActivate();
+							door.DoorActivate(useType);
 						}
 					} while (ent !is null);
 				}
 				else
-					DoorActivate();
+					DoorActivate(useType);
 			}
 		}
 	}
 	
-	int DoorActivate()
+	int DoorActivate(int useType=USE_TOGGLE)
 	{
-		if (m_flWait == -1 and m_toggle_state == TS_AT_TOP)
-			return 1;
+		if (m_flWait == -1)
+		{
+			if (m_toggle_state == TS_AT_TOP and (useType == USE_TOGGLE or useType == USE_ON))
+				return 1;
+		}
 			
-		if ((pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) && m_toggle_state == TS_AT_TOP)
+		if (isCrusher and useType == USE_OFF)
+		{
+			if (pev.nextthink != -1 and (sounds == 2 or sounds == 3 or sounds == 4) and closeSnd.Length() > 0)
+				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
+			pev.nextthink = -1;
+			return 1;
+		}
+			
+		if ((pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) and m_toggle_state == TS_AT_TOP or useType == USE_OFF)
 			DoorGoDown();
 		else
 			DoorGoUp();
@@ -310,13 +343,17 @@ class func_doom_door : ScriptBaseEntity
 		}
 		
 		// Hurt the blocker a little.
-		if ( pev.dmg != 0 )
-			pOther.TakeDamage( pev, pev, pev.dmg, DMG_CRUSH );
+		if ( pev.dmg != 0 and lastCrush + 0.0572f < g_Engine.time)
+		{
+			lastCrush = g_Engine.time;
+			doomTakeDamage( pOther, pev, pev, pev.dmg, DMG_CRUSH );
+			te_bloodsprite(pOther.pev.origin + pOther.pev.view_ofs, "sprites/doom/BLUD.spr", "sprites/blood.spr", 70, 5);
+		}
 
 		// if a door has a negative wait, it would never come back if blocked,
 		// so let it just squash the object to death real fast
 
-		if (m_flWait >= 0)
+		if (m_flWait >= 0 and !isCrusher)
 		{
 			if (m_toggle_state == TS_GOING_DOWN)
 				DoorGoUp();

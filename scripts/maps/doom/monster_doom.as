@@ -5,6 +5,7 @@ enum activities {
 	ANIM_IDLE,
 	ANIM_MOVE,
 	ANIM_ATTACK,
+	ANIM_ATTACK2, // range attack
 	ANIM_PAIN,
 	ANIM_DEAD,
 	ANIM_GIB,
@@ -14,6 +15,7 @@ array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 
 float g_monster_scale = 1.42857f; // 1 / 0.7
 float g_world_scale = 1.0f;
+float g_monster_center_z = 34;
 
 class AnimInfo
 {
@@ -75,6 +77,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool constantAttack = false; // attack until target is obscured
 	int constantAttackMax = 0; // maximum attacks played in sequence
 	int constantAttackLoopFrame = 0; // restart at this frame when attacking again
+	bool rangeWhenMeleeFails = true; // do a range attack if the melee attack fails
 	float deathBoom = 0;
 	string dropItem; // item spawned on death
 	
@@ -105,6 +108,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	Vector dashVel;
 	float dashDamage = 0;
 	float dashTimeout = 0;
+	Vector gunPos = Vector(0,0,8); // offset relative to body position
 	
 	EHandle h_enemy;
 	EHandle oldEnemy; // remember last enemy
@@ -118,6 +122,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	array<string> alertSounds;
 	string painSound;
 	string meleeSound;
+	string meleeWindupSound;
 	string shootSound;
 	string walkSound;
 	
@@ -136,6 +141,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			PrecacheSound(deathSounds[i]);
 		for (uint i = 0; i < alertSounds.length(); i++)
 			PrecacheSound(alertSounds[i]);
+		PrecacheSound(meleeWindupSound);
 		PrecacheSound(meleeSound);
 		PrecacheSound(shootSound);
 		PrecacheSound(painSound);
@@ -170,6 +176,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		g_EntityFuncs.SetSize(self.pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 		self.SetClassification(CLASS_ALIEN_MONSTER);
 		SetActivity(ANIM_IDLE);
+		
+		pev.view_ofs = Vector(0,0,40);
 		
 		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
 		g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
@@ -299,6 +307,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			if (Math.RandomFloat(0, 1) <= painChance)
 			{
 				SetActivity(ANIM_PAIN);
+				nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
 				g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, painSound, 1.0f, 0.5f, 0, 100);
 			}
 			
@@ -349,13 +358,17 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	Vector BodyPos()
 	{
-		return pev.origin + Vector(0,0,36*g_world_scale);
+		return pev.origin + Vector(0,0,g_monster_center_z*g_world_scale);
 	}
 	
 	void RangeAttack(Vector aimDir)
 	{
 		println("Range attack not implemented!");
 	}
+	
+	void MeleeAttackStart() {}
+	
+	void RangeAttackStart() {}
 	
 	void MeleeAttack(Vector aimDir)
 	{
@@ -364,7 +377,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	void ShootBullet(Vector dir, float spread, float damage, bool flash=true)
 	{
-		Vector vecSrc = BodyPos();
+		Vector vecSrc = BodyPos() + gunPos;
 		float range = 16384;
 		
 		if (flash)
@@ -379,12 +392,14 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		Vector vecAiming = spreadDir(dir.Normalize(), spread, SPREAD_GAUSSIAN);
 	
+		//te_beampoints(vecSrc, vecSrc + dir.Normalize()*range);
+	
 		HitScan(self, vecSrc, dir, spread, damage);
 	}
 
 	bool Slash(Vector dir, float damage)
 	{
-		Vector bodyPos = BodyPos();
+		Vector bodyPos = BodyPos() + gunPos;
 		TraceResult tr;
 		Vector attackDir = dir.Normalize();
 		g_Utility.TraceHull( bodyPos, bodyPos + attackDir*meleeRange*g_world_scale, dont_ignore_monsters, head_hull, self.edict(), tr );
@@ -434,6 +449,11 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 	}
 	
+	bool isAttacking()
+	{
+		return activity == ANIM_ATTACK || activity == ANIM_ATTACK2;
+	}
+	
 	void DoomThink()
 	{
 		if (superDormant)
@@ -476,14 +496,21 @@ class monster_doom : ScriptBaseMonsterEntity
 
 		if (looped)
 		{
-			if (activity == ANIM_ATTACK and constantAttack)
+			if (isAttacking() and constantAttack)
 			{
 				// increment frame until we get to the one we want
+				int failsafe = 256;
 				while (frameIdx != constantAttackLoopFrame)
 				{
 					frameCounter += 1;
 					frameIdx = currentAnim.getFrameIdx(frameCounter, oldFrameCounter, looped);
 					frame = currentAnim.frameIndices[frameIdx];
+					failsafe -= 1;
+					if (failsafe <= 0)
+					{
+						println("FAILED TO FIND CONSTANT ATTACK FRAME");
+						break;
+					}
 				}
 				looped = true;
 			}
@@ -541,6 +568,17 @@ class monster_doom : ScriptBaseMonsterEntity
 				SetActivity(ANIM_MOVE);
 			}
 			
+			Vector eyePos = pev.origin + pev.view_ofs;
+			bool lineOfSight = false;
+			if (h_enemy.IsValid())
+			{
+				CBaseEntity@ enemy = h_enemy;
+				TraceResult tr_sight;
+				g_Utility.TraceLine( eyePos, enemy.pev.origin, ignore_monsters, self.edict(), tr_sight );
+				lineOfSight = tr_sight.flFraction >= 1.0f;
+			}
+			
+			
 			if (activity == ANIM_MOVE or dashing)
 			{
 				int canWalk = 0;
@@ -549,10 +587,39 @@ class monster_doom : ScriptBaseMonsterEntity
 				if (canFly and h_enemy.IsValid())
 				{
 					CBaseEntity@ enemy = h_enemy;
-					if (enemy.pev.origin.z > bodyPos.z + 36)
+					
+					println("HEIGHT DIFF: " + (enemy.pev.origin.z - bodyPos.z));
+					
+					float enemyZ = enemy.pev.origin.z + enemy.pev.view_ofs.z;
+					if (enemyZ > bodyPos.z + g_monster_center_z or !lineOfSight)
 						verticalMove = Vector(0,0,4);
-					else if (enemy.pev.origin.z < bodyPos.z - 36)
+					else if (enemyZ < bodyPos.z - g_monster_center_z)
 						verticalMove = Vector(0,0,-4);
+						
+					TraceResult tVert;
+					g_Utility.TraceHull( bodyPos, bodyPos + verticalMove*2, dont_ignore_monsters, human_hull, self.edict(), tVert );
+					if (tVert.flFraction < 1.0f)
+					{
+						verticalMove = Vector(0,0,0);
+						println("NOT OK TO MOVE VERT");
+					}
+					else
+					{
+						println("OK TO MOVE VERT");
+					}
+					
+					TraceResult tr;
+					Vector moveVel = forward*walkSpeed + verticalMove;
+					if (dashing)
+						moveVel = dashVel;
+					Vector targetPos = bodyPos + moveVel*g_monster_scale;
+					g_Utility.TraceHull( bodyPos, targetPos, dont_ignore_monsters, human_hull, self.edict(), tr );
+					if (tr.flFraction >= 1.0f and tr.fAllSolid == 0)
+					{
+						canWalk = 1;
+						Vector flyPos = tr.vecEndPos + Vector(0,0,-g_monster_center_z);
+						g_EntityFuncs.SetOrigin(self, flyPos);
+					}
 				}
 				else
 				{
@@ -565,8 +632,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					
 					TraceResult tr_fall;
 					Vector moveVel = forward*walkSpeed + verticalMove;
-					if (dashing)
-						moveVel = dashVel;
+					
 					Vector targetPos = bodyPos + moveVel*g_monster_scale;
 					g_Utility.TraceHull( bodyPos, targetPos, dont_ignore_monsters, human_hull, self.edict(), tr );
 					
@@ -581,8 +647,8 @@ class monster_doom : ScriptBaseMonsterEntity
 					//	pev.velocity.z = -0.1f;
 						
 					//te_beampoints(bodyPos, bodyPos + moveVel*g_monster_scale);
-					//te_beampoints(bodyPos + Vector(0,0,36*g_world_scale), bodyPos + Vector(0,0,36*g_world_scale) + moveVel*g_monster_scale);
-					//te_beampoints(bodyPos + Vector(0,0,-36*g_world_scale), bodyPos + Vector(0,0,-36*g_world_scale) + moveVel*g_monster_scale);
+					//te_beampoints(bodyPos + Vector(0,0,g_monster_center_z*g_world_scale), bodyPos + Vector(0,0,g_monster_center_z*g_world_scale) + moveVel*g_monster_scale);
+					//te_beampoints(bodyPos + Vector(0,0,-g_monster_center_z*g_world_scale), bodyPos + Vector(0,0,-g_monster_center_z*g_world_scale) + moveVel*g_monster_scale);
 									
 					if (dashing)
 					{
@@ -614,13 +680,13 @@ class monster_doom : ScriptBaseMonsterEntity
 			{
 				CBaseEntity@ enemy = h_enemy;
 				
-				Vector enemyPos = enemy.pev.origin;
+				Vector enemyPos = enemy.pev.origin + enemy.pev.view_ofs;
 				if (!enemy.IsPlayer())
 				{
 					if (g_world_scale == 1)
 						enemyPos.z += (enemy.pev.maxs.z - enemy.pev.mins.z)*0.5f;
 					else
-						enemyPos.z += 36*g_world_scale;
+						enemyPos.z += g_monster_center_z*g_world_scale;
 				}
 				Vector delta = enemyPos - bodyPos;
 				if (activity == ANIM_MOVE and lastDirChange + 1.0f < g_Engine.time)
@@ -640,16 +706,23 @@ class monster_doom : ScriptBaseMonsterEntity
 				
 				bool inMeleeRange = hasMelee and delta.Length() < meleeRange*g_world_scale;
 				
-				TraceResult tr_sight;
-				g_Utility.TraceLine( bodyPos, enemy.pev.origin, ignore_monsters, self.edict(), tr_sight );
-				bool lineOfSight = tr_sight.flFraction >= 1.0f;
-				
-				if (activity == ANIM_ATTACK or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged and lineOfSight))
+				if (isAttacking() or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged and lineOfSight))
 				{
 					pev.angles.y = g_EngineFuncs.VecToYaw(delta);
-					if (activity != ANIM_ATTACK)
+					if (!isAttacking())
 					{
-						SetActivity(ANIM_ATTACK);
+						if (inMeleeRange)
+						{
+							if (meleeWindupSound.Length() > 0)
+								g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, meleeWindupSound, 1.0f, 0.5f, 0, 100);
+							SetActivity(ANIM_ATTACK);
+							MeleeAttackStart();
+						}
+						else
+						{
+							SetActivity(ANIM_ATTACK2);
+							RangeAttackStart();
+						}
 					}
 					else
 					{
@@ -659,22 +732,27 @@ class monster_doom : ScriptBaseMonsterEntity
 								MeleeAttack(delta);
 							else if (hasRanged)			
 							{
-								//te_beampoints(bodyPos, enemyPos);								
-								RangeAttack(delta);
+								//te_beampoints(bodyPos, enemyPos);		
+								if (rangeWhenMeleeFails or activity == ANIM_ATTACK2)
+									RangeAttack(delta);
 							}
 						}
 						
 						if (animLoops > 0)
 						{
 							if (inMeleeRange)
+							{
+								if (meleeWindupSound.Length() > 0)
+									g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, meleeWindupSound, 1.0f, 0.5f, 0, 100);
 								SetActivity(ANIM_ATTACK);
+							}
 							else
 							{
 								bool keepAttacking = false;
 								if (constantAttack and (animLoops < constantAttackMax or constantAttackMax == 0))
 								{
 									TraceResult tr;
-									g_Utility.TraceLine( bodyPos, enemy.pev.origin, dont_ignore_monsters, self.edict(), tr );
+									g_Utility.TraceLine( eyePos, enemy.pev.origin, dont_ignore_monsters, self.edict(), tr );
 									CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
 									keepAttacking = pHit !is null and pHit.entindex() == enemy.entindex();
 								}
