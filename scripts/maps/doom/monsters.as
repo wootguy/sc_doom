@@ -376,6 +376,123 @@ class monster_cacodemon : monster_doom
 	}
 }
 
+class monster_painelemental : monster_doom
+{	
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/PAIN.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 0, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 2, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(3, 5, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(3, 5, 0.25f, true)); // ANIM_ATTACK2
+		animInfo.insertLast(AnimInfo(6, 6, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(56, 61, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(56, 61, 0.5f, false)); // ANIM_GIB		
+		
+		idleSounds.insertLast("doom/DSDMACT.wav");
+		painSound = "doom/DSPEPAIN.wav";
+		deathSounds.insertLast("doom/DSPEDTH.wav");
+		alertSounds.insertLast("doom/DSPESIT.wav");
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		this.canFly = true;
+		this.painChance = 0.5f;
+		this.deathBoom = 3;
+		
+		self.m_FormattedName = "Pain Elemental";
+		self.pev.health = 40;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void MeleeAttack(Vector aimDir)
+	{
+		Slash(aimDir, Math.RandomLong(10, 60));
+	}
+	
+	void DeathBoom()
+	{
+		println("ZOMG BOOM");
+		
+		g_EngineFuncs.MakeVectors(pev.angles);
+		Vector forward = g_Engine.v_forward;
+		Vector right = g_Engine.v_right;
+		ShootSoul(forward, false);
+		ShootSoul((forward + right).Normalize(), false);
+		ShootSoul((forward - right).Normalize(), false);
+	}
+	
+	int CountSouls()
+	{
+		int count = 0;
+		CBaseEntity@ ent = null;
+		do {
+			@ent = g_EntityFuncs.FindEntityByClassname(ent, "monster_lostsoul");
+			if (ent !is null)
+			{
+				monster_lostsoul@ mon = cast<monster_lostsoul@>(CastToScriptClass(ent));
+				if (!mon.superDormant)
+					count++;
+			}
+		} while (ent !is null);
+		return count;
+	}
+	
+	void ShootSoul(Vector aimDir, bool atEnemy)
+	{
+		if (CountSouls() >= 21)
+		{
+			println("Too many lost souls in level. Aborting attack.");
+			return;
+		}
+		Vector flatAim = Vector(aimDir.x, aimDir.y, 0).Normalize();
+		Vector spawnPos = BodyPos() + flatAim*18;
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		
+		dictionary keys;
+		keys["origin"] = spawnPos.ToString();
+		keys["angles"] = angles.ToString();
+		
+		CBaseEntity@ soul = g_EntityFuncs.CreateEntity("monster_lostsoul", keys, false);
+		//@soul.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(soul.edict());
+		
+		monster_lostsoul@ mon = cast<monster_lostsoul@>(CastToScriptClass(soul));
+		mon.Setup();
+		mon.dormant = false;
+		
+		Vector soulDir = aimDir;
+		if (atEnemy) 
+		{
+			Vector enemyPos = h_enemy.GetEntity().pev.origin + h_enemy.GetEntity().pev.view_ofs;
+			soulDir = (enemyPos - soul.pev.origin).Normalize();
+			mon.SetEnemy(h_enemy);
+		}
+		
+		
+		mon.RangeAttack(soulDir);
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		brighten = 8;
+		ShootSoul(aimDir, true);
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+
 class monster_lostsoul : monster_doom
 {	
 	void Spawn()
@@ -414,7 +531,7 @@ class monster_lostsoul : monster_doom
 	
 	void RangeAttack(Vector aimDir)
 	{
-		Dash(aimDir.Normalize()*20, Math.RandomLong(3, 24), 1.0f);
+		Dash(aimDir.Normalize()*20*g_monster_scale, Math.RandomLong(3, 24), 1.0f);
 		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
 	}
 	
@@ -676,6 +793,194 @@ class monster_revenant : monster_doom
 	}
 }
 
+class monster_mancubus : monster_doom
+{
+	int rangeCombo = 0;
+	
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/FATT.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(6, 8, 0.375f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 8, 0.375f, true)); // ANIM_ATTACK2
+		animInfo.insertLast(AnimInfo(9, 9, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(80, 89, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(80, 89, 0.5f, false)); // ANIM_GIB		
+		
+		
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(4);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
+		this.constantAttackLoopFrame = 2;
+		
+		idleSounds.insertLast("doom/DSPOSACT.wav");
+		painSound = "doom/DSMNPAIN.wav";
+		deathSounds.insertLast("doom/DSMANDTH.wav");
+		alertSounds.insertLast("doom/DSMANSIT.wav");
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		this.painChance = 0.31f;
+		this.walkSpeed = 8.0f;
+		this.constantAttack = true;
+		this.constantAttackMax = 3;
+		
+		self.m_FormattedName = "Mancubus";
+		self.pev.health = 600;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void ShootFireball(Vector origin, Vector addangles)
+	{
+		Vector enemyPos = h_enemy.GetEntity().pev.origin + h_enemy.GetEntity().pev.view_ofs;
+		Vector aimDir = (enemyPos - origin).Normalize();
+		
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		angles = angles + addangles;
+		
+		dictionary keys;
+		keys["origin"] = origin.ToString();
+		keys["angles"] = angles.ToString();
+		keys["model"] = "sprites/doom/MANF.spr";
+		keys["speed"] = "" + 700;
+		keys["moveFrameStart"] = "0";
+		keys["moveFrameEnd"] = "0";
+		keys["deathFrameStart"] = "16";
+		keys["deathFrameEnd"] = "18";
+		keys["flash_color"] = "255 80 32";
+		keys["damage_min"] = "8";
+		keys["damage_max"] = "64";
+		keys["oriented"] = "1";
+		
+		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fireball.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(fireball.edict());
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		brighten = 8;
+		g_EngineFuncs.MakeVectors(pev.angles);
+		
+		Vector left = BodyPos() - g_Engine.v_right*32;
+		Vector right = BodyPos() + g_Engine.v_right*32;
+		if (rangeCombo == 0)
+		{
+			ShootFireball(right, Vector(0,0,0));
+			ShootFireball(left, Vector(0,15,0));
+		}
+		else if (rangeCombo == 1)
+		{
+			ShootFireball(right, Vector(0,-15,0));
+			ShootFireball(left, Vector(0,0,0));
+		}
+		else
+		{
+			ShootFireball(right, Vector(0,-5,0));
+			ShootFireball(left, Vector(0,5,0));
+		}
+		
+		if (++rangeCombo >= 3)
+			rangeCombo = 0;
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
+class monster_arachnotron : monster_doom
+{	
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/BSPI.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(6, 7, 1.0f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 7, 1.0f, true)); // ANIM_ATTACK2
+		animInfo.insertLast(AnimInfo(8, 8, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(72, 78, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(72, 78, 0.5f, false)); // ANIM_GIB		
+		
+		
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertAt(0, 6);
+		animInfo[ANIM_ATTACK].frameIndices.insertLast(7);
+		animInfo[ANIM_ATTACK].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK].attackFrames.insertLast(4);
+		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
+		this.constantAttackLoopFrame = 3;
+		
+		idleSounds.insertLast("doom/DSBSPACT.wav");
+		painSound = "doom/DSDMPAIN.wav";
+		deathSounds.insertLast("doom/DSBSPDTH.wav");
+		alertSounds.insertLast("doom/DSBSPSIT.wav");
+		walkSound = "doom/DSBSPWLK.wav";
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		this.painChance = 0.50f;
+		this.walkSpeed = 12.0f;
+		this.constantAttack = true;
+		
+		self.m_FormattedName = "Arachnotron";
+		self.pev.health = 500;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		brighten = 8;
+		
+		Vector bodyPos = BodyPos();
+		Vector angles;
+		g_EngineFuncs.VecToAngles(aimDir, angles);
+		angles.x = -angles.x;
+		
+		dictionary keys;
+		keys["origin"] = bodyPos.ToString();
+		keys["angles"] = angles.ToString();
+		keys["model"] = "sprites/doom/BAL.spr";
+		keys["speed"] = "" + 875;
+		keys["moveFrameStart"] = "28";
+		keys["moveFrameEnd"] = "29";
+		keys["deathFrameStart"] = "30";
+		keys["deathFrameEnd"] = "34";
+		keys["flash_color"] = "32 255 32";
+		keys["damage_min"] = "5";
+		keys["damage_max"] = "40";
+		keys["spawn_sound"] = "doom/DSPLASMA.wav";
+		
+		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fireball.pev.owner = @self.edict();
+		g_EntityFuncs.DispatchSpawn(fireball.edict());
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
 class monster_cyberdemon : monster_doom
 {	
 	void Spawn()
@@ -705,7 +1010,7 @@ class monster_cyberdemon : monster_doom
 		this.hasMelee = false;
 		this.hasRanged = true;
 		this.painChance = 0.08f;
-		this.walkSpeed = 12.0f;
+		this.walkSpeed = 16.0f;
 		this.constantAttack = true;
 		this.constantAttackMax = 3;
 		

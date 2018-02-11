@@ -128,7 +128,10 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 				SetFrame(shootFrames[frameIdx]);
 				
 				if (frameIdx == attackFrame or constantAttack)
+				{
+					EmitSound();
 					Attack();
+				}
 			}
 			else
 			{
@@ -332,6 +335,13 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		
 	}
 	
+	void EmitSound()
+	{
+		println("EMIT LE SOUND");
+		int dist = 1024;
+		GetSoundEntInstance().InsertSound(4, getPlayer().pev.origin, dist, 0.5f, getPlayer());
+	}
+	
 	void Shoot()
 	{
 		CBasePlayer@ plr = getPlayer();
@@ -346,7 +356,10 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		pev.nextthink = g_Engine.time;
 		
 		if (constantAttack or attackFrame == 0)
+		{
+			EmitSound();
 			Attack();
+		}
 		
 		shooting = true;
 	}

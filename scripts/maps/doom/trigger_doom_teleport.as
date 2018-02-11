@@ -2,12 +2,15 @@
 class trigger_doom_teleport : ScriptBaseEntity
 {
 	dictionary lastTouches;
+	bool ignore_players = false;
 	
 	void Spawn()
 	{		
 		pev.movetype = MOVETYPE_NONE;
 		pev.solid = SOLID_TRIGGER;
 		pev.effects = EF_NODRAW;
+		
+		ignore_players = pev.spawnflags & 2 != 0;
 		
 		g_EntityFuncs.SetOrigin(self, pev.origin);
 		g_EntityFuncs.SetModel(self, pev.model);
@@ -19,6 +22,10 @@ class trigger_doom_teleport : ScriptBaseEntity
 	{
 		if (!other.IsMonster() and !other.IsPlayer())
 			return;
+			
+		if (ignore_players and other.IsPlayer())
+			return;
+			
 		int idx = other.entindex();
 		float lastTouch = 0;
 		if (lastTouches.exists(idx))
