@@ -18,6 +18,8 @@ float g_world_scale = 1.0f;
 float g_monster_center_z = 34;
 float g_monster_think_delay = 0.0572f;
 
+int FL_MONSTER_DEAF = 8;
+
 class AnimInfo
 {
 	float framerate;
@@ -83,6 +85,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	float deathBoom = 0;
 	bool didDeathBoom = false;
 	string dropItem; // item spawned on death
+	bool isDeaf; // doesn't target player when heard unless in line of sight
 	
 	uint frameCounter = 0;
 	uint oldFrameCounter = 0;
@@ -137,6 +140,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{
 		if (szKey == "spectre") isSpectre = atoi(szValue) != 0;
+		if (szKey == "doom_flags") isDeaf = (atoi(szValue) & FL_MONSTER_DEAF) != 0;
 		else return BaseClass.KeyValue( szKey, szValue );
 		return true;
 	}
@@ -161,6 +165,11 @@ class monster_doom : ScriptBaseMonsterEntity
 	void DoomTouched(CBaseEntity@ ent)
 	{
 		//println("ZOMG TOUCHED " + ent.pev.classname);
+	}
+	
+	void DelayAttack()
+	{
+		nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
 	}
 	
 	void DoomSpawn()
@@ -266,7 +275,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (alertSounds.length() > 0)
 		{
 			string snd = alertSounds[Math.RandomLong(0, alertSounds.size()-1)];
-			g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, snd, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, snd, 1.0f, 1.0f, 0, 100);
 		}
 		
 		dormant = false;
@@ -328,7 +337,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			if (Math.RandomFloat(0, 1) <= painChance)
 			{
 				SetActivity(ANIM_PAIN);
-				nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+				//DelayAttack();
 				g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, painSound, 1.0f, 0.5f, 0, 100);
 			}
 			
@@ -352,7 +361,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			//	println("I will remember to attack " + oldEnemy.GetEntity().pev.netname);
 			h_enemy = EHandle(ent);
 			lastEnemy = g_Engine.time;
-			nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+			DelayAttack();
 			Wakeup();
 		}
 	}
@@ -666,7 +675,7 @@ class monster_doom : ScriptBaseMonsterEntity
 						CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
 						if (pHit !is null)
 						{
-							nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+							DelayAttack();
 							Vector oldVel = pHit.pev.velocity;
 							doomTakeDamage(pHit, self.pev, self.pev, dashDamage, DMG_BURN);
 							pHit.pev.velocity = oldVel; // prevent vertical launching
@@ -747,6 +756,9 @@ class monster_doom : ScriptBaseMonsterEntity
 				
 				bool inMeleeRange = hasMelee and delta.Length() < meleeRange*g_world_scale;
 				
+				if (nextRangeAttack + 0.5f < g_Engine.time)
+					DelayAttack(); // don't attack immediately when enemy comes back into view
+				
 				if (isAttacking() or inMeleeRange or (nextRangeAttack < g_Engine.time and hasRanged and lineOfSight))
 				{
 					pev.angles.y = g_EngineFuncs.VecToYaw(delta);
@@ -799,7 +811,7 @@ class monster_doom : ScriptBaseMonsterEntity
 								}
 								if (!keepAttacking)
 								{
-									nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+									DelayAttack();
 									SetActivity(ANIM_MOVE);
 								}
 							}
@@ -933,10 +945,10 @@ class monster_doom : ScriptBaseMonsterEntity
 						{
 							lastDormantPos = pev.origin;
 							@dormantNode = getSoundNode(lastDormantPos);
-							println("NEW DORMANT NODE");
+							//println("NEW DORMANT NODE");
 						}
 						
-						if (dormantNode !is null)
+						if (dormantNode !is null and !isDeaf)
 						{
 							PlayerState@ state = getPlayerState(cast<CBasePlayer@>(owner));
 							if (canHearSound(dormantNode, state.soundNode, owner.pev.origin, self))

@@ -127,7 +127,8 @@ class fireball : ScriptBaseAnimating
 	
 	void Touch( CBaseEntity@ pOther )
 	{
-		if (dead or (pOther.pev.classname == "fireball"))
+		//if (dead or (pOther.pev.classname == "fireball"))
+		if (dead)
 			return;
 			
 		CBaseEntity@ owner = g_EntityFuncs.Instance( self.pev.owner );

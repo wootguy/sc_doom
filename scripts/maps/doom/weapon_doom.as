@@ -341,7 +341,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		PlayerState@ state = getPlayerState(plr);
 		int dist = 2018;
 		@state.soundNode = getSoundNode(plr.pev.origin);
-		GetSoundEntInstance().InsertSound(4, plr.pev.origin, dist, 0.5f, plr);
+		GetSoundEntInstance().InsertSound(4, plr.pev.origin, dist, 0.0f, plr);
 	}
 	
 	void Shoot()

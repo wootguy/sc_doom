@@ -40,6 +40,24 @@ class trigger_doom_teleport : ScriptBaseEntity
 			if (target !is null)
 			{
 				Vector offset = other.IsPlayer() ? Vector(0,0,36) : Vector(0,0,0);
+				Vector targetPos = target.pev.origin + offset;
+				Vector testPos = target.pev.origin + Vector(0,0,36);
+				
+				// telefrag
+				TraceResult tr;
+				g_Utility.TraceHull( testPos, testPos + Vector(0,0,1.0f), dont_ignore_monsters, human_hull, self.edict(), tr );
+
+				CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
+				if (phit !is null and (phit.IsMonster() or phit.IsPlayer()))
+					doomTakeDamage(phit, other.pev, other.pev, phit.pev.health + 100, DMG_CRUSH);
+					
+				if (other.IsMonster())
+				{
+					monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(other));
+					if (mon !is null)
+						mon.DelayAttack(); // get out of the way for other monsters
+				}
+				
 				te_explosion(other.pev.origin - offset, "sprites/doom/TFOG.spr", 10, 5, 15);
 				g_EntityFuncs.SetOrigin(other, target.pev.origin + offset);
 				
