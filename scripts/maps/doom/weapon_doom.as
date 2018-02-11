@@ -337,9 +337,11 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	
 	void EmitSound()
 	{
-		println("EMIT LE SOUND");
-		int dist = 1024;
-		GetSoundEntInstance().InsertSound(4, getPlayer().pev.origin, dist, 0.5f, getPlayer());
+		CBasePlayer@ plr = getPlayer();
+		PlayerState@ state = getPlayerState(plr);
+		int dist = 2018;
+		@state.soundNode = getSoundNode(plr.pev.origin);
+		GetSoundEntInstance().InsertSound(4, plr.pev.origin, dist, 0.5f, plr);
 	}
 	
 	void Shoot()

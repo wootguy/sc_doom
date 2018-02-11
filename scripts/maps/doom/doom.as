@@ -5,6 +5,7 @@
 #include "func_doom_door"
 #include "func_doom_water"
 #include "trigger_doom_teleport"
+#include "info_node_sound"
 
 // TODO:
 // monsters should open doors, react to sounds without sight
@@ -75,6 +76,7 @@ class PlayerState
 	float lastGod = 0;
 	float lastInvis = 0;
 	int uiScale = 1;
+	SoundNode@ soundNode = null;
 	
 	
 	void initMenu(CBasePlayer@ plr, TextMenuPlayerSlotCallback@ callback)
@@ -167,6 +169,7 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "trigger_doom_teleport", "trigger_doom_teleport" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_barrel", "item_barrel" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "item_prop", "item_prop" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "info_node_sound", "info_node_sound" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_fist", "weapon_doom_fist" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_chainsaw", "weapon_doom_chainsaw" );
@@ -333,6 +336,8 @@ void MapActivate()
 	keys["m_iMode"] = "1";
 	keys["delay"] = "0";
 	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
+	
+	createSoundGraph();
 }
 
 int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, Vector lookPos)
@@ -778,6 +783,7 @@ void doTheStatic(CBaseEntity@ ent)
 void doEffect(CBasePlayer@ plr)
 {
 	CBaseEntity@ ent = null;
+	int numMonsters = 0;
 	do {
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "*");
 		if (ent !is null)
@@ -786,10 +792,15 @@ void doEffect(CBasePlayer@ plr)
 			{
 				monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(ent));
 				if (mon !is null)
+				{
 					mon.Setup();
+					numMonsters++;
+				}
 			}
 		}
 	} while(ent !is null);
+	
+	println("Setup " + numMonsters + " monsters");
 }
 
 void playerMenuCallback(CTextMenu@ menu, CBasePlayer@ plr, int page, const CTextMenuItem@ item)

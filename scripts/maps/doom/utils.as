@@ -1,14 +1,19 @@
 void print(string text) { g_Game.AlertMessage( at_console, text); }
 void println(string text) { print(text + "\n"); }
 
-
-// Will create a new state if the requested one does not exit
-PlayerState@ getPlayerState(CBasePlayer@ plr)
+string getSteamID(CBasePlayer@ plr)
 {
 	string steamId = g_EngineFuncs.GetPlayerAuthId( plr.edict() );
 	if (steamId == 'STEAM_ID_LAN') {
 		steamId = plr.pev.netname;
 	}
+	return steamId;
+}
+
+// Will create a new state if the requested one does not exit
+PlayerState@ getPlayerState(CBasePlayer@ plr)
+{
+	string steamId = getSteamID(plr);
 	
 	if ( !player_states.exists(steamId) )
 	{
