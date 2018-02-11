@@ -256,7 +256,10 @@ class func_doom_door : ScriptBaseEntity
 		}
 			
 		if ((pev.spawnflags & SF_DOOR_NO_AUTO_RETURN != 0) and m_toggle_state == TS_AT_TOP or useType == USE_OFF)
-			DoorGoDown();
+		{
+			if (m_toggle_state != TS_AT_BOTTOM and m_toggle_state != TS_GOING_DOWN)
+				DoorGoDown();
+		}
 		else
 			DoorGoUp();
 			

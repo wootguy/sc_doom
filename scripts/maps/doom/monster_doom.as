@@ -79,6 +79,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	int constantAttackLoopFrame = 0; // restart at this frame when attacking again
 	bool rangeWhenMeleeFails = true; // do a range attack if the melee attack fails
 	float deathBoom = 0;
+	bool didDeathBoom = false;
 	string dropItem; // item spawned on death
 	
 	uint frameCounter = 0;
@@ -177,7 +178,10 @@ class monster_doom : ScriptBaseMonsterEntity
 		self.SetClassification(CLASS_ALIEN_MONSTER);
 		SetActivity(ANIM_IDLE);
 		
-		pev.view_ofs = Vector(0,0,40);
+		pev.view_ofs = Vector(0,0,28);
+		
+		if (canFly)
+			pev.origin.z -= 16;
 		
 		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
 		g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
@@ -250,7 +254,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			string snd = alertSounds[Math.RandomLong(0, alertSounds.size()-1)];
 			g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, snd, 1.0f, 0.5f, 0, 100);
 		}
-						
+		
 		dormant = false;
 		nextIdleSound = g_Engine.time + Math.RandomFloat(5.0f, 10.0f);
 	}
@@ -262,6 +266,9 @@ class monster_doom : ScriptBaseMonsterEntity
 		pev.health -= flDamage;
 		if (pev.health <= 0)
 		{
+			if (self.m_iTriggerCondition == 4)
+				g_EntityFuncs.FireTargets(self.m_iszTriggerTarget, null, null, USE_TOGGLE);
+			
 			g_EntityFuncs.SetModel(self, bodySprite);
 			killClientSprites();
 			pev.renderamt = 255;
@@ -320,7 +327,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	void SetEnemy(CBaseEntity@ ent)
 	{
-		if (!ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0 or ent.entindex() == self.entindex())
+		if (ent is null or !ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0 or ent.entindex() == self.entindex())
 			return;
 		// only switch targets after chasing current one for a while
 		if (!h_enemy.IsValid() or lastEnemy + 10.0f < g_Engine.time)
@@ -454,6 +461,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		return activity == ANIM_ATTACK || activity == ANIM_ATTACK2;
 	}
 	
+	void DeathBoom() {}
+	
 	void DoomThink()
 	{
 		if (superDormant)
@@ -554,7 +563,14 @@ class monster_doom : ScriptBaseMonsterEntity
 				return;
 			}
 			else
+			{
 				pev.frame = frame;
+				if (deathBoom > 0 and frameIdx == deathBoom and !didDeathBoom)
+				{
+					didDeathBoom = true;
+					DeathBoom();
+				}
+			}
 			pev.rendercolor = lightColor;
 		}
 		
@@ -562,11 +578,17 @@ class monster_doom : ScriptBaseMonsterEntity
 		{
 			Vector bodyPos = BodyPos();
 			
-			if (dashing and g_Engine.time > dashTimeout)
+			if (dashing)
 			{
-				dashing = false;
-				SetActivity(ANIM_MOVE);
+				if (g_Engine.time > dashTimeout)
+				{
+					dashing = false;
+					SetActivity(ANIM_MOVE);
+				}
+				else if (activity != ANIM_ATTACK)
+					SetActivity(ANIM_ATTACK);
 			}
+			
 			
 			Vector eyePos = pev.origin + pev.view_ofs;
 			bool lineOfSight = false;
@@ -584,17 +606,20 @@ class monster_doom : ScriptBaseMonsterEntity
 				int canWalk = 0;
 				
 				Vector verticalMove = Vector(0,0,0);					
-				if (canFly and h_enemy.IsValid())
+				if (canFly)
 				{
-					CBaseEntity@ enemy = h_enemy;
-					
-					println("HEIGHT DIFF: " + (enemy.pev.origin.z - bodyPos.z));
-					
-					float enemyZ = enemy.pev.origin.z + enemy.pev.view_ofs.z;
-					if (enemyZ > bodyPos.z + g_monster_center_z or !lineOfSight)
-						verticalMove = Vector(0,0,4);
-					else if (enemyZ < bodyPos.z - g_monster_center_z)
-						verticalMove = Vector(0,0,-4);
+					if (h_enemy.IsValid())
+					{
+						CBaseEntity@ enemy = h_enemy;
+						
+						//println("HEIGHT DIFF: " + (enemy.pev.origin.z - bodyPos.z));
+						
+						float enemyZ = enemy.pev.origin.z + enemy.pev.view_ofs.z;
+						if (enemyZ > bodyPos.z + g_monster_center_z or !lineOfSight)
+							verticalMove = Vector(0,0,4);
+						else if (enemyZ < bodyPos.z - g_monster_center_z)
+							verticalMove = Vector(0,0,-4);
+					}
 						
 					TraceResult tVert;
 					g_Utility.TraceHull( bodyPos, bodyPos + verticalMove*2, dont_ignore_monsters, human_hull, self.edict(), tVert );
@@ -605,7 +630,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					}
 					else
 					{
-						println("OK TO MOVE VERT");
+						//println("OK TO MOVE VERT");
 					}
 					
 					TraceResult tr;
@@ -619,6 +644,21 @@ class monster_doom : ScriptBaseMonsterEntity
 						canWalk = 1;
 						Vector flyPos = tr.vecEndPos + Vector(0,0,-g_monster_center_z);
 						g_EntityFuncs.SetOrigin(self, flyPos);
+					}
+					else if (dashing)
+					{
+						dashing = false;
+						SetActivity(ANIM_MOVE);
+						CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
+						if (pHit !is null)
+						{
+							nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
+							Vector oldVel = pHit.pev.velocity;
+							doomTakeDamage(pHit, self.pev, self.pev, dashDamage, DMG_BURN);
+							pHit.pev.velocity = oldVel; // prevent vertical launching
+							
+							knockBack(pHit, dashVel.Normalize()*(100 + dashDamage)*g_world_scale);
+						}
 					}
 				}
 				else
@@ -650,20 +690,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					//te_beampoints(bodyPos + Vector(0,0,g_monster_center_z*g_world_scale), bodyPos + Vector(0,0,g_monster_center_z*g_world_scale) + moveVel*g_monster_scale);
 					//te_beampoints(bodyPos + Vector(0,0,-g_monster_center_z*g_world_scale), bodyPos + Vector(0,0,-g_monster_center_z*g_world_scale) + moveVel*g_monster_scale);
 									
-					if (dashing)
-					{
-						dashing = false;
-						CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
-						if (pHit !is null)
-						{
-							nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
-							Vector oldVel = pHit.pev.velocity;
-							pHit.TakeDamage(self.pev, self.pev, dashDamage, DMG_BURN);
-							pHit.pev.velocity = oldVel; // prevent vertical launching
-							
-							knockBack(pHit, dashVel.Normalize()*(100 + dashDamage)*g_world_scale);
-						}
-					}
+					
 					if (lastWallReflect + 0.2f < g_Engine.time)
 					{
 						pev.angles.y += Math.RandomFloat(90, 270);
@@ -778,7 +805,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			}
 		}
 		
-				// render sprite for each player
+		// render sprite for each player
 		if (self.IsAlive())
 		{
 			dictionary pvsClients;
@@ -807,7 +834,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					delta = delta.Normalize();
 					int angleIdx = getSpriteAngle(pos, forward, right, plr.pev.origin);
 						
-					if (dormant and plr.IsAlive() and DotProduct(forward, delta) < -0.3f and plr.FVisible(self, true))
+					if (!h_enemy.IsValid() and plr.IsAlive() and DotProduct(forward, delta) < -0.3f and plr.FVisible(self, true))
 					{
 						bool visible = true;
 						PlayerState@ state = getPlayerState(plr);
@@ -875,7 +902,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				if (snd is null)
 					break;
 				CBaseEntity@ owner = snd.hOwner;
-				if (snd.m_iVolume > 0)
+				if (owner !is null and owner.IsPlayer() and snd.m_iVolume > 0)
 				{
 					Vector delta = snd.m_vecOrigin - pev.origin;
 					if (delta.Length() < snd.m_iVolume)

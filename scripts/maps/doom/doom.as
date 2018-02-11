@@ -11,7 +11,7 @@
 // items don't get correct brightness
 // player models should be doom guy sprite (colored?)
 // rocket trails
-// hitboxes aren't quite right
+// hitboxes aren't right
 // rewrite takedamage+traceattack :<
 // health/armor/ammo hud?
 // weapon picksound is shotgun?
@@ -25,6 +25,8 @@
 // replace gib sound with slop
 // teleports dont work in old maps
 // crushers should go past monsters or go up after a while
+// explosion barrel dlight
+// monsters aim too high
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -34,9 +36,9 @@ int g_total_secrets = 0;
 int g_total_monsters = 0;
 int g_total_items = 0;
 int g_keys = 0;
-int g_map_num = 1;
+int g_map_num = 5;
 
-array<int> g_par_times = {30, 90, 120, 120, 90};
+array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120};
 
 enum key_types
 {
@@ -156,6 +158,9 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_cyberdemon", "monster_cyberdemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_spiderdemon", "monster_spiderdemon" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_revenant", "monster_revenant" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_mancubus", "monster_mancubus" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_arachnotron", "monster_arachnotron" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_painelemental", "monster_painelemental" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_water", "func_doom_water" );
@@ -230,6 +235,7 @@ void MapInit()
 	g_Game.PrecacheModel("sprites/doom/BLUD.spr");
 	g_Game.PrecacheModel("sprites/doom/TFOG.spr");
 	g_Game.PrecacheModel("sprites/doom/FATB.spr");
+	g_Game.PrecacheModel("sprites/doom/MANF.spr");
 	g_Game.PrecacheModel("models/doom/null.mdl");
 	
 	g_Game.PrecacheModel("sprites/doom/fist.spr");
@@ -453,13 +459,14 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 			if (ent.pev.absmin.x > level_min.x and ent.pev.absmin.y > level_min.y and ent.pev.absmin.z > level_min.z and
 				ent.pev.absmax.x < level_max.x and ent.pev.absmax.y < level_max.y and ent.pev.absmax.z < level_max.z)
 			{
+				string prefix = "map0" + g_map_num + "_";
 				// add prefix to entity names so multiple levels don't conflict
 				if (string(ent.pev.targetname).Length() > 0)
-					ent.pev.targetname = "map0" + g_map_num + "_" + ent.pev.targetname;
+					ent.pev.targetname = prefix + ent.pev.targetname;
 				if (string(ent.pev.target).Length() > 0 and ent.pev.target != "secret_revealed" and ent.pev.target != "teleport_thing" and ent.pev.target != "exit_level")
-					ent.pev.target = "map0" + g_map_num + "_" + ent.pev.target;
+					ent.pev.target = prefix + ent.pev.target;
 				if (ent.pev.target == "teleport_thing")
-					ent.pev.netname = "map0" + g_map_num + "_" + ent.pev.netname;
+					ent.pev.netname = prefix + ent.pev.netname;
 				
 				if (ent.pev.classname == "trigger_once" and ent.pev.target == "secret_revealed")
 					g_total_secrets += 1;
@@ -467,6 +474,9 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 				if (string(ent.pev.classname).Find("monster_") == 0)
 				{
 					monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(ent));
+					CBaseMonster@ bmon = cast<CBaseMonster@>(ent);
+					if (bmon !is null)
+						bmon.m_iszTriggerTarget = prefix + bmon.m_iszTriggerTarget;
 					if (mon !is null)
 						mon.Setup();
 					g_total_monsters += 1;
@@ -484,6 +494,15 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 	
 	g_EntityFuncs.FireTargets("map0" + g_map_num + "_spawns", null, null, USE_ON);
 	g_EntityFuncs.FireTargets("map0" + g_map_num + "_music", null, null, USE_ON);
+}
+
+void episode_end()
+{
+	CBaseEntity@ trans = g_EntityFuncs.FindEntityByTargetname(null, "inter_fin_spr");
+	CBaseEntity@ lvl = g_EntityFuncs.FindEntityByTargetname(null, "inter_lvl_spr");
+	trans.pev.effects |= EF_NODRAW;
+	lvl.pev.effects |= EF_NODRAW;
+	g_EntityFuncs.FireTargets("ep_end", null, null, USE_TOGGLE);
 }
 
 void next_level()
@@ -515,6 +534,13 @@ void next_level()
 	g_EntityFuncs.FireTargets("next_level", null, null, USE_TOGGLE);
 	
 	g_map_num++;
+	
+	if (g_map_num == 7)
+	{
+		g_Scheduler.SetTimeout("episode_end", 1.0f);
+	}
+	else
+		g_EntityFuncs.FireTargets("map_start", null, null, USE_TOGGLE);
 }
 
 void tally_time(string item, int time, int targetTime, bool playSound)
@@ -562,7 +588,7 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 		if (item == "time")
 			g_Scheduler.SetTimeout("tally_time", 0.8, "par", 0, g_par_times[g_map_num-1], !playSound);
 		if (item == "par")
-			g_Scheduler.SetTimeout("next_level", 4.0);
+			g_Scheduler.SetTimeout("next_level", 1.0);
 	}
 }
 
@@ -675,6 +701,29 @@ void intermission(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTyp
 	g_Scheduler.SetTimeout("tally_score", 1.5f, "kills", 0, killPercent, true);
 	//tally_time("time", 0, 60*8 + 26, true);
 }
+
+void ep_scroll_line(int lineNum, int stepsTaken, int maxStep)
+{
+	CBaseEntity@ scroll = g_EntityFuncs.FindEntityByTargetname(null, "ep_scroll" + lineNum);
+	if (scroll is null)
+		return;
+	scroll.pev.origin.x += 0.1f;
+	
+	if (stepsTaken < maxStep)
+	{
+		g_Scheduler.SetTimeout("ep_scroll_line", 0.05f, lineNum, stepsTaken+1, 50);
+	}
+	else
+	{
+		g_Scheduler.SetTimeout("ep_scroll_line", 0, lineNum+1, 0, 50);
+	}
+}
+
+void ep_text(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{	
+	g_Scheduler.SetTimeout("ep_scroll_line", 0.0f, 1, 0, 10);
+}
+
 
 HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 {	
