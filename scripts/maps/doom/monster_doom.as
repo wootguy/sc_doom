@@ -16,6 +16,7 @@ array<string> light_suffix = {"_L3", "_L2", "_L1", "_L0"};
 float g_monster_scale = 1.42857f; // 1 / 0.7
 float g_world_scale = 1.0f;
 float g_monster_center_z = 34;
+float g_monster_think_delay = 0.0572f;
 
 class AnimInfo
 {
@@ -61,6 +62,7 @@ class AnimInfo
 }
 
 uint g_monster_idx = 0;
+float g_stagger_think = 0;
 
 class monster_doom : ScriptBaseMonsterEntity
 {
@@ -127,6 +129,11 @@ class monster_doom : ScriptBaseMonsterEntity
 	string shootSound;
 	string walkSound;
 	
+	dictionary plrViewAngles; // maps player to view angle
+	
+	SoundNode@ dormantNode = null; // save this to reduce CPU usage
+	Vector lastDormantPos;
+	
 	bool KeyValue( const string& in szKey, const string& in szValue )
 	{
 		if (szKey == "spectre") isSpectre = atoi(szValue) != 0;
@@ -192,7 +199,14 @@ class monster_doom : ScriptBaseMonsterEntity
 		superDormant = false;
 		pev.solid = SOLID_SLIDEBOX;
 		CreateRenderSprites();
-		pev.nextthink = g_Engine.time;
+		pev.nextthink = g_Engine.time + g_stagger_think;
+
+		g_stagger_think += 0.01f;
+		if (g_stagger_think >= g_monster_think_delay)
+			g_stagger_think = 0;
+			
+		lastDormantPos = pev.origin;
+		@dormantNode = getSoundNode(pev.origin);
 	}
 	
 	void CreateRenderSprites()
@@ -334,8 +348,8 @@ class monster_doom : ScriptBaseMonsterEntity
 		{
 			if (h_enemy.IsValid() and h_enemy.GetEntity().IsPlayer())
 				oldEnemy = h_enemy;
-			if (oldEnemy)
-				println("I will remember to attack " + oldEnemy.GetEntity().pev.netname);
+			//if (oldEnemy)
+			//	println("I will remember to attack " + oldEnemy.GetEntity().pev.netname);
 			h_enemy = EHandle(ent);
 			lastEnemy = g_Engine.time;
 			nextRangeAttack = g_Engine.time + Math.RandomFloat(minRangeAttackDelay, maxRangeAttackDelay);
@@ -346,8 +360,8 @@ class monster_doom : ScriptBaseMonsterEntity
 	void ClearEnemy()
 	{
 		h_enemy = oldEnemy;
-		if (h_enemy)
-			println("I will go back to attacking " + h_enemy.GetEntity().pev.classname);
+		//if (h_enemy)
+		//	println("I will go back to attacking " + h_enemy.GetEntity().pev.classname);
 		oldEnemy = null;
 		if (!h_enemy.IsValid())
 			Sleep();
@@ -626,7 +640,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					if (tVert.flFraction < 1.0f)
 					{
 						verticalMove = Vector(0,0,0);
-						println("NOT OK TO MOVE VERT");
+						//println("NOT OK TO MOVE VERT");
 					}
 					else
 					{
@@ -806,52 +820,51 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		
 		// render sprite for each player
+		bool visibleToAnyone = false;
 		if (self.IsAlive())
-		{
-			dictionary pvsClients;
+		{			
 			edict_t@ edt = g_EngineFuncs.FindClientInPVS(self.edict());
 			while (edt !is null)
 			{
 				CBasePlayer@ plr = cast<CBasePlayer@>(g_EntityFuncs.Instance( edt ));
 				if (plr !is null)
 				{
-					pvsClients[plr.entindex()] = true;
 					@edt = @plr.pev.chain;
-				}
-				else
-					break;
-			}
-			
-			CBaseEntity@ ent = null;
-			do {
-				@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
-				if (ent !is null)
-				{
-					CBasePlayer@ plr = cast<CBasePlayer@>(ent);
-					Vector pos = pev.origin + Vector(0,0,0);
+					visibleToAnyone = true;
+					
+					int angleIdx = getSpriteAngle(pev.origin, forward, right, plr.pev.origin);
 						
-					Vector delta = pos - plr.pev.origin;
-					delta = delta.Normalize();
-					int angleIdx = getSpriteAngle(pos, forward, right, plr.pev.origin);
-						
-					if (!h_enemy.IsValid() and plr.IsAlive() and DotProduct(forward, delta) < -0.3f and plr.FVisible(self, true))
+					if (!h_enemy.IsValid() and plr.IsAlive())
 					{
-						bool visible = true;
-						PlayerState@ state = getPlayerState(plr);
-						visible = plr.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
-						visible = visible and g_EngineFuncs.PointContents(plr.pev.origin) != CONTENTS_SOLID;
+						Vector delta = pev.origin - plr.pev.origin;
+						delta = delta.Normalize();
+						if (DotProduct(forward, delta) < -0.3f and plr.FVisible(self, true))
+						{
+							bool visible = true;
+							PlayerState@ state = getPlayerState(plr);
+							visible = plr.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
+							visible = visible and g_EngineFuncs.PointContents(plr.pev.origin) != CONTENTS_SOLID;
 
-						if (visible)
-							SetEnemy(plr);
+							if (visible)
+								SetEnemy(plr);
+						}
 					}
 					
-					PlayerState@ state = getPlayerState(cast<CBasePlayer@>(plr));
-					bool clientInPVS = pvsClients.exists(plr.entindex());
+					string steamId = getSteamID(plr);
+					PlayerState@ state = getPlayerState(plr);
+					
+					int lastAngle = -1;
+					if (plrViewAngles.exists(steamId))
+						plrViewAngles.get(steamId, lastAngle);
+					plrViewAngles[steamId] = angleIdx;
+					
+					if (lastAngle == angleIdx)
+						continue;
 					
 					for (int i = 0; i < 8; i++)
 					{
 						CBaseEntity@ client_sprite = sprites[i];
-						bool shouldVisible = i == angleIdx and clientInPVS;
+						bool shouldVisible = i == angleIdx;
 						
 						if (shouldVisible != state.isVisibleEnt(client_sprite.pev.targetname))
 						{
@@ -871,23 +884,28 @@ class monster_doom : ScriptBaseMonsterEntity
 						}
 					}
 				}
-			} while (ent !is null);
-			
-			for (uint i = 0; i < 8; i++)
-			{
-				CBaseEntity@ client_sprite = sprites[i];
-				bool canAnyoneSeeThis = client_sprite.pev.colormap > 0;
-				if (canAnyoneSeeThis)
-				{
-					client_sprite.pev.effects &= ~EF_NODRAW;
-					//client_sprite.pev.origin = pev.origin;
-					g_EntityFuncs.SetOrigin(client_sprite, pev.origin);
-					client_sprite.pev.frame = frame*8 + i;
-					client_sprite.pev.rendercolor = lightColor;
-				}
 				else
-					client_sprite.pev.effects |= EF_NODRAW;
-				
+					break;
+			}
+			
+			if (visibleToAnyone)
+			{
+				// update directional sprites + hide angles not visible to anyone
+				for (uint i = 0; i < 8; i++)
+				{
+					CBaseEntity@ client_sprite = sprites[i];
+					bool canAnyoneSeeThis = client_sprite.pev.colormap > 0;
+					if (canAnyoneSeeThis)
+					{
+						client_sprite.pev.effects &= ~EF_NODRAW;
+						//client_sprite.pev.origin = pev.origin;
+						g_EntityFuncs.SetOrigin(client_sprite, pev.origin);
+						client_sprite.pev.frame = frame*8 + i;
+						client_sprite.pev.rendercolor = lightColor;
+					}
+					else
+						client_sprite.pev.effects |= EF_NODRAW;
+				}
 			}
 		}
 		
@@ -901,14 +919,31 @@ class monster_doom : ScriptBaseMonsterEntity
 				CSound@ snd = sndent.SoundPointerForIndex(activeList);
 				if (snd is null)
 					break;
+				bool gunshot = snd.m_iVolume == 2018;
 				CBaseEntity@ owner = snd.hOwner;
-				if (owner !is null and owner.IsPlayer() and snd.m_iVolume > 0)
+				
+				if (gunshot and owner !is null and owner.IsPlayer())
 				{
 					Vector delta = snd.m_vecOrigin - pev.origin;
 					if (delta.Length() < snd.m_iVolume)
 					{
 						delta.z = 0;
-						g_EngineFuncs.VecToAngles(delta.Normalize(), pev.angles);
+						bool moved = (lastDormantPos - pev.origin).Length() > 1.0f;
+						if (moved)
+						{
+							lastDormantPos = pev.origin;
+							@dormantNode = getSoundNode(lastDormantPos);
+							println("NEW DORMANT NODE");
+						}
+						
+						if (dormantNode !is null)
+						{
+							PlayerState@ state = getPlayerState(cast<CBasePlayer@>(owner));
+							if (canHearSound(dormantNode, state.soundNode, owner.pev.origin, self))
+								SetEnemy(owner);
+						}
+						else
+							g_EngineFuncs.VecToAngles(delta.Normalize(), pev.angles);
 					}
 				}
 					
@@ -918,7 +953,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		oldFrameCounter = frameCounter;
 		oldFrameIdx = frameIdx;
-		pev.nextthink = g_Engine.time + 0.0572;
+		pev.nextthink = g_Engine.time + g_monster_think_delay;
 		//pev.nextthink = g_Engine.time + 0.02857;
 	}
 };
