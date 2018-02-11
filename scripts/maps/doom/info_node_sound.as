@@ -84,28 +84,30 @@ bool canHearSound(SoundNode@ start, SoundNode@ end, Vector b=Vector(0,0,0), CBas
 	if (start.reachability.exists(end.id))
 	{
 		// check reachability cache
-		NodeReach@ reach = cast<NodeReach@>( start.reachability[end.id] );
 		//println("CHECK REACH " + reach.hasPath + " " + start.id + " " + end.id);
-		return reach.isReachable();
+		bool reachable = cast<NodeReach@>( start.reachability[end.id] ).isReachable();
+		if (false and reachable)
+		{
+			array<SoundNode@> route = AStarRouteWaypoint(start, end, true);
+			if (route.length() > 0 and listener !is null)
+			{
+				te_beampoints(route[0].pos, b, "sprites/laserbeam.spr", 0, 100, 40, 5, 0, PURPLE);
+				te_beampoints(route[route.length()-1].pos, listener.pev.origin, "sprites/laserbeam.spr", 0, 100, 40, 5, 0, PURPLE);
+				for (uint i = 0; i < route.length()-1; i++)
+				{
+					te_beampoints(route[i].pos, route[i+1].pos, "sprites/laserbeam.spr", 0, 100, 40, 5, 0, PURPLE);
+				}
+			}
+		}
+		return reachable;
 	}
 	
 	array<SoundNode@> route = AStarRouteWaypoint(start, end, true);
-	
-	if (route.length() > 0 and listener !is null and false)
-	{
-		te_beampoints(route[0].pos, b, "sprites/laserbeam.spr", 0, 100, 40, 5, 0, PURPLE);
-		te_beampoints(route[route.length()-1].pos, listener.pev.origin, "sprites/laserbeam.spr", 0, 100, 40, 5, 0, PURPLE);
-		for (uint i = 0; i < route.length()-1; i++)
-		{
-			te_beampoints(route[i].pos, route[i+1].pos, "sprites/laserbeam.spr", 0, 100, 40, 5, 0, PURPLE);
-		}
-	}
 	
 	NodeReach reach;
 	reach.hasPath = route.length() > 0;
 	if (reach.hasPath)
 	{
-		//println("HAS A PATH " + start.id + " " + end.id);
 		route.reverse();
 		for (uint i = 0; i < route.length()-1; i++)
 		{
@@ -114,16 +116,15 @@ bool canHearSound(SoundNode@ start, SoundNode@ end, Vector b=Vector(0,0,0), CBas
 			{
 				if (node.targets[k].id == route[i+1].id)
 				{
-					reach.checkEnts = node.targets[k].checkEntities;
-					println("HAS A PATH " + start.id + " " + end.id + " with " + reach.checkEnts.length() + " blockers" );
-					if (reach.checkEnts.length() > 1)
-						te_beampoints(node.pos, getNodeByID(node.targets[k].id).pos, "sprites/laserbeam.spr", 0, 100, 80, 5, 0, PURPLE);
+					for (uint c = 0; c < node.targets[k].checkEntities.length(); c++)
+						reach.checkEnts.insertLast(node.targets[k].checkEntities[c]);
+					//println("HAS A PATH " + start.id + " " + end.id + " with " + reach.checkEnts.length() + " blockers" );
 				}
 			}
 		}
 	}
-	else
-		println("NO PATH " + start.id + " " + end.id);
+	//else
+	//	println("NO PATH " + start.id + " " + end.id);
 	start.reachability[end.id] = reach;
 	
 	return route.length() > 0;
@@ -296,9 +297,7 @@ array<SoundNode@> AStarRouteWaypoint(SoundNode@ start, SoundNode@ goal, bool ign
 }
 
 void createSoundGraph()
-{
-	array<CBaseEntity@> makeSolid;
-	
+{	
 	for (uint i = 0; i < g_sound_nodes.length(); i++)
 	{
 		array<EHandle> checkEntities;
@@ -316,10 +315,6 @@ void createSoundGraph()
 				target.id = k;
 				target.checkEntities = checkEntities;
 				n1.targets.insertLast(target);
-				
-				for (uint c = 0; c < checkEntities.length(); c++)
-					checkEntities[c].GetEntity().pev.solid = SOLID_BSP;
-				checkEntities.resize(0);
 			}
 			else if (phit.pev.classname != "worldspawn" and phit.pev.solid == SOLID_BSP)
 			{
@@ -328,6 +323,10 @@ void createSoundGraph()
 				k--;
 				continue;
 			}
+			
+			for (uint c = 0; c < checkEntities.length(); c++)
+				checkEntities[c].GetEntity().pev.solid = SOLID_BSP;
+			checkEntities.resize(0);
 		}
 	}
 	
