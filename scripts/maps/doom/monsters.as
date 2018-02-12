@@ -230,6 +230,7 @@ class monster_hwdude : monster_doom
 		this.hasRanged = true;
 		this.painChance = 0.66f;
 		this.constantAttack = true;
+		this.hullModel = "models/doom/null_wide.mdl";
 		
 		this.dropItem = "ammo_doom_chaingun";
 		
@@ -283,6 +284,7 @@ class monster_demon : monster_doom
 		this.hasMelee = true;
 		this.hasRanged = false;
 		this.painChance = 0.7f;
+		this.hullModel = "models/doom/null_wide.mdl";
 		
 		self.m_FormattedName = "Demon";
 		self.pev.health = 150;
@@ -328,6 +330,8 @@ class monster_cacodemon : monster_doom
 		this.hasRanged = true;
 		this.canFly = true;
 		this.painChance = 0.5f;
+		this.hullModel = "models/doom/null_fat.mdl";
+		this.largeHull = true;
 		
 		self.m_FormattedName = "Cacodemon";
 		self.pev.health = 400;
@@ -400,9 +404,11 @@ class monster_painelemental : monster_doom
 		this.canFly = true;
 		this.painChance = 0.5f;
 		this.deathBoom = 3;
+		this.hullModel = "models/doom/null_fat.mdl";
+		this.largeHull = true;
 		
 		self.m_FormattedName = "Pain Elemental";
-		self.pev.health = 40;
+		self.pev.health = 400;
 		
 		DoomSpawn();
 		
@@ -569,6 +575,7 @@ class monster_baron : monster_doom
 		this.hasMelee = true;
 		this.hasRanged = true;
 		this.painChance = 0.20f;
+		this.hullModel = "models/doom/null_tall.mdl";
 		
 		self.m_FormattedName = "Baron of Hell";
 		self.pev.health = 1000;
@@ -642,6 +649,7 @@ class monster_hellknight : monster_doom
 		this.hasMelee = true;
 		this.hasRanged = true;
 		this.painChance = 0.50f;
+		this.hullModel = "models/doom/null_tall.mdl";
 		
 		self.m_FormattedName = "Hell Knight";
 		self.pev.health = 500;
@@ -734,6 +742,7 @@ class monster_revenant : monster_doom
 		this.painChance = 0.39f;
 		this.walkSpeed = 10.0f;
 		this.rangeWhenMeleeFails = false;
+		this.hullModel = "models/doom/null_tall.mdl";
 		
 		self.m_FormattedName = "Revenant";
 		self.pev.health = 300;
@@ -829,6 +838,8 @@ class monster_mancubus : monster_doom
 		this.walkSpeed = 8.0f;
 		this.constantAttack = true;
 		this.constantAttackMax = 3;
+		this.hullModel = "models/doom/null_fat.mdl";
+		this.largeHull = true;
 		
 		self.m_FormattedName = "Mancubus";
 		self.pev.health = 600;
@@ -937,6 +948,8 @@ class monster_arachnotron : monster_doom
 		this.painChance = 0.50f;
 		this.walkSpeed = 12.0f;
 		this.constantAttack = true;
+		this.largeHull = true;
+		this.hullModel = "models/doom/null_spider.mdl";
 		
 		self.m_FormattedName = "Arachnotron";
 		self.pev.health = 500;
@@ -1006,6 +1019,7 @@ class monster_cyberdemon : monster_doom
 		alertSounds.insertLast("doom/DSCYBSIT.wav");
 		meleeSound = "doom/DSCLAW.wav";
 		walkSound = "doom/DSHOOF.wav";
+		hullModel = "models/doom/null_large.mdl";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -1013,6 +1027,8 @@ class monster_cyberdemon : monster_doom
 		this.walkSpeed = 16.0f;
 		this.constantAttack = true;
 		this.constantAttackMax = 3;
+		this.dmgImmunity = DMG_BLAST;
+		this.largeHull = true;
 		
 		self.m_FormattedName = "Cyberdemon";
 		self.pev.health = 4000;
@@ -1096,6 +1112,8 @@ class monster_spiderdemon : monster_doom
 		this.painChance = 0.16f;
 		this.walkSpeed = 12.0f;
 		this.constantAttack = true;
+		this.largeHull = true;
+		this.hullModel = "models/doom/null_huge.mdl";
 		
 		self.m_FormattedName = "Spiderdemon";
 		self.pev.health = 3000;

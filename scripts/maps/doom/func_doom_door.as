@@ -10,6 +10,15 @@ void reset_but(EHandle h_ent)
 	ent.ButtonReset();
 }
 
+void delay_use(EHandle button, EHandle pActivator, int useType, float value, bool wasShot)
+{
+	if (!button.IsValid() or !pActivator.IsValid())
+		return;
+		
+	func_doom_door@ but = cast<func_doom_door@>(CastToScriptClass(button.GetEntity()));
+	but.Useit(pActivator.GetEntity(), pActivator.GetEntity(), USE_TYPE(useType), value, wasShot);
+}
+
 class func_doom_door : ScriptBaseEntity
 {	
 	Vector m_vecPosition1;
@@ -27,6 +36,7 @@ class func_doom_door : ScriptBaseEntity
 	int sounds = 0;
 	bool touch_opens = false;
 	bool isCrusher = false;
+	bool shootable = false;
 	Vector useDir;
 	string sync;
 	
@@ -50,6 +60,7 @@ class func_doom_door : ScriptBaseEntity
 		else if (szKey == "crusher") isCrusher = atoi(szValue) != 0;
 		else if (szKey == "lock") lock = atoi(szValue);
 		else if (szKey == "use_dir") useDir = parseVector(szValue);
+		else if (szKey == "shootable") shootable = atoi(szValue) != 0;
 		else return BaseClass.KeyValue( szKey, szValue );
 		
 		return true;
@@ -75,6 +86,7 @@ class func_doom_door : ScriptBaseEntity
 		pev.movetype = MOVETYPE_PUSH;
 		pev.solid = SOLID_BSP;
 		pev.angles = g_vecZero;
+		pev.takedamage = shootable ? DAMAGE_YES : DAMAGE_NO;
 		
 		g_EntityFuncs.SetOrigin(self, pev.origin);
 		g_EntityFuncs.SetModel(self, pev.model);
@@ -164,22 +176,48 @@ class func_doom_door : ScriptBaseEntity
 		DoorActivate();
 	}
 	
+	int TakeDamage( entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType )
+	{
+		if (!shootable)
+			return 0;
+		if (bitsDamageType & DMG_BLAST == 0)
+		{
+			CBaseEntity@ activator = g_EntityFuncs.Instance( pevAttacker );
+			println("USE IT ");
+			//Useit(activator, activator, USE_TOGGLE, 0, true);
+			
+			// for some reason button won't activate if triggered now so have to wait a frame
+			g_Scheduler.SetTimeout("delay_use", 0.0f, EHandle(self), EHandle(activator), int(USE_TOGGLE), 0, true);
+		}
+		return 0;
+	}
+	
 	void ButtonReset()
 	{
 		g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, switchSnd, 1.0f, 1.0f, 0, 100);
 		pev.frame = 0;
 	}
 	
-	void Use( CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value )
+	void Useit(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value, bool wasShot=false)
 	{
-		if (lock != 0 and g_keys & lock != lock)
+		if (shootable and !wasShot)
+			return;
+
+		int haveKey = g_keys;
+		if (!g_strict_keys)
+		{
+			// allow skull keys to activate normal-key doors and vice versa
+			lock = (lock | (lock >> 3)) & (KEY_BLUE | KEY_YELLOW | KEY_RED);
+			haveKey = g_keys | (g_keys >> 3);
+		}
+		if (lock != 0 and lock & haveKey != lock)
 		{
 			if (pActivator.IsPlayer())
 			{
 				string keyname = "blue";
-				if (lock & 10 != 0)
+				if (lock & (KEY_YELLOW | SKULL_YELLOW) != 0)
 					keyname = "yellow";
-				if (lock & 36 != 0)
+				if (lock & (KEY_RED | SKULL_RED) != 0)
 					keyname = "red";
 				g_PlayerFuncs.PrintKeyBindingString(cast<CBasePlayer@>(pActivator), "You need a " + keyname + " key to activate this\n");
 			}
@@ -237,6 +275,11 @@ class func_doom_door : ScriptBaseEntity
 					DoorActivate(useType);
 			}
 		}
+	}
+	
+	void Use( CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value )
+	{
+		Useit(pActivator, pCaller, useType, value, false);
 	}
 	
 	int DoorActivate(int useType=USE_TOGGLE)
