@@ -267,6 +267,10 @@ class item_prop : ScriptBaseEntity
 			case 27:
 				frameStart = frameMax = 106;
 				break;
+			case 34:
+				frameStart = frameMax = 30;
+				light_level = 255;
+				break;
 			case 44:
 				frameStart = 142;
 				frameMax = 145;

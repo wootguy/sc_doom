@@ -38,6 +38,7 @@ int g_total_monsters = 0;
 int g_total_items = 0;
 int g_keys = 0;
 int g_map_num = 5;
+bool g_strict_keys = false; // if false, only color of key matters when opening door
 
 array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120};
 
@@ -226,6 +227,7 @@ void MapInit()
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 	g_Hooks.RegisterHook( Hooks::Player::PlayerUse, @PlayerUse );
+	g_Hooks.RegisterHook( Hooks::Player::PlayerPreThink, @PlayerPreThink );
 	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientJoin );
 		
 	g_Game.PrecacheModel("sprites/doom/objects.spr");
@@ -283,8 +285,6 @@ void MapInit()
 	PrecacheSound("doom/DSITMBK.wav"); // item respawn
 	PrecacheSound("doom/DSITEMUP.wav"); // item collect
 	PrecacheSound("doom/dssecret.flac"); // secret revealed
-	
-	g_Scheduler.SetInterval("heightCheck", 0.0);
 }
 
 void MapActivate()
@@ -363,67 +363,53 @@ int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, V
 	return 4;
 }
 
-void heightCheck()
+HookReturnCode PlayerPreThink(CBasePlayer@ plr)
 {
-	CBaseEntity@ ent = null;
-	do {
-		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
-		if (ent !is null)
-		{
-			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
-			PlayerState@ state = getPlayerState(plr);
-			
-			HUDSpriteParams params;
-			string hud_sprite = "sprites/doom/keys.spr"; 
-			params.spritename = hud_sprite.SubString("sprites/".Length()); // so resguy doesn't get confused
-			params.width = 0;
-			params.flags = HUD_SPR_MASKED | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_ABSOLUTE_X;
-			params.holdTime = 99999.0f;
-			params.color1 = RGBA( 255, 255, 255, 255 );
-			
-			if (false and plr.pev.flags & FL_ONGROUND == 0)
-			{
-				println("DUCK TIME");
-				plr.pev.flDuckTime = 26*2;
-				plr.pev.flags |= FL_DUCKING;
-			}
-			
-			float sprScale = g_spr_scales[state.uiScale];
-			int sprHeight = int(sprScale*6);
-			float baseX = -sprScale*5*2;
-			float baseY = 50;
-			params.x = baseX;
-			params.y = baseY;
-			
-			for (uint i = 0; i < 6; i++)
-			{
-				params.channel = 9+i;
-				params.frame = state.uiScale*6 + i;
-				if (i == 3) // skull keys
-				{
-					params.y = baseY - sprScale*2;
-					params.x = baseX + sprScale*9;
-				}
+	PlayerState@ state = getPlayerState(plr);
+	
+	HUDSpriteParams params;
+	string hud_sprite = "sprites/doom/keys.spr"; 
+	params.spritename = hud_sprite.SubString("sprites/".Length()); // so resguy doesn't get confused
+	params.width = 0;
+	params.flags = HUD_SPR_MASKED | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_ABSOLUTE_X;
+	params.holdTime = 99999.0f;
+	params.color1 = RGBA( 255, 255, 255, 255 );
 
-				if (g_keys & (1 << i) == 0)
-					continue;
-				
-				g_PlayerFuncs.HudCustomSprite(plr, params);
-				
-				params.y += sprScale*2 + sprHeight;
-			}
-			
-			//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step3.wav");
-			//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step6.wav");
-			
-			//g_PlayerFuncs.HudToggleElement(plr, tile, false);
-			
-			//ent.pev.view_ofs.z = 20; // original == 28
-			//ent.pev.scale = 0.7f;
-			//ent.pev.fuser4 = 2;
-			//println("HEIGHT: " + (ent.pev.origin.z + ent.pev.view_ofs.z) + " " + ent.pev.view_ofs.z);
+	float sprScale = g_spr_scales[state.uiScale];
+	int sprHeight = int(sprScale*6);
+	float baseX = -sprScale*5*2;
+	float baseY = 50;
+	params.x = baseX;
+	params.y = baseY;
+	
+	for (uint i = 0; i < 6; i++)
+	{
+		params.channel = 9+i;
+		params.frame = state.uiScale*6 + i;
+		if (i == 3) // skull keys
+		{
+			params.y = baseY - sprScale*2;
+			params.x = baseX + sprScale*9;
 		}
-	} while (ent !is null);
+
+		if (g_keys & (1 << i) == 0)
+			continue;
+		
+		g_PlayerFuncs.HudCustomSprite(plr, params);
+		
+		params.y += sprScale*2 + sprHeight;
+	}
+	
+	//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step3.wav");
+	//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step6.wav");
+	
+	//g_PlayerFuncs.HudToggleElement(plr, tile, false);
+	
+	//ent.pev.view_ofs.z = 20; // original == 28
+	//ent.pev.scale = 0.7f;
+	//ent.pev.fuser4 = 2;
+	//println("HEIGHT: " + (ent.pev.origin.z + ent.pev.view_ofs.z) + " " + ent.pev.view_ofs.z);
+	return HOOK_CONTINUE;
 }
 
 void player_killed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
@@ -864,6 +850,25 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 		if (args[0] == ".options")
 		{
 			openPlayerMenu(plr);
+			return true;
+		}
+		if (args[0] == "idkfa")
+		{
+			g_keys = 0xff;
+			
+			plr.GiveNamedItem("weapon_doom_fist", 0, 0);
+			plr.GiveNamedItem("weapon_doom_chainsaw", 0, 0);
+			plr.GiveNamedItem("weapon_doom_pistol", 0, 0);
+			plr.GiveNamedItem("weapon_doom_chaingun", 0, 0);
+			plr.GiveNamedItem("weapon_doom_shotgun", 0, 0);
+			plr.GiveNamedItem("weapon_doom_supershot", 0, 0);
+			plr.GiveNamedItem("weapon_doom_rpg", 0, 0);
+			plr.GiveNamedItem("weapon_doom_plasmagun", 0, 0);
+			plr.GiveNamedItem("weapon_doom_bfg", 0, 0);
+			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("cells"), 1000000);
+			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("bullets"), 1000000);
+			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("shells"), 1000000);
+			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("rockets"), 1000000);
 			return true;
 		}
 	}

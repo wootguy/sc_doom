@@ -85,12 +85,14 @@ class monster_doom : ScriptBaseMonsterEntity
 	float deathBoom = 0;
 	bool didDeathBoom = false;
 	string dropItem; // item spawned on death
+	string hullModel = "models/doom/null.mdl"; // model used for hitboxes
 	bool isDeaf; // doesn't target player when heard unless in line of sight
 	
 	uint frameCounter = 0;
 	uint oldFrameCounter = 0;
 	int animLoops = 0;
 	int oldFrameIdx = 0;
+	int dmgImmunity = 0;
 	
 	float walkSpeed = 8.0f;
 	float painChance = 1.0f;
@@ -114,6 +116,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	Vector dashVel;
 	float dashDamage = 0;
 	float dashTimeout = 0;
+	bool largeHull = false;
 	Vector gunPos = Vector(0,0,8); // offset relative to body position
 	
 	EHandle h_enemy;
@@ -160,6 +163,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		PrecacheSound(walkSound);
 		PrecacheSound("doom/DSSLOP.wav");
 		g_Game.PrecacheModel(bodySprite);
+		g_Game.PrecacheModel(hullModel);
 	}
 	
 	void DoomTouched(CBaseEntity@ ent)
@@ -180,7 +184,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		pev.solid = SOLID_NOT;
 		
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
-		g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
+		g_EntityFuncs.SetModel(self, hullModel);
 		//g_EntityFuncs.SetSize(self.pev, Vector(-16, -16, 0), Vector(16, 16, 72));
 		
 		self.m_bloodColor = BLOOD_COLOR_RED;
@@ -200,7 +204,16 @@ class monster_doom : ScriptBaseMonsterEntity
 			pev.origin.z -= 16;
 		
 		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
-		g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
+		if (largeHull)
+		{
+			//g_EntityFuncs.SetSize(self.pev, Vector(-32, -32, -7), Vector(32, 32, 42));
+			g_EntityFuncs.SetSize(self.pev, Vector(-32, -32, -7), Vector(32, 32, 72));
+		}
+		else
+		{
+			g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
+		}
+		
 	}
 	
 	void Setup()
@@ -286,6 +299,9 @@ class monster_doom : ScriptBaseMonsterEntity
 	{
 		if (!self.IsAlive() or flDamage == 0)
 			return 0;
+		if (dmgImmunity & bitsDamageType != 0)
+			return 0;
+		
 		pev.health -= flDamage;
 		if (pev.health <= 0)
 		{
@@ -900,7 +916,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					break;
 			}
 			
-			if (visibleToAnyone)
+			if (visibleToAnyone or !dormant)
 			{
 				// update directional sprites + hide angles not visible to anyone
 				for (uint i = 0; i < 8; i++)
@@ -922,7 +938,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		
 		// react to sounds
-		if (dormant)
+		if (dormant and false)
 		{
 			CSoundEnt@ sndent = GetSoundEntInstance();
 			int activeList = sndent.ActiveList();
@@ -948,11 +964,16 @@ class monster_doom : ScriptBaseMonsterEntity
 							//println("NEW DORMANT NODE");
 						}
 						
-						if (dormantNode !is null and !isDeaf)
+						if (dormantNode !is null)
 						{
 							PlayerState@ state = getPlayerState(cast<CBasePlayer@>(owner));
 							if (canHearSound(dormantNode, state.soundNode, owner.pev.origin, self))
-								SetEnemy(owner);
+							{
+								if (isDeaf)
+									g_EngineFuncs.VecToAngles(delta.Normalize(), pev.angles);
+								else
+									SetEnemy(owner);
+							}
 						}
 						else
 							g_EngineFuncs.VecToAngles(delta.Normalize(), pev.angles);

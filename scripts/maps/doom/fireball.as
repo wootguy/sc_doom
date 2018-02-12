@@ -145,7 +145,7 @@ class fireball : ScriptBaseAnimating
 		
 		int damage = Math.RandomLong(damageMin, damageMax);
 		Vector oldVel = pOther.pev.velocity;
-		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, damage, DMG_BLAST);
+		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, damage, DMG_GENERIC);
 		pOther.pev.velocity = oldVel; // prevent vertical launching
 		knockBack(pOther, pev.velocity.Normalize()*(100 + damage*2)*g_world_scale);
 		
