@@ -711,11 +711,16 @@ class monster_archvile : monster_doom
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.5f, true)); // ANIM_MOVE
-		animInfo.insertLast(AnimInfo(6, 15, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(17, 19, 0.25f, true)); // ANIM_ATTACK
 		animInfo.insertLast(AnimInfo(6, 15, 0.25f, true)); // ANIM_ATTACK2
-		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(16, 16, 0.125f, true)); // ANIM_PAIN
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
+		
+		animInfo[ANIM_ATTACK2].attackFrames.resize(0);
+		animInfo[ANIM_ATTACK2].attackFrames.insertLast(8);
+		animInfo[ANIM_ATTACK2].frameIndices.insertLast(15);
+		animInfo[ANIM_ATTACK2].frameIndices.insertLast(15);
 		
 		idleSounds.insertLast("doom/DSVILACT.wav");
 		painSound = "doom/DSVIPAIN.wav";
@@ -725,9 +730,9 @@ class monster_archvile : monster_doom
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
-		//this.painChance = 0.04f;
-		this.painChance = 1.0f;
+		this.painChance = 0.04f;
 		this.walkSpeed = 15.0f;
+		this.canRevive = true;
 		this.hullModel = "models/doom/null_tall.mdl";
 		
 		self.m_FormattedName = "Arche-vile";
@@ -745,7 +750,7 @@ class monster_archvile : monster_doom
 		
 		CBaseEntity@ enemy = h_enemy;
 		
-		brighten = 42;
+		brighten = 46;
 		
 		Vector bodyPos = BodyPos();
 		
@@ -781,24 +786,8 @@ class monster_archvile : monster_doom
 		flame = fire;
 	}
 	
-	bool canRaiseDead()
-	{
-		/*
-		CBaseEntity@ ent = null;
-		do {
-			@ent = g_EntityFuncs.FindEntityInSphere(ent, pev.origin, 512, "*", "classname"); 
-			if (ent !is null)
-			{
-				println("NEARBY MON: " + ent.pev.classname);
-			}
-		} while (ent !is null);
-		*/
-		return false;
-	}
-	
 	void RangeAttackStart()
 	{
-		canRaiseDead();
 		CastFire();
 	}
 	
@@ -1236,6 +1225,7 @@ class monster_spiderdemon : monster_doom
 		this.constantAttack = true;
 		this.largeHull = true;
 		this.hullModel = "models/doom/null_huge.mdl";
+		this.dmgImmunity = DMG_BLAST;
 		
 		self.m_FormattedName = "Spiderdemon";
 		self.pev.health = 3000;

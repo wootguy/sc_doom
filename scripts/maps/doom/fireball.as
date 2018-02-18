@@ -169,8 +169,6 @@ class fireball : ScriptBaseAnimating
 		}
 			
 		CBaseEntity@ owner = g_EntityFuncs.Instance( self.pev.owner );
-		if (owner !is null and owner.entindex() == pOther.entindex())
-			return;
 			
 		dead = true;
 		pev.solid = SOLID_NOT;
@@ -179,7 +177,6 @@ class fireball : ScriptBaseAnimating
 		pev.nextthink = g_Engine.time + 0.15;
 		killClientSprites();
 		pev.rendermode = 0;
-		pev.velocity = Vector(0,0,0);
 		pev.effects &= ~EF_NODRAW;
 		
 		int damage = Math.RandomLong(damageMin, damageMax);
@@ -208,6 +205,7 @@ class fireball : ScriptBaseAnimating
 				TraceResult tr;
 				Vector vecEnd = vecSrc + vecAiming * range;
 				g_Utility.TraceLine( vecSrc, vecEnd, dont_ignore_monsters, owner.edict(), tr );
+				//te_beampoints(vecSrc, vecEnd);
 				
 				// do more fancy effects
 				if( tr.flFraction < 1.0 )
@@ -286,13 +284,7 @@ class fireball : ScriptBaseAnimating
 			CBaseEntity@ client_sprite = sprites[i];
 			bool canAnyoneSeeThis = client_sprite.pev.colormap > 0;
 			if (canAnyoneSeeThis)
-			{
-				client_sprite.pev.effects &= ~EF_NODRAW;
-				client_sprite.pev.frame = pev.frame*8 + i;
-			}
-			else
-				client_sprite.pev.effects |= EF_NODRAW;
-			
+				client_sprite.pev.frame = pev.frame*8 + i;			
 		}
 	}
 	
@@ -349,7 +341,7 @@ class fireball : ScriptBaseAnimating
 				return;
 			}
 			
-			int flash_size = 30;
+			int flash_size = is_bfg ? 60 : 30;
 			int flash_life = 3;
 			int flash_decay = 8;
 			Color color = Color(int(flash_color.x/8), int(flash_color.y/8), int(flash_color.z/8));
@@ -361,10 +353,12 @@ class fireball : ScriptBaseAnimating
 		{
 			pev.frame = moveFrameStart + (frameCounter / 3) % ((moveFrameEnd-moveFrameStart) + 1);
 			
-			int flash_size = 20;
+			int flash_size = is_bfg ? 40 : 20;
 			int flash_life = 1;
 			int flash_decay = 8;
 			Color color = Color(flash_color);
+			if (is_bfg)
+				color = Color(int(flash_color.x/4), int(flash_color.y/4), int(flash_color.z/4));
 			te_dlight(self.pev.origin, flash_size, color, flash_life, flash_decay);
 			
 			if (oriented)

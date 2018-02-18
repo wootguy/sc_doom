@@ -441,6 +441,11 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	if (!ent.IsPlayer())
 		return ent.TakeDamage( pevAttacker, pevAttacker, flDamage, bitsDamageType);
 	
+	// disable friendly fire
+	CBaseEntity@ attacker = g_EntityFuncs.Instance( pevAttacker );
+	if (ent.IsPlayer() and attacker.IsPlayer() and ent.entindex() != attacker.entindex())
+		return 0;
+	
 	float	flTake;
 	Vector	vecDir;
 
@@ -559,7 +564,7 @@ void RadiusDamage( Vector vecSrc, entvars_t@ pevInflictor, entvars_t@ pevAttacke
 
 	if ( pevAttacker is null )
 		@pevAttacker = @pevInflictor;
-	
+		
 	dictionary attacked;
 	// iterate on all entities in the vicinity.
 	while ((@pEntity = g_EntityFuncs.FindEntityInSphere( pEntity, vecSrc, flRadius, "*", "classname" )) != null)
@@ -604,7 +609,7 @@ void RadiusDamage( Vector vecSrc, entvars_t@ pevInflictor, entvars_t@ pevAttacke
 				if (tr.flFraction != 1.0)
 				{
 					g_WeaponFuncs.ClearMultiDamage( );
-					TraceAttack(pEntity, pevInflictor, flAdjustedDamage, (tr.vecEndPos - vecSrc).Normalize( ), tr, bitsDamageType );
+					TraceAttack(pEntity, pevAttacker, flAdjustedDamage, (tr.vecEndPos - vecSrc).Normalize( ), tr, bitsDamageType );
 					g_WeaponFuncs.ApplyMultiDamage( pevInflictor, pevAttacker );
 				}
 				else
@@ -648,7 +653,7 @@ void RadiusDamage( Vector vecSrc, entvars_t@ pevInflictor, entvars_t@ pevAttacke
 		if (tr.flFraction != 1.0)
 		{
 			g_WeaponFuncs.ClearMultiDamage( );
-			TraceAttack(pHit, pevInflictor, flAdjustedDamage, (tr.vecEndPos - vecSrc).Normalize( ), tr, bitsDamageType );
+			TraceAttack(pHit, pevAttacker, flAdjustedDamage, (tr.vecEndPos - vecSrc).Normalize( ), tr, bitsDamageType );
 			g_WeaponFuncs.ApplyMultiDamage( pevInflictor, pevAttacker );
 		}
 		else
