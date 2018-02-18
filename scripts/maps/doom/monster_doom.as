@@ -78,6 +78,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool isSpectre = false;
 	bool canFly = false;
 	bool fullBright = false;
+	bool canRevive = false; // can revive other monsters
 	bool constantAttack = false; // attack until target is obscured
 	int constantAttackMax = 0; // maximum attacks played in sequence
 	int constantAttackLoopFrame = 0; // restart at this frame when attacking again
@@ -101,6 +102,8 @@ class monster_doom : ScriptBaseMonsterEntity
 	float minRangeAttackDelay = 1.0f;
 	float maxRangeAttackDelay = 3.0f;
 	float walkSoundFreq = 0.6f;
+	float reviveDelay = 1.0f; // time between revive checks
+	float lastReviveCheck = 0;
 	
 	float nextWalkSound = 0;
 	float nextRangeAttack = 0;
@@ -112,6 +115,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	bool dormant = true;
 	bool superDormant = true; // not even loaded yet
 	bool isCorpse = false;
+	bool isBeingRevived = false;
 	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
 	bool dashing = false;
 	Vector dashVel;
@@ -186,8 +190,18 @@ class monster_doom : ScriptBaseMonsterEntity
 		Precache();
 	}
 	
+	void SetupHull()
+	{
+		if (largeHull)
+			g_EntityFuncs.SetSize(self.pev, Vector(-32, -32, -7), Vector(32, 32, 72));
+		else
+			g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
+	}
+	
 	void Setup()
 	{
+		if (!superDormant)
+			return;
 		pev.movetype = canFly ? MOVETYPE_FLY : MOVETYPE_STEP;
 		pev.solid = SOLID_NOT;
 		
@@ -211,16 +225,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (canFly or true)
 			pev.origin.z -= 16;
 		
-		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
-		if (largeHull)
-		{
-			//g_EntityFuncs.SetSize(self.pev, Vector(-32, -32, -7), Vector(32, 32, 42));
-			g_EntityFuncs.SetSize(self.pev, Vector(-32, -32, -7), Vector(32, 32, 72));
-		}
-		else
-		{
-			g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
-		}
+		SetupHull();
 	
 		superDormant = false;
 		pev.solid = SOLID_SLIDEBOX;
@@ -348,8 +353,6 @@ class monster_doom : ScriptBaseMonsterEntity
 			
 			if (killPoints)
 				g_kills += 1;
-			else
-				println("NO POINTS FOR THAT MY DJUDE");
 			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
 			bool canGib = animInfo[ANIM_DEAD].frameIndices[0] != animInfo[ANIM_GIB].frameIndices[0];
@@ -379,6 +382,9 @@ class monster_doom : ScriptBaseMonsterEntity
 	{
 		if (ent is null or !ent.IsAlive() or (ent.pev.flags & FL_NOTARGET) != 0 or ent.entindex() == self.entindex())
 			return;
+		if (ent.pev.classname == "monster_archvile")
+			return; // never target these guys, so says the wiki
+			
 		// only switch targets after chasing current one for a while
 		if (!h_enemy.IsValid() or lastEnemy + 10.0f < g_Engine.time)
 		{
@@ -504,6 +510,12 @@ class monster_doom : ScriptBaseMonsterEntity
 			g_EntityFuncs.Remove(renderShowEnts[k]);
 			g_EntityFuncs.Remove(renderHideEnts[k]);
 		}
+		
+		sprites.resize(0);
+		renderShowEnts.resize(0);
+		renderHideEnts.resize(0);
+		
+		plrViewAngles.clear();
 	}
 	
 	bool isAttacking()
@@ -512,6 +524,49 @@ class monster_doom : ScriptBaseMonsterEntity
 	}
 	
 	void DeathBoom() {}
+	
+	void Revive()
+	{
+		g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, fixPath("doom/DSSLOP.wav"), 1.0f, 0.5f, 0, 100);
+		isCorpse = false;
+		
+		AnimInfo reverseAnim;
+		reverseAnim.framerate = currentAnim.framerate;
+		reverseAnim.looped = currentAnim.looped;		
+		for (int i = currentAnim.frameIndices.length()-1; i >= 0; i--)
+			reverseAnim.frameIndices.insertLast(currentAnim.frameIndices[i]);
+		
+		SetActivity(activity);
+		currentAnim = reverseAnim;
+		isBeingRevived = true;
+		DoomThink();
+	}
+	
+	bool ReviveNearbyDemon()
+	{
+		CBaseEntity@ ent = null;
+		do {
+			@ent = g_EntityFuncs.FindEntityInSphere(ent, pev.origin, 512, "*", "classname"); 
+			if (ent !is null and !ent.IsAlive() and string(ent.pev.classname).Find("monster_") == 0)
+			{
+				string cname = ent.pev.classname;
+				if (cname == "monster_cyberdemon" or cname == "monster_spiderdemon" or cname == "monster_lostsoul" or
+					cname == "monster_painelemental" or cname == "monster_archvile")
+				{
+					continue;
+				}
+				monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(ent));
+				if (mon !is null and !mon.isBeingRevived)
+				{
+					println("NEARBY MON: " + mon.pev.classname);
+					mon.Revive();
+					mon.h_enemy = h_enemy;
+					return true;
+				}
+			}
+		} while (ent !is null);
+		return false;
+	}
 	
 	void DoomThink()
 	{
@@ -606,15 +661,36 @@ class monster_doom : ScriptBaseMonsterEntity
 		{
 			if (looped)
 			{
-				isCorpse = true;
-				pev.frame = currentAnim.lastFrame();
-				if (deathBoom > 0)
+				if (isBeingRevived)
 				{
-					g_EntityFuncs.Remove(self);
+					SetActivity(ANIM_IDLE);
+					pev.deadflag = DEAD_NO;
+					pev.health = pev.max_health;
+					isBeingRevived = false;
+					pev.renderamt = 0;
+					pev.solid = SOLID_SLIDEBOX;
+					CreateRenderSprites();
+					SetupHull();
+					Sleep();
+					if (killPoints)
+						g_kills -= 1; // no longer counts as a kill
+					if (canFly)
+						pev.origin.z += 16;
+					pev.nextthink = g_Engine.time;
 					return;
 				}
-				pev.nextthink = g_Engine.time + deathRemoveDelay;
-				return;
+				else
+				{
+					isCorpse = true;
+					pev.frame = currentAnim.lastFrame();
+					if (deathBoom > 0)
+					{
+						g_EntityFuncs.Remove(self);
+						return;
+					}
+					pev.nextthink = g_Engine.time + deathRemoveDelay;
+					return;
+				}
 			}
 			else
 			{
@@ -643,6 +719,15 @@ class monster_doom : ScriptBaseMonsterEntity
 					frame = SetActivity(ANIM_ATTACK);
 			}
 			
+			if (canRevive and lastReviveCheck + reviveDelay < g_Engine.time and !isAttacking())
+			{
+				lastReviveCheck = g_Engine.time;
+				if (Math.RandomLong(0, 100) <= 25)
+				{
+					if (ReviveNearbyDemon())
+						frame = SetActivity(ANIM_ATTACK);
+				}
+			}
 			
 			Vector eyePos = pev.origin + pev.view_ofs;
 			bool lineOfSight = false;
@@ -940,14 +1025,16 @@ class monster_doom : ScriptBaseMonsterEntity
 					bool canAnyoneSeeThis = client_sprite.pev.colormap > 0;
 					if (canAnyoneSeeThis)
 					{
-						client_sprite.pev.effects &= ~EF_NODRAW;
-						//client_sprite.pev.origin = pev.origin;
 						g_EntityFuncs.SetOrigin(client_sprite, pev.origin);
+						client_sprite.pev.effects &= ~EF_NODRAW;
 						client_sprite.pev.frame = frame*8 + i;
 						client_sprite.pev.rendercolor = lightColor;
 					}
 					else
+					{
 						client_sprite.pev.effects |= EF_NODRAW;
+						//client_sprite.pev.renderamt = 0;
+					}
 				}
 			}
 		}
