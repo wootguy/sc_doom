@@ -87,6 +87,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	string dropItem; // item spawned on death
 	string hullModel = "models/doom/null.mdl"; // model used for hitboxes
 	bool isDeaf; // doesn't target player when heard unless in line of sight
+	bool killPoints = true;
 	
 	uint frameCounter = 0;
 	uint oldFrameCounter = 0;
@@ -151,19 +152,23 @@ class monster_doom : ScriptBaseMonsterEntity
 	void Precache()
 	{
 		for (uint i = 0; i < idleSounds.length(); i++)
-			PrecacheSound(idleSounds[i]);
+		{
+			idleSounds[i] = PrecacheSound(idleSounds[i]);
+		}
 		for (uint i = 0; i < deathSounds.length(); i++)
-			PrecacheSound(deathSounds[i]);
+		{
+			deathSounds[i] = PrecacheSound(deathSounds[i]);
+		}
 		for (uint i = 0; i < alertSounds.length(); i++)
-			PrecacheSound(alertSounds[i]);
-		PrecacheSound(meleeWindupSound);
-		PrecacheSound(meleeSound);
-		PrecacheSound(shootSound);
-		PrecacheSound(painSound);
-		PrecacheSound(walkSound);
+			alertSounds[i] = PrecacheSound(alertSounds[i]);
+		meleeWindupSound = PrecacheSound(meleeWindupSound);
+		meleeSound = PrecacheSound(meleeSound);
+		shootSound = PrecacheSound(shootSound);
+		painSound = PrecacheSound(painSound);
+		walkSound = PrecacheSound(walkSound);
 		PrecacheSound("doom/DSSLOP.wav");
-		g_Game.PrecacheModel(bodySprite);
-		g_Game.PrecacheModel(hullModel);
+		bodySprite = PrecacheModel(bodySprite);
+		hullModel = PrecacheModel(hullModel);
 	}
 	
 	void DoomTouched(CBaseEntity@ ent)
@@ -179,7 +184,10 @@ class monster_doom : ScriptBaseMonsterEntity
 	void DoomSpawn()
 	{
 		Precache();
-		
+	}
+	
+	void Setup()
+	{
 		pev.movetype = canFly ? MOVETYPE_FLY : MOVETYPE_STEP;
 		pev.solid = SOLID_NOT;
 		
@@ -200,7 +208,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		
 		pev.view_ofs = Vector(0,0,28);
 		
-		if (canFly)
+		if (canFly or true)
 			pev.origin.z -= 16;
 		
 		//g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -30), Vector(8, 8, 42));
@@ -213,11 +221,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		{
 			g_EntityFuncs.SetSize(self.pev, Vector(-12, -12, -7), Vector(12, 12, 42));
 		}
-		
-	}
 	
-	void Setup()
-	{
 		superDormant = false;
 		pev.solid = SOLID_SLIDEBOX;
 		CreateRenderSprites();
@@ -266,7 +270,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		g_monster_idx++;
 	}
 	
-	void SetActivity(int act)
+	int SetActivity(int act)
 	{
 		if (act < 0 or act >= int(animInfo.length()))
 			println("Bad activity: " + act);
@@ -277,6 +281,10 @@ class monster_doom : ScriptBaseMonsterEntity
 		animLoops = 0;
 		oldFrameCounter = frameCounter = 0;
 		activity = act;
+		
+		bool looped;
+		int frameIdx = currentAnim.getFrameIdx(frameCounter, oldFrameCounter, looped);
+		return currentAnim.frameIndices[frameIdx];
 	}
 	
 	void Wakeup()
@@ -338,12 +346,15 @@ class monster_doom : ScriptBaseMonsterEntity
 				g_EntityFuncs.CreateEntity(dropItem, keys, true);
 			}
 			
-			g_kills += 1;
+			if (killPoints)
+				g_kills += 1;
+			else
+				println("NO POINTS FOR THAT MY DJUDE");
 			
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
 			bool canGib = animInfo[ANIM_DEAD].frameIndices[0] != animInfo[ANIM_GIB].frameIndices[0];
 			if (gib and canGib)
-				snd = "doom/DSSLOP.wav";
+				snd = fixPath("doom/DSSLOP.wav");
 			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, snd, 1.0f, 0.5f, 0, 100);
 			
 			DoomThink();
@@ -508,6 +519,8 @@ class monster_doom : ScriptBaseMonsterEntity
 			return;
 		//te_beampoints(pev.origin, pev.origin + Vector(0,0,72));
 		
+		pev.oldorigin = pev.origin;
+		
 		if (isCorpse)
 		{
 			g_EntityFuncs.Remove(self);			
@@ -533,7 +546,9 @@ class monster_doom : ScriptBaseMonsterEntity
 		//println("LIGHT " + g_EngineFuncs.GetEntityIllum(self.edict()) + " " + pev.light_level);
 		
 		//pev.velocity.z += -0.001f; // prevents floating and fixes fireballs not getting Touched by monsters that don't move
-		g_EntityFuncs.SetOrigin(self, pev.origin);
+		Vector pos = pev.origin;
+		g_EntityFuncs.SetOrigin(self, pos + Vector(0,0,1));
+		g_EntityFuncs.SetOrigin(self, pos);
 		
 		//println("CURENT ANIM: " + currentAnim.frameIndices[0] + " " + currentAnim.lastFrame());
 		
@@ -582,7 +597,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		right = right.Normalize();
 		
 		if (activity == ANIM_PAIN and animLoops > 3)
-			SetActivity(ANIM_MOVE);
+			frame = SetActivity(ANIM_MOVE);
 		
 		if (pev.health > 0)
 			pev.deadflag = 0;
@@ -622,10 +637,10 @@ class monster_doom : ScriptBaseMonsterEntity
 				if (g_Engine.time > dashTimeout)
 				{
 					dashing = false;
-					SetActivity(ANIM_MOVE);
+					frame = SetActivity(ANIM_MOVE);
 				}
 				else if (activity != ANIM_ATTACK)
-					SetActivity(ANIM_ATTACK);
+					frame = SetActivity(ANIM_ATTACK);
 			}
 			
 			
@@ -687,7 +702,7 @@ class monster_doom : ScriptBaseMonsterEntity
 					else if (dashing)
 					{
 						dashing = false;
-						SetActivity(ANIM_MOVE);
+						frame = SetActivity(ANIM_MOVE);
 						CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
 						if (pHit !is null)
 						{
@@ -784,12 +799,12 @@ class monster_doom : ScriptBaseMonsterEntity
 						{
 							if (meleeWindupSound.Length() > 0)
 								g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, meleeWindupSound, 1.0f, 0.5f, 0, 100);
-							SetActivity(ANIM_ATTACK);
+							frame = SetActivity(ANIM_ATTACK);
 							MeleeAttackStart();
 						}
 						else
 						{
-							SetActivity(ANIM_ATTACK2);
+							frame = SetActivity(ANIM_ATTACK2);
 							RangeAttackStart();
 						}
 					}
@@ -813,7 +828,7 @@ class monster_doom : ScriptBaseMonsterEntity
 							{
 								if (meleeWindupSound.Length() > 0)
 									g_SoundSystem.PlaySound(self.edict(), CHAN_BODY, meleeWindupSound, 1.0f, 0.5f, 0, 100);
-								SetActivity(ANIM_ATTACK);
+								frame = SetActivity(ANIM_ATTACK);
 							}
 							else
 							{
@@ -828,7 +843,7 @@ class monster_doom : ScriptBaseMonsterEntity
 								if (!keepAttacking)
 								{
 									DelayAttack();
-									SetActivity(ANIM_MOVE);
+									frame = SetActivity(ANIM_MOVE);
 								}
 							}
 						}
@@ -938,7 +953,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		}
 		
 		// react to sounds
-		if (dormant and false)
+		if (dormant)
 		{
 			CSoundEnt@ sndent = GetSoundEntInstance();
 			int activeList = sndent.ActiveList();

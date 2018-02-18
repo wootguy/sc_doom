@@ -473,6 +473,7 @@ class monster_painelemental : monster_doom
 		monster_lostsoul@ mon = cast<monster_lostsoul@>(CastToScriptClass(soul));
 		mon.Setup();
 		mon.dormant = false;
+		mon.killPoints = false;
 		
 		Vector soulDir = aimDir;
 		if (atEnemy) 
@@ -699,6 +700,124 @@ class monster_hellknight : monster_doom
 		DoomThink();
 	}
 }
+
+class monster_archvile : monster_doom
+{	
+	EHandle flame;
+
+	void Spawn()
+	{
+		bodySprite = "sprites/doom/VILE.spr";
+		
+		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
+		animInfo.insertLast(AnimInfo(0, 5, 0.5f, true)); // ANIM_MOVE
+		animInfo.insertLast(AnimInfo(6, 15, 0.25f, true)); // ANIM_ATTACK
+		animInfo.insertLast(AnimInfo(6, 15, 0.25f, true)); // ANIM_ATTACK2
+		animInfo.insertLast(AnimInfo(7, 7, 0.125f, true)); // ANIM_PAIN
+		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
+		
+		idleSounds.insertLast("doom/DSVILACT.wav");
+		painSound = "doom/DSVIPAIN.wav";
+		deathSounds.insertLast("doom/DSVILDTH.wav");
+		alertSounds.insertLast("doom/DSVILSIT.wav");
+		meleeSound = "doom/DSVILATK.wav";
+		
+		this.hasMelee = false;
+		this.hasRanged = true;
+		//this.painChance = 0.04f;
+		this.painChance = 1.0f;
+		this.walkSpeed = 15.0f;
+		this.hullModel = "models/doom/null_tall.mdl";
+		
+		self.m_FormattedName = "Arche-vile";
+		self.pev.health = 700;
+		
+		DoomSpawn();
+		
+		SetThink( ThinkFunction( Think ) );
+		pev.nextthink = g_Engine.time + 0.1;
+	}
+	
+	void CastFire()
+	{
+		g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, meleeSound, 1.0f, 0.5f, 0, 100);
+		
+		CBaseEntity@ enemy = h_enemy;
+		
+		brighten = 42;
+		
+		Vector bodyPos = BodyPos();
+		
+		dictionary keys;
+		keys["origin"] = enemy.pev.origin.ToString();
+		keys["model"] = "sprites/doom/FIRE.spr";
+		keys["speed"] = "0";
+		keys["moveFrameStart"] = "0";
+		keys["moveFrameEnd"] = "7";
+		keys["deathFrameStart"] = "7";
+		keys["deathFrameEnd"] = "7";
+		keys["flash_color"] = "255 255 64";
+		keys["damage_min"] = "20";
+		keys["damage_max"] = "64";
+		keys["is_vile_fire"] = "64";
+		keys["radius_dmg"] = "70";
+		keys["death_sound"] = "doom/DSBAREXP.wav";
+		keys["spawn_sound"] = "doom/DSFLAME.wav";
+		
+		CBaseEntity@ fire = g_EntityFuncs.CreateEntity("fireball", keys, false);
+		@fire.pev.owner = @self.edict();
+		fireball@ ball = cast<fireball@>(CastToScriptClass(fire));
+		ball.h_followEnt = self;
+		ball.h_aimEnt = h_enemy;
+		
+		g_EntityFuncs.DispatchSpawn(fire.edict());
+		fire.pev.solid = SOLID_NOT;
+		fire.pev.movetype = MOVETYPE_NONE;
+		fire.pev.rendermode = kRenderTransAdd;
+		fire.pev.rendermode = kRenderTransTexture;
+		fire.pev.renderamt = 180;
+		
+		flame = fire;
+	}
+	
+	bool canRaiseDead()
+	{
+		/*
+		CBaseEntity@ ent = null;
+		do {
+			@ent = g_EntityFuncs.FindEntityInSphere(ent, pev.origin, 512, "*", "classname"); 
+			if (ent !is null)
+			{
+				println("NEARBY MON: " + ent.pev.classname);
+			}
+		} while (ent !is null);
+		*/
+		return false;
+	}
+	
+	void RangeAttackStart()
+	{
+		canRaiseDead();
+		CastFire();
+	}
+	
+	void RangeAttack(Vector aimDir)
+	{
+		if (!flame.IsValid())
+			return;
+			
+		fireball@ ball = cast<fireball@>(CastToScriptClass(flame.GetEntity()));
+		ball.Touch(h_enemy);
+		//ball.Remove();
+	}
+	
+	void Think()
+	{
+		DoomThink();
+	}
+}
+
 
 class monster_revenant : monster_doom
 {	
@@ -1029,6 +1148,9 @@ class monster_cyberdemon : monster_doom
 		this.constantAttackMax = 3;
 		this.dmgImmunity = DMG_BLAST;
 		this.largeHull = true;
+		this.minRangeAttackDelay = 0.5f;
+		this.maxRangeAttackDelay = 1.5f;
+		
 		
 		self.m_FormattedName = "Cyberdemon";
 		self.pev.health = 4000;

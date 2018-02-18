@@ -16,10 +16,16 @@ class fireball : ScriptBaseAnimating
 	int damageMax = 24;
 	float radiusDamage = 0;
 	float size = 4;
+	Vector lastVelocity;
 	bool is_bfg = false;
+	bool is_vile_fire = false;
+	int fire_state = 0;
 	bool trailFrame = false;
+	float deathTime = 0;
 	Vector flash_color = Vector(255, 64, 32);
+	Vector sprOffset = Vector(0,0,11);
 	EHandle h_followEnt;
+	EHandle h_aimEnt;
 	
 	array<EHandle> sprites;
 	array<EHandle> renderShowEnts;
@@ -37,6 +43,7 @@ class fireball : ScriptBaseAnimating
 		else if (szKey == "damage_max") damageMax = atoi(szValue);
 		else if (szKey == "oriented") oriented = atoi(szValue) != 0;
 		else if (szKey == "is_bfg") is_bfg = atoi(szValue) != 0;
+		else if (szKey == "is_vile_fire") is_vile_fire = atoi(szValue) != 0;
 		else if (szKey == "spawn_sound") spawnSound = szValue;
 		else if (szKey == "death_sound") deathSound = szValue;
 		else if (szKey == "radius_dmg") radiusDamage = atof(szValue);
@@ -48,8 +55,14 @@ class fireball : ScriptBaseAnimating
 	
 	void Spawn()
 	{				
-		pev.movetype = MOVETYPE_FLY;
+		pev.movetype = MOVETYPE_BOUNCE;
+		pev.gravity = 0.000001f;
 		pev.solid = SOLID_BBOX;
+		
+		self.pev.model = fixPath(self.pev.model);
+		spawnSound = fixPath(spawnSound);
+		deathSound = fixPath(deathSound);
+		trailSprite = fixPath(trailSprite);
 		
 		g_EntityFuncs.SetModel( self, self.pev.model );
 		size *= g_world_scale;
@@ -57,9 +70,13 @@ class fireball : ScriptBaseAnimating
 		
 		g_EngineFuncs.MakeVectors(self.pev.angles);
 		pev.velocity = g_Engine.v_forward*pev.speed*g_monster_scale;
+		lastVelocity = pev.velocity;
 		
 		if (spawnSound.Length() > 0)
-			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, spawnSound, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, spawnSound, 1.0f, 0.5f, is_vile_fire ? int(SND_FORCE_LOOP) : 0, 100);
+		
+		if (is_vile_fire)
+			deathTime = g_Engine.time + 2.2f;
 		
 		pev.scale = g_monster_scale;
 		pev.frame = moveFrameStart;
@@ -71,7 +88,7 @@ class fireball : ScriptBaseAnimating
 			for (uint i = 0; i < 8; i++)
 			{
 				dictionary ckeys;
-				ckeys["origin"] = pev.origin.ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
+				ckeys["origin"] = (pev.origin + sprOffset).ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
 				ckeys["model"] = string(pev.model);
 				ckeys["spawnflags"] = "1";
 				ckeys["rendermode"] = "2";
@@ -81,6 +98,8 @@ class fireball : ScriptBaseAnimating
 				ckeys["targetname"] = "m" + g_monster_idx + "s" + i;
 				CBaseEntity@ client_sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
 				sprites.insertLast(EHandle(client_sprite));
+				g_EntityFuncs.SetSize(client_sprite.pev, Vector(0,0,0), Vector(0,0,0)); 
+				client_sprite.pev.solid = SOLID_NOT;
 				client_sprite.pev.movetype = MOVETYPE_FLY;
 				client_sprite.pev.velocity = pev.velocity;
 				
@@ -99,6 +118,13 @@ class fireball : ScriptBaseAnimating
 		}
 		SetThink( ThinkFunction( Think ) );
 		pev.nextthink = g_Engine.time + 0.05;
+	}
+	
+	void Remove()
+	{
+		g_SoundSystem.StopSound(self.edict(), CHAN_WEAPON, spawnSound);
+		killClientSprites();
+		g_EntityFuncs.Remove(self);
 	}
 	
 	void killClientSprites()
@@ -130,6 +156,17 @@ class fireball : ScriptBaseAnimating
 		//if (dead or (pOther.pev.classname == "fireball"))
 		if (dead)
 			return;
+			
+		if (is_vile_fire)
+		{
+			if (!FireThink())
+			{
+				Remove();
+				return;
+			}
+			g_SoundSystem.StopSound(self.edict(), CHAN_WEAPON, spawnSound);
+			is_vile_fire = false; // back to the normal think code
+		}
 			
 		CBaseEntity@ owner = g_EntityFuncs.Instance( self.pev.owner );
 		if (owner !is null and owner.entindex() == pOther.entindex())
@@ -185,7 +222,7 @@ class fireball : ScriptBaseAnimating
 						if (!targets.exists(pHit.entindex()))
 						{
 							targets[pHit.entindex()] = true; // only 1 effect per monstie
-							te_explosion(tr.vecEndPos, "sprites/doom/BFE2.spr", 10, 5, 15);
+							te_explosion(tr.vecEndPos, fixPath("sprites/doom/BFE2.spr"), 10, 5, 15);
 						}
 					}
 				}
@@ -249,7 +286,13 @@ class fireball : ScriptBaseAnimating
 			if (canAnyoneSeeThis)
 			{
 				client_sprite.pev.effects &= ~EF_NODRAW;
-				client_sprite.pev.origin = pev.origin + Vector(0,0,11);// + Vector(0,0,64 + i*32)
+				if (((client_sprite.pev.origin + sprOffset) - pev.origin).Length() > 32)
+				{
+					println("ZOMG SYNC " + ((client_sprite.pev.origin + sprOffset) - pev.origin).Length());
+					g_EntityFuncs.SetOrigin(client_sprite, pev.origin + sprOffset); // + Vector(0,0,64 + i*32)
+					client_sprite.pev.velocity = pev.velocity;
+					
+				}
 				client_sprite.pev.frame = pev.frame*8 + i;
 			}
 			else
@@ -258,9 +301,49 @@ class fireball : ScriptBaseAnimating
 		}
 	}
 	
+	bool FireThink()
+	{
+		if (deathTime < g_Engine.time)
+		{
+			Remove();
+			return false;
+		}
+		if (fire_state % 2 == 0)
+		{
+			if (fire_state == 10)
+				frameCounter++;
+			frameCounter++;
+		}
+		else if (fire_state % 2 == 1)
+			frameCounter--;
+			
+		fire_state = (fire_state+1) % 11;
+		
+		CBaseEntity@ target = h_aimEnt;
+		TraceResult tr;
+		g_Utility.TraceLine( target.pev.origin, h_followEnt.GetEntity().pev.origin, ignore_monsters, null, tr );
+		bool targetVisible = tr.flFraction >= 1.0f;
+		if (targetVisible)
+		{
+			g_EngineFuncs.MakeVectors(target.IsPlayer() ? target.pev.v_angle : target.pev.angles);
+			Vector offset = target.IsPlayer() ? Vector(0,0,-35) : Vector(0,0,0);
+			g_EntityFuncs.SetOrigin(self, target.pev.origin + g_Engine.v_forward*16 + offset);
+		}
+
+		pev.frame = moveFrameStart + (frameCounter) % ((moveFrameEnd-moveFrameStart) + 1);
+		pev.nextthink = g_Engine.time + 0.05;
+		return targetVisible;
+	}
+	
 	void Think()
 	{
+		if (is_vile_fire) {
+			FireThink();
+			return;
+		}
 		frameCounter++;
+		
+		g_EntityFuncs.SetOrigin(self, pev.origin);
 		
 		if (dead)
 		{
@@ -330,5 +413,11 @@ class fireball : ScriptBaseAnimating
 			
 			pev.nextthink = g_Engine.time + 0.05;
 		}
+		
+		if (!h_followEnt.IsValid() and (pev.velocity - lastVelocity).Length() > 1)
+		{
+			Touch(g_EntityFuncs.Instance(0));
+		}
+		lastVelocity = pev.velocity;
 	}
 }

@@ -77,7 +77,7 @@ void suitprotect(EHandle h_plr, bool flicker)
 	{
 		Vector color(0, 128, 0);
 		if (timeLeft < 5.0f and flicker)
-			color = Vector(255, 255, 255);
+			color = Vector(0, 0, 0);
 		flicker = !flicker;
 		g_PlayerFuncs.ScreenFade(plr, color, 0.0f, 1.0f, 64, FFADE_STAYOUT);
 	}
@@ -129,7 +129,7 @@ class item_barrel : ScriptBaseEntity
 		// set the model we actually want
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		//g_EntityFuncs.SetModel(self, "models/w_357.mdl");
-		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
 		
 		//pev.frame = 5;
 		pev.scale = g_monster_scale;
@@ -165,7 +165,7 @@ class item_barrel : ScriptBaseEntity
 			animFrameMax = 11;
 			animDir = 1;
 			pev.nextthink = g_Engine.time + 0.17f;
-			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, "doom/DSBAREXP.wav", 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
 		}
 		
 		return 0;
@@ -229,7 +229,7 @@ class item_prop : ScriptBaseEntity
 		// set the model we actually want
 		//g_EntityFuncs.SetModel(self, "models/doom/null.mdl");
 		//g_EntityFuncs.SetModel(self, "models/w_357.mdl");
-		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
 		
 		//pev.frame = 5;
 		pev.scale = g_monster_scale;
@@ -266,6 +266,12 @@ class item_prop : ScriptBaseEntity
 				break;
 			case 27:
 				frameStart = frameMax = 106;
+				break;
+			case 30:
+				frameStart = frameMax = 38;
+				break;
+			case 31:
+				frameStart = frameMax = 39;
 				break;
 			case 34:
 				frameStart = frameMax = 30;
@@ -364,8 +370,10 @@ class item_doom : ScriptBaseItemEntity
 	
 	void ItemSpawn()
 	{
+		pickupSnd = fixPath(pickupSnd);
+		
 		// set the model we actually want
-		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
 		BaseClass.Spawn();
 		pev.frame = itemFrame;
 		pev.scale = g_monster_scale;
@@ -409,6 +417,17 @@ class item_doom : ScriptBaseItemEntity
 			animDir = 1;
 		}
 		pev.nextthink = g_Engine.time + 0.17f;
+	}
+	
+	void Use( CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value )
+	{
+		if (pActivator.IsPlayer())
+		{
+			TraceResult tr;
+			g_Utility.TraceLine( pev.origin, pActivator.pev.origin, dont_ignore_monsters, pActivator.edict(), tr );
+			if (tr.flFraction >= 1.0f)
+				self.Touch(pActivator);
+		}
 	}
 	
 	void Touch( CBaseEntity@ pOther )

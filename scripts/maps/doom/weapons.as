@@ -257,7 +257,8 @@ class weapon_doom_rpg : weapon_doom
 		brighten = 16;
 		
 		CBasePlayer@ plr = getPlayer();
-		Vector vecSrc = plr.pev.origin + Vector(0,0,6);
+		g_EngineFuncs.MakeVectors(plr.pev.v_angle);
+		Vector vecSrc = plr.pev.origin + Vector(0,0,6) + g_Engine.v_forward*8;
 		Vector angles = plr.pev.v_angle;
 		
 		dictionary keys;
@@ -420,7 +421,7 @@ class weapon_doom_chainsaw : weapon_doom
 		if (Slash(Math.RandomLong(2,20)))
 			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
 		else
-			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, missSound, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, fixPath(missSound), 1.0f, 0.5f, 0, 100);
 		
 	}
 	
@@ -435,7 +436,7 @@ class weapon_doom_chainsaw : weapon_doom
 		{
 			CBasePlayer@ plr = getPlayer();
 			nextIdleSound = g_Engine.time + 0.22f;
-			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, idleSound, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, fixPath(idleSound), 1.0f, 0.5f, 0, 100);
 		}
 		
 		if (!shooting and nextFrame < g_Engine.time)
