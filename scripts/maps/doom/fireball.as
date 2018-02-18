@@ -23,7 +23,6 @@ class fireball : ScriptBaseAnimating
 	bool trailFrame = false;
 	float deathTime = 0;
 	Vector flash_color = Vector(255, 64, 32);
-	Vector sprOffset = Vector(0,0,11);
 	EHandle h_followEnt;
 	EHandle h_aimEnt;
 	
@@ -55,8 +54,7 @@ class fireball : ScriptBaseAnimating
 	
 	void Spawn()
 	{				
-		pev.movetype = MOVETYPE_BOUNCE;
-		pev.gravity = 0.000001f;
+		pev.movetype = MOVETYPE_FLY;
 		pev.solid = SOLID_BBOX;
 		
 		self.pev.model = fixPath(self.pev.model);
@@ -65,6 +63,7 @@ class fireball : ScriptBaseAnimating
 		trailSprite = fixPath(trailSprite);
 		
 		g_EntityFuncs.SetModel( self, self.pev.model );
+			
 		size *= g_world_scale;
 		g_EntityFuncs.SetSize(self.pev, Vector(-size, -size, -size), Vector(size, size, size));
 		
@@ -88,7 +87,7 @@ class fireball : ScriptBaseAnimating
 			for (uint i = 0; i < 8; i++)
 			{
 				dictionary ckeys;
-				ckeys["origin"] = (pev.origin + sprOffset).ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
+				ckeys["origin"] = pev.origin.ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
 				ckeys["model"] = string(pev.model);
 				ckeys["spawnflags"] = "1";
 				ckeys["rendermode"] = "2";
@@ -100,8 +99,8 @@ class fireball : ScriptBaseAnimating
 				sprites.insertLast(EHandle(client_sprite));
 				g_EntityFuncs.SetSize(client_sprite.pev, Vector(0,0,0), Vector(0,0,0)); 
 				client_sprite.pev.solid = SOLID_NOT;
-				client_sprite.pev.movetype = MOVETYPE_FLY;
-				client_sprite.pev.velocity = pev.velocity;
+				client_sprite.pev.movetype = MOVETYPE_FOLLOW;
+				@client_sprite.pev.aiment = @self.edict();
 				
 				dictionary rkeys;
 				rkeys["target"] = string(client_sprite.pev.targetname);
@@ -114,10 +113,11 @@ class fireball : ScriptBaseAnimating
 				CBaseEntity@ hide = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
 				renderHideEnts.insertLast(EHandle(hide));
 			}
-			pev.effects |= EF_NODRAW;
+			//pev.effects |= EF_NODRAW;
+			pev.rendermode = 1;
 		}
 		SetThink( ThinkFunction( Think ) );
-		pev.nextthink = g_Engine.time + 0.05;
+		Think();
 	}
 	
 	void Remove()
@@ -178,7 +178,9 @@ class fireball : ScriptBaseAnimating
 		frameCounter = deathFrameStart;
 		pev.nextthink = g_Engine.time + 0.15;
 		killClientSprites();
-		pev.effects &= ~EF_NODRAW;		
+		pev.rendermode = 0;
+		pev.velocity = Vector(0,0,0);
+		pev.effects &= ~EF_NODRAW;
 		
 		int damage = Math.RandomLong(damageMin, damageMax);
 		Vector oldVel = pOther.pev.velocity;
@@ -286,13 +288,6 @@ class fireball : ScriptBaseAnimating
 			if (canAnyoneSeeThis)
 			{
 				client_sprite.pev.effects &= ~EF_NODRAW;
-				if (((client_sprite.pev.origin + sprOffset) - pev.origin).Length() > 32)
-				{
-					println("ZOMG SYNC " + ((client_sprite.pev.origin + sprOffset) - pev.origin).Length());
-					g_EntityFuncs.SetOrigin(client_sprite, pev.origin + sprOffset); // + Vector(0,0,64 + i*32)
-					client_sprite.pev.velocity = pev.velocity;
-					
-				}
 				client_sprite.pev.frame = pev.frame*8 + i;
 			}
 			else
@@ -407,7 +402,7 @@ class fireball : ScriptBaseAnimating
 			if (trailSprite.Length() > 0)
 			{
 				if (trailFrame)
-					te_explosion(pev.origin+Vector(0,0,8) - pev.velocity.Normalize(), trailSprite, 14, 10, 15);
+					te_explosion(pev.origin - pev.velocity.Normalize(), trailSprite, 14, 10, 15);
 				trailFrame = !trailFrame;
 			}
 			

@@ -258,7 +258,7 @@ class weapon_doom_rpg : weapon_doom
 		
 		CBasePlayer@ plr = getPlayer();
 		g_EngineFuncs.MakeVectors(plr.pev.v_angle);
-		Vector vecSrc = plr.pev.origin + Vector(0,0,6) + g_Engine.v_forward*8;
+		Vector vecSrc = plr.pev.origin + plr.pev.view_ofs - Vector(0,0,4);
 		Vector angles = plr.pev.v_angle;
 		
 		dictionary keys;
@@ -564,7 +564,7 @@ class weapon_doom_plasmagun : weapon_doom
 		
 		CBasePlayer@ plr = getPlayer();
 		g_EngineFuncs.MakeVectors(plr.pev.v_angle);
-		Vector vecSrc = plr.pev.origin + Vector(0,0,6);
+		Vector vecSrc = plr.pev.origin + plr.pev.view_ofs - Vector(0,0,12);
 		Vector angles = plr.pev.v_angle;
 		
 		dictionary keys;
@@ -665,7 +665,7 @@ class weapon_doom_bfg : weapon_doom
 		
 		CBasePlayer@ plr = getPlayer();
 		g_EngineFuncs.MakeVectors(plr.pev.v_angle);
-		Vector vecSrc = plr.pev.origin + Vector(0,0,6) + g_Engine.v_forward*22;
+		Vector vecSrc = plr.pev.origin + plr.pev.view_ofs + g_Engine.v_forward*22;
 		Vector angles = plr.pev.v_angle;
 		
 		dictionary keys;
