@@ -450,7 +450,7 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	if ( ent.pev.deadflag == DEAD_NO )
 	{
 		// no pain sound during death animation.
-		g_SoundSystem.PlaySound(ent.edict(), CHAN_STATIC, "doom/DSPLPAIN.wav", 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(ent.edict(), CHAN_STATIC, fixPath("doom/DSPLPAIN.wav"), 1.0f, 1.0f, 0, 100);
 		g_PlayerFuncs.ScreenFade(ent, Vector(255, 0, 0), 0.2f, 0, 32, FFADE_IN);
 	}
 
@@ -488,18 +488,18 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	{
 		if ( bitsDamageType & DMG_ALWAYSGIB != 0 )
 		{
-			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSSLOP.wav", 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, fixPath("doom/DSSLOP.wav"), 1.0f, 1.0f, 0, 100);
 			ent.Killed( pevAttacker, GIB_ALWAYS );
 		}
 		else if ( bitsDamageType & DMG_NEVERGIB != 0 )
 		{
-			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSPLDETH.wav", 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, fixPath("doom/DSPLDETH.wav"), 1.0f, 1.0f, 0, 100);
 			ent.Killed( pevAttacker, GIB_NEVER );
 		}
 		else
 		{
 			// TODO: What's the normal gib damage amount?
-			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, "doom/DSPLDETH.wav", 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, fixPath("doom/DSPLDETH.wav"), 1.0f, 1.0f, 0, 100);
 			ent.Killed( pevAttacker, GIB_NORMAL );
 		}
 		return 0;
@@ -527,7 +527,7 @@ void TraceAttack(CBaseEntity@ victim, entvars_t@ pevAttacker, float flDamage, Ve
 		
 		if ( blood != DONT_BLEED )
 		{
-			te_bloodsprite(vecOrigin, "sprites/doom/BLUD.spr", "sprites/blood.spr", 70, 5);
+			te_bloodsprite(vecOrigin, fixPath("sprites/doom/BLUD.spr"), "sprites/blood.spr", 70, 5);
 			//te_explosion(vecOrigin, "sprites/doom/BLUD.spr", 10, 10, 15);
 		}
 	}
@@ -668,7 +668,7 @@ void doomBulletImpact(Vector pos, Vector normal, CBaseEntity@ phit)
 		normal = normal * 3.0f;
 	else if (normal.z > 0.1f)
 		normal = normal * 0;
-	te_explosion(pos + normal*4, "sprites/doom/PUFF.spr", 14, 10, 15);
+	te_explosion(pos + normal*4, fixPath("sprites/doom/PUFF.spr"), 14, 10, 15);
 }
 
 // Randomize the direction of a vector by some amount

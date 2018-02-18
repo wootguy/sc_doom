@@ -1,6 +1,7 @@
 const int SF_DOOR_START_OPEN = 1;
 const int SF_DOOR_USE_ONLY = 256;
 const int SF_DOOR_NO_AUTO_RETURN = 32;
+const int FL_DOOR_BUTTON_DONT_MOVE = 2;
 
 void reset_but(EHandle h_ent)
 {
@@ -39,6 +40,7 @@ class func_doom_door : ScriptBaseEntity
 	bool shootable = false;
 	Vector useDir;
 	string sync;
+	float attn = 0.6f;
 	
 	string switchSnd;
 	string openSnd;
@@ -137,6 +139,10 @@ class func_doom_door : ScriptBaseEntity
 				closeSnd = "doom/DSPSTOP.wav";
 			}
 		}
+		
+		switchSnd = fixPath(switchSnd);
+		openSnd = fixPath(openSnd);
+		closeSnd = fixPath(closeSnd);
 
 		if ( pev.spawnflags & SF_DOOR_START_OPEN != 0 )
 		{	// swap pos1 and pos2, put door at pos2
@@ -194,7 +200,7 @@ class func_doom_door : ScriptBaseEntity
 	
 	void ButtonReset()
 	{
-		g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, switchSnd, 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, switchSnd, 1.0f, attn, 0, 100);
 		pev.frame = 0;
 	}
 	
@@ -247,7 +253,7 @@ class func_doom_door : ScriptBaseEntity
 			if (pev.frame == 0 and m_toggle_state == TS_AT_BOTTOM)
 			{
 				pev.frame = 1;
-				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, switchSnd, 1.0f, 1.0f, 0, 100);
+				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, switchSnd, 1.0f, attn, 0, 100);
 				g_EntityFuncs.FireTargets(pev.target, pActivator, self, USE_TOGGLE);
 				if (m_flWait > 0)
 					g_Scheduler.SetTimeout("reset_but", m_flWait, EHandle(self));
@@ -293,7 +299,7 @@ class func_doom_door : ScriptBaseEntity
 		if (isCrusher and useType == USE_OFF)
 		{
 			if (pev.nextthink != -1 and (sounds == 2 or sounds == 3 or sounds == 4) and closeSnd.Length() > 0)
-				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
+				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, attn, 0, 100);
 			pev.nextthink = -1;
 			return 1;
 		}
@@ -312,7 +318,7 @@ class func_doom_door : ScriptBaseEntity
 	void DoorGoUp()
 	{
 		if (!isButton and openSnd.Length() > 0)
-			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, 1.0f, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, attn, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
 		m_toggle_state = TS_GOING_UP;
 		LinearMove(m_vecPosition2, pev.speed);
 		
@@ -329,7 +335,7 @@ class func_doom_door : ScriptBaseEntity
 	void DoorHitTop()
 	{
 		if ((sounds == 2 or sounds == 3 or sounds == 4) and closeSnd.Length() > 0)
-			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, attn, 0, 100);
 		m_toggle_state = TS_AT_TOP;
 		m_bIsReopening = false;
 		
@@ -352,10 +358,10 @@ class func_doom_door : ScriptBaseEntity
 			if (sounds == 2 or sounds == 3)
 			{
 				if (openSnd.Length() > 0)
-					g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, 1.0f, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
+					g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, openSnd, 1.0f, attn, sounds == 3 ? int(SND_FORCE_LOOP) : 0, 100);
 			}
 			else if (closeSnd.Length() > 0)
-				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
+				g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, attn, 0, 100);
 		}
 		m_toggle_state = TS_GOING_DOWN;
 		LinearMove( m_vecPosition1, pev.speed);
@@ -373,7 +379,7 @@ class func_doom_door : ScriptBaseEntity
 	void DoorHitBottom()
 	{
 		if ((sounds == 2 or sounds == 3) and closeSnd.Length() > 0)
-			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, closeSnd, 1.0f, attn, 0, 100);
 		m_toggle_state = TS_AT_BOTTOM;
 		
 		if (isCrusher)

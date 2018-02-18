@@ -1,5 +1,7 @@
 #include "utils"
 
+const int FL_DISABLE_RESPAWN = 1024;
+
 class FrameInfo
 {
 	int width, height;
@@ -34,7 +36,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 {
 	string hud_sprite = "sprites/doom/pistol.spr";
 	float m_flNextAnimTime;
-	bool active;
+	bool active = false;
 	float lastAttack = 0;
 	int scaleChoice = 0;
 	float sprScale = 1;
@@ -75,15 +77,17 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	float cooldown = 0.4;
 	int ammoPerShot = 1;
 	
+	bool shouldRespawn = false;
+	
 	string shootSound = "doom/DSPISTOL.wav";
 	string deploySound;
 	
 	void Precache()
 	{
 		self.PrecacheCustomModels();
-		PrecacheSound(shootSound);
-		PrecacheSound(deploySound);
-		g_Game.PrecacheModel(hud_sprite);
+		shootSound = PrecacheSound(shootSound);
+		deploySound = PrecacheSound(deploySound);
+		hud_sprite = PrecacheModel(hud_sprite);
 	}
 	
 	void ChooseScale(int i)
@@ -97,10 +101,12 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	{
 		ChooseScale(1);
 		Precache();
-		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
 		self.m_iClip = -1;
 		self.pev.frame = itemFrame;
 		self.FallInit();
+		
+		shouldRespawn = true;
 	}
 	
 	CBasePlayer@ getPlayer()
@@ -251,8 +257,8 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	
 	bool Deploy()
 	{
-		bool bResult = self.DefaultDeploy( self.GetV_Model( "models/doom/null.mdl" ), 
-											self.GetP_Model( "models/doom/null.mdl" ), 3, "crowbar" );
+		bool bResult = self.DefaultDeploy( self.GetV_Model( fixPath("models/doom/null.mdl") ), 
+											self.GetP_Model( fixPath("models/doom/null.mdl") ), 3, "crowbar" );
 		active = true;
 		pev.nextthink = g_Engine.time;
 		SetFrame(0);
@@ -272,7 +278,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	void Holster(int iSkipLocal = 0) 
 	{
 		CBasePlayer@ plr = getPlayer();
-		for (int i = 0; i < 15; i++)
+		for (int i = 0; i < 8; i++)
 		{
 			HUDSpriteParams params;
 			params.channel = i;
@@ -312,17 +318,48 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		println("Attack not implemented!");
 	}
 	
+	void Use( CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float value )
+	{
+		if (pActivator.IsPlayer())
+		{
+			TraceResult tr;
+			g_Utility.TraceLine( pev.origin, pActivator.pev.origin, dont_ignore_monsters, pActivator.edict(), tr );
+			if (tr.flFraction >= 1.0f)
+				self.Touch(pActivator);
+		}
+	}
+	
 	bool AddToPlayer( CBasePlayer@ pPlayer )
 	{
-		if( BaseClass.AddToPlayer( pPlayer ) == true )
+		if( BaseClass.AddToPlayer( pPlayer ) )
 		{
 			NetworkMessage message( MSG_ONE, NetworkMessages::WeapPickup, pPlayer.edict() );
 				message.WriteLong( self.m_iId );
 			message.End();
+			
+			// add to ammo if clip is not used (grenades, snarks, etc.)
+			int ammoType = self.m_iPrimaryAmmoType;
+			if (ammoType != -1)
+			{
+				int ammoLeft = pPlayer.m_rgAmmo(ammoType);
+				pPlayer.m_rgAmmo(ammoType, ammoLeft + self.m_iDefaultAmmo);
+			}
 			return true;
 		}
-		
 		return false;
+	}
+	
+	bool AddWeapon()
+	{
+		if (shouldRespawn and (pev.spawnflags & FL_DISABLE_RESPAWN) == 0)
+		{
+			CBaseEntity@ ent = g_EntityFuncs.Create(pev.classname, pev.origin, pev.angles, false); 
+			//g_SoundSystem.EmitSoundDyn( ent.edict(), CHAN_ITEM, "items/suitchargeok1.wav", 1.0, ATTN_NORM, 0, 150 );
+			weapon_doom@ wep = cast<weapon_doom@>(CastToScriptClass(ent));
+			wep.shouldRespawn = true; // respawn this one, too
+		}
+		
+		return true;
 	}
 	
 	float WeaponTimeBase()
@@ -456,11 +493,11 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 	
 	void AmmoSpawn()
 	{
-		g_EntityFuncs.SetModel( self, "models/doom/null.mdl" ); // game crashes if this is a sprite
+		g_EntityFuncs.SetModel( self, fixPath("models/doom/null.mdl") ); // game crashes if this is a sprite
 		BaseClass.Spawn();
 		
 		// set the model we actually want
-		g_EntityFuncs.SetModel( self, "sprites/doom/objects.spr" );
+		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
 		pev.frame = itemFrame;
 		pev.scale = g_monster_scale;
 		pev.gravity = 4;
@@ -509,7 +546,7 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 			if (playPickupSound)
 			{
 				string pickupSound = giveWeapon.Length() > 0 ? "doom/DSWPNUP.wav" : "doom/DSITEMUP.wav";
-				g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, pickupSound, 1.0f, 0.5f, 0, 100);
+				g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, fixPath(pickupSound), 1.0f, 0.5f, 0, 100);
 			}
 			g_EntityFuncs.Remove(self);
 			return true;

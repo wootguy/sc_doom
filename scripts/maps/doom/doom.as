@@ -28,6 +28,19 @@
 // crushers should go past monsters or go up after a while
 // explosion barrel dlight
 // monsters aim too high
+// eye button needs updating in dead simple
+// probably need to limit sound graph per level
+// scale up monster sprites 2x?
+// somehow exceeding ammo limit for pistol (dropped weapons?)
+// disable fall damage somehow
+// doom skies
+// pain elemental gets stuck when shooting shulls sometimes 
+// pain elemental soul limit should exclude souls spawned at map start
+// doors that monsters can open
+// being revived breaks weapons
+// You got the "X"! messages
+// pick up keys through doors (MAP10 blue key)
+// use MOVETYPE_FOLLOW to reduce net usage
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -37,10 +50,26 @@ int g_total_secrets = 0;
 int g_total_monsters = 0;
 int g_total_items = 0;
 int g_keys = 0;
-int g_map_num = 5;
+int g_map_num = 1;
 bool g_strict_keys = false; // if false, only color of key matters when opening door
 
-array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120};
+array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120, 120, 270, 90};
+array<string> g_map_music = {
+	"doom/running_from_evil.ogg",
+	"doom/the_healer_stalks.ogg",
+	"doom/countdown_to_death.ogg",
+	"doom/between_levels.ogg",
+	"doom/doom.ogg",
+	"doom/in_the_dark.ogg",
+	"doom/shawn_shotgun.ogg",
+	"doom/taylor_blues.ogg",
+	"doom/sandy_city.ogg",
+	"doom/the_demons_dead.ogg"
+};
+string g_inter_music = "doom/intermission.ogg";
+string g_ep_music = "doom/episode.ogg";
+
+Vector g_spawn_room_pos;
 
 enum key_types
 {
@@ -76,6 +105,8 @@ class PlayerState
 	float lastGoggles = 0; // last time suit was picked up
 	float lastGod = 0;
 	float lastInvis = 0;
+	float lastHudKeys = 0; // last time key hud was updated
+	int hudKeys = 0; // last key set displayed
 	int uiScale = 1;
 	SoundNode@ soundNode = null;
 	
@@ -105,7 +136,9 @@ class PlayerState
 		if (visible_ents.exists(entName))
 		{
 			VisEnt@ vent = cast<VisEnt@>( visible_ents[entName] );
-			vent.sprite.GetEntity().pev.colormap -= 1;
+			if (vent.sprite) {
+				vent.sprite.GetEntity().pev.colormap -= 1;
+			}
 			visible_ents.delete(entName);
 		}
 	}
@@ -127,10 +160,33 @@ array<string> sprite_angles = {
 	"1", "2?8", "3?7", "4?6", "5", "6?4", "7?3", "8?2"
 };
 
-void PrecacheSound(string sound)
+string beta_dir = "beta/";
+string beta_dir2 = "/beta";
+
+string fixPath(string asset)
 {
-	g_SoundSystem.PrecacheSound(sound);
-	g_Game.PrecacheGeneric("sound/" + sound);
+	if (beta_dir.Length() > 0)
+		return asset.Replace("doom/", "doom/" + beta_dir);
+	return asset;
+}
+
+string PrecacheModel(string model)
+{
+	g_Game.PrecacheModel(fixPath(model));
+	return fixPath(model);
+}
+
+string PrecacheGeneric(string thing)
+{
+	g_Game.PrecacheGeneric(fixPath(thing));
+	return fixPath(thing);
+}
+
+string PrecacheSound(string sound)
+{
+	g_SoundSystem.PrecacheSound(fixPath(sound));
+	PrecacheGeneric("sound/" + sound);
+	return fixPath(sound);
 }
 
 string base36(int num)
@@ -164,6 +220,7 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_mancubus", "monster_mancubus" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_arachnotron", "monster_arachnotron" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_painelemental", "monster_painelemental" );
+	g_CustomEntityFuncs.RegisterCustomEntity( "monster_archvile", "monster_archvile" );
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_door", "func_doom_door" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "func_doom_water", "func_doom_water" );
@@ -181,15 +238,15 @@ void MapInit()
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_rpg", "weapon_doom_rpg" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_plasmagun", "weapon_doom_plasmagun" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "weapon_doom_bfg", "weapon_doom_bfg" );
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_fist", "doom", "");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_chainsaw", "doom", "");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_pistol", "doom", "bullets", "", "ammo_doom_bullets");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom", "bullets", "", "ammo_doom_bullets");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_shotgun", "doom", "shells", "", "ammo_doom_shells");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_supershot", "doom", "shells", "", "ammo_doom_shells");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_rpg", "doom", "rockets", "", "ammo_doom_rocket");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_plasmagun", "doom", "cells", "", "ammo_doom_cells");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_bfg", "doom", "cells", "", "ammo_doom_cells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_fist", "doom" + beta_dir2, "");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_chainsaw", "doom" + beta_dir2, "");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_pistol", "doom" + beta_dir2, "bullets", "", "ammo_doom_bullets");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom" + beta_dir2, "bullets", "", "ammo_doom_bullets");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_shotgun", "doom" + beta_dir2, "shells", "", "ammo_doom_shells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_supershot", "doom" + beta_dir2, "shells", "", "ammo_doom_shells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_rpg", "doom" + beta_dir2, "rockets", "", "ammo_doom_rocket");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_plasmagun", "doom" + beta_dir2, "cells", "", "ammo_doom_cells");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_bfg", "doom" + beta_dir2, "cells", "", "ammo_doom_cells");
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_bullets", "ammo_doom_bullets" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "ammo_doom_bulletbox", "ammo_doom_bulletbox" );
@@ -227,40 +284,42 @@ void MapInit()
 	
 	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 	g_Hooks.RegisterHook( Hooks::Player::PlayerUse, @PlayerUse );
-	g_Hooks.RegisterHook( Hooks::Player::PlayerPreThink, @PlayerPreThink );
+	g_Hooks.RegisterHook( Hooks::Player::PlayerPostThink, @PlayerPostThink );
 	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientJoin );
 		
-	g_Game.PrecacheModel("sprites/doom/objects.spr");
-	g_Game.PrecacheModel("sprites/doom/keys.spr");
-	g_Game.PrecacheModel("sprites/doom/BAL.spr");
-	g_Game.PrecacheModel("sprites/doom/BAL7.spr");
-	g_Game.PrecacheModel("sprites/doom/MISL.spr");
-	g_Game.PrecacheModel("sprites/doom/BFE2.spr");
-	g_Game.PrecacheModel("sprites/doom/PUFF.spr");
-	g_Game.PrecacheModel("sprites/doom/BLUD.spr");
-	g_Game.PrecacheModel("sprites/doom/TFOG.spr");
-	g_Game.PrecacheModel("sprites/doom/FATB.spr");
-	g_Game.PrecacheModel("sprites/doom/MANF.spr");
-	g_Game.PrecacheModel("models/doom/null.mdl");
+	PrecacheModel("sprites/doom/objects.spr");
+	PrecacheModel("sprites/doom/keys.spr");
+	PrecacheModel("sprites/doom/BAL.spr");
+	PrecacheModel("sprites/doom/BAL7.spr");
+	PrecacheModel("sprites/doom/MISL.spr");
+	PrecacheModel("sprites/doom/BFE2.spr");
+	PrecacheModel("sprites/doom/PUFF.spr");
+	PrecacheModel("sprites/doom/BLUD.spr");
+	PrecacheModel("sprites/doom/TFOG.spr");
+	PrecacheModel("sprites/doom/FATB.spr");
+	PrecacheModel("sprites/doom/MANF.spr");
+	PrecacheModel("sprites/doom/FIRE.spr");
+	PrecacheModel("models/doom/null.mdl");
 	
-	g_Game.PrecacheModel("sprites/doom/fist.spr");
-	g_Game.PrecacheModel("sprites/doom/chainsaw.spr");
-	g_Game.PrecacheModel("sprites/doom/pistol.spr");
-	g_Game.PrecacheModel("sprites/doom/chaingun.spr");
-	g_Game.PrecacheModel("sprites/doom/shotgun.spr");
-	g_Game.PrecacheModel("sprites/doom/supershot.spr");
-	g_Game.PrecacheModel("sprites/doom/rpg.spr");
-	g_Game.PrecacheModel("sprites/doom/plasmagun.spr");
-	g_Game.PrecacheModel("sprites/doom/bfg.spr");
+	PrecacheModel("sprites/doom/fist.spr");
+	PrecacheModel("sprites/doom/chainsaw.spr");
+	PrecacheModel("sprites/doom/pistol.spr");
+	PrecacheModel("sprites/doom/chaingun.spr");
+	PrecacheModel("sprites/doom/shotgun.spr");
+	PrecacheModel("sprites/doom/supershot.spr");
+	PrecacheModel("sprites/doom/rpg.spr");
+	PrecacheModel("sprites/doom/plasmagun.spr");
+	PrecacheModel("sprites/doom/bfg.spr");
+	PrecacheModel("sprites/doom/TEXT.spr");
 	
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_fist.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_chainsaw.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_pistol.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_chaingun.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_shotgun.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_supershot.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_rpg.txt");
-	g_Game.PrecacheGeneric("sprites/doom/weapon_doom_bfg.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_fist.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_chainsaw.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_pistol.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_chaingun.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_shotgun.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_supershot.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_rpg.txt");
+	PrecacheGeneric("sprites/doom/weapon_doom_bfg.txt");
 	
 	PrecacheSound("doom/DSFIRSHT.wav");
 	PrecacheSound("doom/DSFIRXPL.wav");
@@ -279,12 +338,19 @@ void MapInit()
 	PrecacheSound("doom/DSGETPOW.wav");
 	PrecacheSound("doom/DSTELEPT.wav");
 	PrecacheSound("doom/DSWPNUP.wav");
+	PrecacheSound("doom/DSFLAME.wav");
 	PrecacheSound("doom/DSSKLDTH.wav"); // player use
 	PrecacheSound("doom/DSPLPAIN.wav"); // player pain
 	PrecacheSound("doom/DSPLDETH.wav"); // player death
 	PrecacheSound("doom/DSITMBK.wav"); // item respawn
 	PrecacheSound("doom/DSITEMUP.wav"); // item collect
 	PrecacheSound("doom/dssecret.flac"); // secret revealed
+	
+	for (uint i = 0; i < g_map_music.length(); i++)
+		g_map_music[i] = PrecacheSound(g_map_music[i]);
+		
+	g_inter_music = PrecacheSound(g_inter_music);
+	g_ep_music = PrecacheSound(g_ep_music);
 }
 
 void MapActivate()
@@ -305,11 +371,20 @@ void MapActivate()
 		}
 	} while (ent !is null);
 	
+	@ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "env_sprite");
+		if (ent !is null)
+		{
+			g_EntityFuncs.SetModel(ent, fixPath("sprites/doom/TEXT.spr"));
+		}
+	} while (ent !is null);
+	
 	for (uint i = 0; i < buttons.length(); i++)
 	{
 		for (uint k = 0; k < doors.length(); k++)
 		{
-			if (buttons[i].Intersects(doors[k]))
+			if (buttons[i].pev.spawnflags & FL_DOOR_BUTTON_DONT_MOVE == 0 and buttons[i].Intersects(doors[k]))
 			{
 				//println("GOT INTERSECT " + buttons[i].pev.targetname + " " + doors[k].pev.targetname);
 				func_doom_door@ button = cast<func_doom_door@>(CastToScriptClass(buttons[i]));
@@ -325,17 +400,37 @@ void MapActivate()
 		}
 	}
 	
+	CBaseEntity@ map_info = g_EntityFuncs.FindEntityByTargetname(null, "map_info");
+	if (map_info !is null)
+	{
+		g_map_num = map_info.pev.renderfx;
+		println("INITIAL MAP: " + g_map_num);
+	}
+	
 	CBaseEntity@ spawn_room = g_EntityFuncs.FindEntityByTargetname(null, "map_start");
-	Vector spawn_room_pos = spawn_room !is null ? spawn_room.pev.origin : Vector(0,0,0);
+	g_spawn_room_pos = spawn_room !is null ? spawn_room.pev.origin : Vector(0,0,0);
 	
 	dictionary keys;
-	keys["origin"] = spawn_room_pos.ToString();
+	keys["origin"] = g_spawn_room_pos.ToString();
 	keys["targetname"] = "secret_revealed";
 	keys["m_iszScriptFile"] = "doom/doom.as";
 	keys["m_iszScriptFunctionName"] = "secret_revealed";
 	keys["m_iMode"] = "1";
 	keys["delay"] = "0";
 	g_EntityFuncs.CreateEntity("trigger_script", keys, true);
+	
+
+	keys["targetname"] = "inter_music";
+	keys["volume"] = "10";
+	keys["message"] = g_inter_music;
+	keys["spawnflags"] = "3";
+	g_EntityFuncs.CreateEntity("ambient_music", keys, true);
+	
+	keys["targetname"] = "ep_music";
+	keys["volume"] = "10";
+	keys["message"] = g_ep_music;
+	keys["spawnflags"] = "3";
+	g_EntityFuncs.CreateEntity("ambient_music", keys, true);
 	
 	createSoundGraph();
 }
@@ -363,12 +458,12 @@ int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, V
 	return 4;
 }
 
-HookReturnCode PlayerPreThink(CBasePlayer@ plr)
+HookReturnCode PlayerPostThink(CBasePlayer@ plr)
 {
 	PlayerState@ state = getPlayerState(plr);
 	
 	HUDSpriteParams params;
-	string hud_sprite = "sprites/doom/keys.spr"; 
+	string hud_sprite = fixPath("sprites/doom/keys.spr"); 
 	params.spritename = hud_sprite.SubString("sprites/".Length()); // so resguy doesn't get confused
 	params.width = 0;
 	params.flags = HUD_SPR_MASKED | HUD_ELEM_ABSOLUTE_Y | HUD_ELEM_ABSOLUTE_X;
@@ -382,22 +477,32 @@ HookReturnCode PlayerPreThink(CBasePlayer@ plr)
 	params.x = baseX;
 	params.y = baseY;
 	
-	for (uint i = 0; i < 6; i++)
+	if (state.lastHudKeys + 10.0f < g_Engine.time or state.hudKeys != g_keys)
 	{
-		params.channel = 9+i;
-		params.frame = state.uiScale*6 + i;
-		if (i == 3) // skull keys
+		state.lastHudKeys = g_Engine.time;
+		state.hudKeys = g_keys;
+		for (uint i = 0; i < 6; i++)
 		{
-			params.y = baseY - sprScale*2;
-			params.x = baseX + sprScale*9;
-		}
+			params.channel = 9+i;
+			params.frame = state.uiScale*6 + i;
+			if (i == 3) // skull keys
+			{
+				params.y = baseY - sprScale*2;
+				params.x = baseX + sprScale*9;
+			}
 
-		if (g_keys & (1 << i) == 0)
-			continue;
-		
-		g_PlayerFuncs.HudCustomSprite(plr, params);
-		
-		params.y += sprScale*2 + sprHeight;
+			if (g_keys & (1 << i) == 0)
+			{
+				HUDSpriteParams offparams;
+				offparams.channel = params.channel;
+				g_PlayerFuncs.HudCustomSprite(plr, offparams);
+				continue;
+			}
+			
+			g_PlayerFuncs.HudCustomSprite(plr, params);
+			
+			params.y += sprScale*2 + sprHeight;
+		}
 	}
 	
 	//g_SoundSystem.StopSound(ent.edict(), CHAN_BODY, "player/pl_step3.wav");
@@ -423,9 +528,16 @@ void player_killed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 
 void secret_revealed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
 {
-	g_SoundSystem.PlaySound(pActivator.edict(), CHAN_STATIC, "doom/dssecret.flac", 1.0f, ATTN_NONE, 0, 100);
+	g_SoundSystem.PlaySound(pActivator.edict(), CHAN_STATIC, fixPath("doom/dssecret.flac"), 1.0f, ATTN_NONE, 0, 100);
 	g_PlayerFuncs.PrintKeyBindingStringAll("A SECRET IS REVEALED!\n");
 	g_secrets += 1;
+}
+
+string getMapName()
+{
+	if (g_map_num < 10)
+		return "map0" + g_map_num;
+	return "map" + g_map_num;
 }
 
 void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
@@ -439,8 +551,8 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 	g_total_monsters = 0;
 	g_total_items = 0;
 	
-	Vector level_min = g_EntityFuncs.FindEntityByTargetname(null, "map0" + g_map_num + "_mins").pev.origin;
-	Vector level_max = g_EntityFuncs.FindEntityByTargetname(null, "map0" + g_map_num + "_maxs").pev.origin;
+	Vector level_min = g_EntityFuncs.FindEntityByTargetname(null, getMapName() + "_mins").pev.origin;
+	Vector level_max = g_EntityFuncs.FindEntityByTargetname(null, getMapName() + "_maxs").pev.origin;
 	
 	CBaseEntity@ ent = null;
 	do {
@@ -450,7 +562,7 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 			if (ent.pev.absmin.x > level_min.x and ent.pev.absmin.y > level_min.y and ent.pev.absmin.z > level_min.z and
 				ent.pev.absmax.x < level_max.x and ent.pev.absmax.y < level_max.y and ent.pev.absmax.z < level_max.z)
 			{
-				string prefix = "map0" + g_map_num + "_";
+				string prefix = getMapName() + "_";
 				// add prefix to entity names so multiple levels don't conflict
 				if (string(ent.pev.targetname).Length() > 0)
 					ent.pev.targetname = prefix + ent.pev.targetname;
@@ -458,6 +570,9 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 					ent.pev.target = prefix + ent.pev.target;
 				if (ent.pev.target == "teleport_thing")
 					ent.pev.netname = prefix + ent.pev.netname;
+					
+				if (ent.pev.classname == "trigger_changevalue")
+					ent.pev.message = prefix + ent.pev.message;
 				
 				if (ent.pev.classname == "trigger_once" and ent.pev.target == "secret_revealed")
 					g_total_secrets += 1;
@@ -483,8 +598,17 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 		}
 	} while(ent !is null);
 	
-	g_EntityFuncs.FireTargets("map0" + g_map_num + "_spawns", null, null, USE_ON);
-	g_EntityFuncs.FireTargets("map0" + g_map_num + "_music", null, null, USE_ON);
+	
+	dictionary keys;
+	keys["origin"] = g_spawn_room_pos.ToString();
+	keys["targetname"] = "" + getMapName() + "_music";
+	keys["volume"] = "10";
+	keys["message"] = "" + g_map_music[g_map_num-1];
+	keys["spawnflags"] = "3";
+	g_EntityFuncs.CreateEntity("ambient_music", keys, true);
+	
+	g_EntityFuncs.FireTargets(getMapName() + "_spawns", null, null, USE_ON);
+	g_EntityFuncs.FireTargets(getMapName() + "_music", null, null, USE_ON);
 }
 
 void episode_end()
@@ -494,6 +618,11 @@ void episode_end()
 	trans.pev.effects |= EF_NODRAW;
 	lvl.pev.effects |= EF_NODRAW;
 	g_EntityFuncs.FireTargets("ep_end", null, null, USE_TOGGLE);
+}
+
+void trigger_next_level()
+{
+	g_EntityFuncs.FireTargets("map_start", null, null, USE_TOGGLE);
 }
 
 void next_level()
@@ -531,7 +660,7 @@ void next_level()
 		g_Scheduler.SetTimeout("episode_end", 1.0f);
 	}
 	else
-		g_EntityFuncs.FireTargets("map_start", null, null, USE_TOGGLE);
+		g_Scheduler.SetTimeout("trigger_next_level", 3.0f);
 }
 
 void tally_time(string item, int time, int targetTime, bool playSound)
@@ -569,17 +698,17 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 	if (time < targetTime)
 	{
 		if (playSound)
-			g_SoundSystem.PlaySound(colon.edict(), CHAN_STATIC, "doom/DSPISTOL.wav", 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(colon.edict(), CHAN_STATIC, fixPath("doom/DSPISTOL.wav"), 1.0f, 1.0f, 0, 100);
 		int step = Math.max(targetTime / 15, 3);
 		g_Scheduler.SetTimeout("tally_time", 0.05, item, time+step, targetTime, !playSound);
 	}
 	else
 	{
-		g_SoundSystem.PlaySound(secOnes.edict(), CHAN_STATIC, "doom/DSBAREXP.wav", 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(secOnes.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
 		if (item == "time")
 			g_Scheduler.SetTimeout("tally_time", 0.8, "par", 0, g_par_times[g_map_num-1], !playSound);
 		if (item == "par")
-			g_Scheduler.SetTimeout("next_level", 1.0);
+			g_Scheduler.SetTimeout("next_level", 4.0);
 	}
 }
 
@@ -611,12 +740,12 @@ void tally_score(string item, int percentage, int targetPercent, bool playSound)
 	if (percentage < targetPercent)
 	{
 		if (playSound)
-			g_SoundSystem.PlaySound(ones.edict(), CHAN_STATIC, "doom/DSPISTOL.wav", 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(ones.edict(), CHAN_STATIC, fixPath("doom/DSPISTOL.wav"), 1.0f, 1.0f, 0, 100);
 		g_Scheduler.SetTimeout("tally_score", 0.05, item, percentage+13, targetPercent, !playSound);
 	}
 	else
 	{
-		g_SoundSystem.PlaySound(tens.edict(), CHAN_STATIC, "doom/DSBAREXP.wav", 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(tens.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
 		
 		if (item == "kills")
 		{
@@ -639,8 +768,8 @@ void tally_score(string item, int percentage, int targetPercent, bool playSound)
 
 void cleanup_level()
 {
-	Vector level_min = g_EntityFuncs.FindEntityByTargetname(null, "map0" + g_map_num + "_mins").pev.origin;
-	Vector level_max = g_EntityFuncs.FindEntityByTargetname(null, "map0" + g_map_num + "_maxs").pev.origin;
+	Vector level_min = g_EntityFuncs.FindEntityByTargetname(null, getMapName() + "_mins").pev.origin;
+	Vector level_max = g_EntityFuncs.FindEntityByTargetname(null, getMapName() + "_maxs").pev.origin;
 	
 	CBaseEntity@ ent = null;
 	do {
@@ -660,8 +789,8 @@ void cleanup_level()
 
 void intermission(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
 {
-	g_EntityFuncs.FireTargets("map0" + g_map_num + "_spawns", null, null, USE_OFF);
-	g_EntityFuncs.FireTargets("map0" + g_map_num + "_music", null, null, USE_OFF);
+	g_EntityFuncs.FireTargets(getMapName() + "_spawns", null, null, USE_OFF);
+	g_EntityFuncs.FireTargets(getMapName() + "_music", null, null, USE_OFF);
 	
 	g_Scheduler.SetTimeout("cleanup_level", 1.0f);
 	
@@ -673,6 +802,7 @@ void intermission(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTyp
 	Vector temp = trans.pev.origin;
 	trans.pev.origin = lvl.pev.origin;
 	lvl.pev.origin = temp;
+	lvl.pev.frame = g_map_num-1;
 	trans.pev.frame = 53;
 	
 	array<string> sprItems = {"kills", "items", "secret", "time", "par"};
