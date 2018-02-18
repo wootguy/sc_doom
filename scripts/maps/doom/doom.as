@@ -300,6 +300,7 @@ void MapInit()
 	PrecacheModel("sprites/doom/MANF.spr");
 	PrecacheModel("sprites/doom/FIRE.spr");
 	PrecacheModel("models/doom/null.mdl");
+	PrecacheModel("sprites/null.spr");
 	
 	PrecacheModel("sprites/doom/fist.spr");
 	PrecacheModel("sprites/doom/chainsaw.spr");
