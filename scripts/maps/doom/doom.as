@@ -41,6 +41,7 @@
 // You got the "X"! messages
 // pick up keys through doors (MAP10 blue key)
 // use MOVETYPE_FOLLOW to reduce net usage
+// revived monsters sometimes invisible until you angle changes
 
 float g_level_time = 0;
 int g_secrets = 0;
