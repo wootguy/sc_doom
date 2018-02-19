@@ -442,7 +442,7 @@ class monster_painelemental : monster_doom
 			if (ent !is null)
 			{
 				monster_lostsoul@ mon = cast<monster_lostsoul@>(CastToScriptClass(ent));
-				if (!mon.superDormant)
+				if (!mon.superDormant and !mon.killPoints)
 					count++;
 			}
 		} while (ent !is null);
@@ -457,7 +457,7 @@ class monster_painelemental : monster_doom
 			return;
 		}
 		Vector flatAim = Vector(aimDir.x, aimDir.y, 0).Normalize();
-		Vector spawnPos = BodyPos() + flatAim*18;
+		Vector spawnPos = BodyPos() + flatAim*64;
 		Vector angles;
 		g_EngineFuncs.VecToAngles(aimDir, angles);
 		angles.x = -angles.x;
@@ -483,6 +483,17 @@ class monster_painelemental : monster_doom
 			mon.SetEnemy(h_enemy);
 		}
 		
+		TraceResult tstuck;
+		Vector bodyPos = mon.BodyPos();
+		g_Utility.TraceHull( bodyPos, bodyPos, dont_ignore_monsters, human_hull, soul.edict(), tstuck );
+		if (tstuck.fAllSolid == 1)
+		{
+			// blow up if got stuck/spawned inside something
+			CBaseEntity@ pHit = g_EntityFuncs.Instance( tstuck.pHit );
+			if (pHit !is null)
+				doomTakeDamage(pHit, mon.pev, mon.pev, mon.dashDamage, DMG_BURN);
+			mon.TakeDamage(mon.pev, mon.pev, mon.pev.health, 0);
+		}
 		
 		mon.RangeAttack(soulDir);
 	}
@@ -714,8 +725,8 @@ class monster_archvile : monster_doom
 		animInfo.insertLast(AnimInfo(17, 19, 0.25f, true)); // ANIM_ATTACK
 		animInfo.insertLast(AnimInfo(6, 15, 0.25f, true)); // ANIM_ATTACK2
 		animInfo.insertLast(AnimInfo(16, 16, 0.125f, true)); // ANIM_PAIN
-		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
-		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
+		animInfo.insertLast(AnimInfo(160, 168, 0.375f, false)); // ANIM_DEAD
+		animInfo.insertLast(AnimInfo(160, 168, 0.375f, false)); // ANIM_GIB		
 		
 		animInfo[ANIM_ATTACK2].attackFrames.resize(0);
 		animInfo[ANIM_ATTACK2].attackFrames.insertLast(8);

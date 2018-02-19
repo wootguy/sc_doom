@@ -104,6 +104,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	float walkSoundFreq = 0.6f;
 	float reviveDelay = 1.0f; // time between revive checks
 	float lastReviveCheck = 0;
+	float revive_range = 256;
 	
 	float nextWalkSound = 0;
 	float nextRangeAttack = 0;
@@ -546,7 +547,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	{
 		CBaseEntity@ ent = null;
 		do {
-			@ent = g_EntityFuncs.FindEntityInSphere(ent, pev.origin, 512, "*", "classname"); 
+			@ent = g_EntityFuncs.FindEntityInSphere(ent, pev.origin, revive_range, "*", "classname"); 
 			if (ent !is null and !ent.IsAlive() and string(ent.pev.classname).Find("monster_") == 0)
 			{
 				string cname = ent.pev.classname;
@@ -555,6 +556,10 @@ class monster_doom : ScriptBaseMonsterEntity
 				{
 					continue;
 				}
+				
+				if ((ent.pev.origin - pev.origin).Length() < 80)
+					continue;
+				
 				monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(ent));
 				if (mon !is null and !mon.isBeingRevived)
 				{
@@ -722,7 +727,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			if (canRevive and lastReviveCheck + reviveDelay < g_Engine.time and !isAttacking())
 			{
 				lastReviveCheck = g_Engine.time;
-				if (Math.RandomLong(0, 100) <= 25)
+				if (Math.RandomLong(0, 100) <= 50)
 				{
 					if (ReviveNearbyDemon())
 						frame = SetActivity(ANIM_ATTACK);
