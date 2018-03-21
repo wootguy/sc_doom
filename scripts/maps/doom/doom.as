@@ -9,23 +9,16 @@
 
 // TODO:
 // monsters should open doors, react to sounds without sight
-// items don't get correct brightness
 // player models should be doom guy sprite (colored?)
-// rocket trails
-// hitboxes aren't right
-// rewrite takedamage+traceattack :<
 // health/armor/ammo hud?
-// weapon picksound is shotgun?
-// items sometimes sink into ground and u cant pickup
-// 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
+// (doom door breaks regular doors): 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
 // teleport effects dont show when in different vis area
 // lite textures need editing (full bar)
 // cacodemon sprite has transparency in blue mouth
 // cacdemon gets stuck at tiny lips when it could easily float around them
-// solid fireballs bounce off each other
 // replace gib sound with slop
+// replace death beeps (custom sentence?)
 // teleports dont work in old maps
-// crushers should go past monsters or go up after a while
 // explosion barrel dlight
 // monsters aim too high
 // eye button needs updating in dead simple
@@ -35,13 +28,19 @@
 // disable fall damage somehow
 // doom skies
 // pain elemental gets stuck when shooting shulls sometimes 
-// pain elemental soul limit should exclude souls spawned at map start
 // doors that monsters can open
 // being revived breaks weapons
 // You got the "X"! messages
 // pick up keys through doors (MAP10 blue key)
-// use MOVETYPE_FOLLOW to reduce net usage
-// revived monsters sometimes invisible until you angle changes
+// revived monsters sometimes invisible until your view angle changes
+// map11 souls trying to kill each other but hitting ceiling
+
+// TODO (items I'm ignoring cuz 2 lazy):
+// items don't get correct brightness
+// items sometimes sink into ground and u cant pickup
+// solid fireballs bounce off each other (tried SOLID_TOUCH already, projectiles kinda have to be solid)
+// crushers should go past monsters or go up after a while
+// use MOVETYPE_FOLLOW to reduce net usage (tried it but monsters flicker because sprite stops following when nodraw applied)
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -54,7 +53,7 @@ int g_keys = 0;
 int g_map_num = 1;
 bool g_strict_keys = false; // if false, only color of key matters when opening door
 
-array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120, 120, 270, 90};
+array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120, 120, 270, 90, 210};
 array<string> g_map_music = {
 	"doom/running_from_evil.ogg",
 	"doom/the_healer_stalks.ogg",
@@ -65,7 +64,8 @@ array<string> g_map_music = {
 	"doom/shawn_shotgun.ogg",
 	"doom/taylor_blues.ogg",
 	"doom/sandy_city.ogg",
-	"doom/the_demons_dead.ogg"
+	"doom/the_demons_dead.ogg",
+	"doom/the_healer_stalks.ogg",
 };
 string g_inter_music = "doom/intermission.ogg";
 string g_ep_music = "doom/episode.ogg";
