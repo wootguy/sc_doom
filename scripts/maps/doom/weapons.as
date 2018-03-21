@@ -628,6 +628,7 @@ class weapon_doom_bfg : weapon_doom
 		cooldown = 1.1f;
 		frameRate = 0.2f;
 		ammoPerShot = 40;
+		self.m_iDefaultAmmo = 40;
 		
 		DoomSpawn();
 		
