@@ -440,6 +440,8 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 {
 	if (!ent.IsPlayer())
 		return ent.TakeDamage( pevAttacker, pevAttacker, flDamage, bitsDamageType);
+		
+	flDamage *= g_dmgScale.GetFloat();
 	
 	// disable friendly fire
 	CBaseEntity@ attacker = g_EntityFuncs.Instance( pevAttacker );

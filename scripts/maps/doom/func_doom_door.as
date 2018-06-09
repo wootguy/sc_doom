@@ -399,7 +399,7 @@ class func_doom_door : ScriptBaseEntity
 		{
 			lastCrush = g_Engine.time;
 			doomTakeDamage( pOther, pev, pev, pev.dmg, DMG_CRUSH );
-			te_bloodsprite(pOther.pev.origin + pOther.pev.view_ofs, "sprites/doom/BLUD.spr", "sprites/blood.spr", 70, 5);
+			te_bloodsprite(pOther.pev.origin + pOther.pev.view_ofs, fixPath("sprites/doom/BLUD.spr"), "sprites/blood.spr", 70, 5);
 		}
 
 		// if a door has a negative wait, it would never come back if blocked,

@@ -543,7 +543,7 @@ class item_doom : ScriptBaseItemEntity
 			if (intermission)
 				g_item_gets += 1;
 			g_PlayerFuncs.ScreenFade(pOther, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
-			g_SoundSystem.PlaySound(pOther.edict(), CHAN_WEAPON, pickupSnd, 1.0f, 0.5f, 0, 100);
+			g_SoundSystem.PlaySound(pOther.edict(), CHAN_ITEM, pickupSnd, 1.0f, 0.5f, 0, 100);
 			g_EntityFuncs.Remove(self);
 		}
 		
