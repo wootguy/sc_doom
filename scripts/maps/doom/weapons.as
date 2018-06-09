@@ -20,6 +20,7 @@ class weapon_doom_pistol : weapon_doom
 		this.shootFrames = shootFrames;
 		this.tileInfo = tileInfo;
 		this.frameInfo = frameInfo;
+		this.pmodel = "models/hlclassic/p_9mmhandgun.mdl";
 		wepOffsetX = -5.5;
 
 		accurateFirstShot = true;
@@ -85,6 +86,9 @@ class weapon_doom_shotgun : weapon_doom
 		this.tileInfo = tileInfo;
 		this.frameInfo = frameInfo;
 		wepOffsetX = -2.5;
+		
+		this.pmodel = "models/hlclassic/p_shotgun.mdl";
+		this.reloadAnimSpeed = 3;
 		
 		spread = 9.8f;
 		cooldown = 1.0f;
@@ -159,6 +163,9 @@ class weapon_doom_supershot : weapon_doom
 		this.frameInfo = frameInfo;
 		wepOffsetX = -1;
 		
+		this.pmodel = "models/custom_weapons/cs16/p_m1887.mdl";
+		this.reloadAnimSpeed = 1.4;
+		
 		spread = 18.0f;
 		cooldown = 1.4f;
 		frameRate = 0.15;
@@ -227,6 +234,8 @@ class weapon_doom_rpg : weapon_doom
 		this.tileInfo = tileInfo;
 		this.frameInfo = frameInfo;
 		wepOffsetX = 0;
+		
+		this.pmodel = "models/hlclassic/p_rpg.mdl";
 		
 		spread = 9.8f;
 		cooldown = 0.5f;
@@ -301,6 +310,7 @@ class weapon_doom_fist : weapon_doom
 	{
 		hud_sprite = "sprites/doom/fist.spr";
 		shootSound = "doom/DSPUNCH.wav";
+		panims = "crowbar";
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(113, 42, 0),
@@ -346,8 +356,7 @@ class weapon_doom_fist : weapon_doom
 	void Attack()
 	{
 		if (Slash(Math.RandomLong(damage_min, damage_max)))
-			g_SoundSystem.PlaySound(self.edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
-		
+			g_SoundSystem.PlaySound(getPlayer().edict(), CHAN_WEAPON, shootSound, 1.0f, 0.5f, 0, 100);
 	}
 	
 	void Think()
@@ -389,6 +398,9 @@ class weapon_doom_chainsaw : weapon_doom
 		this.tileInfo = tileInfo;
 		this.frameInfo = frameInfo;
 		wepOffsetX = -5;
+		
+		this.pmodel = "models/custom_weapons/cs16/p_chainsaw.mdl";
+		this.panims = "minigun";
 		
 		constantAttack = true;
 		
@@ -470,6 +482,8 @@ class weapon_doom_chaingun : weapon_doom
 		this.frameInfo = frameInfo;
 		wepOffsetX = -1;
 		
+		this.pmodel = "models/p_minigunidle.mdl";
+		
 		constantAttack = true;
 		frameRate = 0.12;
 		cooldown = 0.22f;
@@ -533,6 +547,9 @@ class weapon_doom_plasmagun : weapon_doom
 		attackFrame = 0;
 		this.frameInfo = frameInfo;
 		wepOffsetX = 0;
+		
+		this.pmodel = "models/hlclassic/p_egon.mdl";
+		this.panims = "egon";
 		
 		spread = 9.8f;
 		cooldown = 0.075f;
@@ -623,6 +640,8 @@ class weapon_doom_bfg : weapon_doom
 		attackFrame = 5;
 		this.frameInfo = frameInfo;
 		wepOffsetX = -0.5;
+		
+		this.pmodel = "models/p_displacer.mdl";
 		
 		spread = 9.8f;
 		cooldown = 1.1f;

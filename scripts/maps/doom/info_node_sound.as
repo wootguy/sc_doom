@@ -331,7 +331,7 @@ void createSoundGraph()
 	}
 	
 	// calculate reachability
-	println("Calc reachability");
+	//println("Calc reachability");
 	for (uint i = 0; i < g_sound_nodes.length(); i++)
 	{
 		SoundNode@ n1 = g_sound_nodes[i];

@@ -1,6 +1,11 @@
 const int FL_TP_IGNORE_PLAYERS = 2;
 const int FL_TP_ON_EXIT = 32;
 
+void delay_tele_effect(Vector pos)
+{
+	te_explosion(pos, fixPath("sprites/doom/TFOG.spr"), 10, 5, 15);
+}
+
 class trigger_doom_teleport : ScriptBaseEntity
 {
 	bool ignore_players = false;
@@ -75,7 +80,7 @@ class trigger_doom_teleport : ScriptBaseEntity
 			} while (ent !is null);
 			
 			g_EngineFuncs.MakeVectors(target.pev.angles);
-			te_explosion(other.pev.origin - offset + g_Engine.v_forward*32, fixPath("sprites/doom/TFOG.spr"), 10, 5, 15);
+			g_Scheduler.SetTimeout("delay_tele_effect", 0.05f, other.pev.origin - offset + g_Engine.v_forward*32);
 			
 			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/DSTELEPT.wav"), 1.0f, 1.0f, 0, 100);
 			g_SoundSystem.PlaySound(target.edict(), CHAN_STATIC, fixPath("doom/DSTELEPT.wav"), 1.0f, 1.0f, 0, 100);
@@ -116,7 +121,7 @@ class trigger_doom_teleport : ScriptBaseEntity
 				else
 					moveDir = (other.pev.origin - other.pev.oldorigin).Normalize();
 				validDir = DotProduct(moveDir, teleDir) > 0.1;
-				println("DOT: " + DotProduct(moveDir, teleDir) + " " + validDir + " " + other.IsMonster());
+				//println("DOT: " + DotProduct(moveDir, teleDir) + " " + validDir + " " + other.IsMonster());
 			}
 			if (!hasDir or validDir)
 			{

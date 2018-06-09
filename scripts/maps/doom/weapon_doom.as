@@ -82,12 +82,20 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	string shootSound = "doom/DSPISTOL.wav";
 	string deploySound;
 	
+	string panims = "python";
+	string pmodel = "models/doom/null.mdl";
+	float reloadAnimSpeed = 0; // 0 for no anim
+	float nextReloadAnim = 0;
+	
+	float nextViewToggle = 0;
+	
 	void Precache()
 	{
 		self.PrecacheCustomModels();
 		shootSound = PrecacheSound(shootSound);
 		deploySound = PrecacheSound(deploySound);
 		hud_sprite = PrecacheModel(hud_sprite);
+		PrecacheModel(pmodel);
 	}
 	
 	void ChooseScale(int i)
@@ -209,7 +217,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 				{
 					int tile = y*tileInfo[tileFrame].x + x;
 					
-					if (y < tileInfo[tileFrame].y and x < tileInfo[tileFrame].x)
+					if (y < tileInfo[tileFrame].y and x < tileInfo[tileFrame].x and state.viewMode == ViewMode_FirstPerson)
 					{
 						int partOffsetX = Math.min(512, int(frameInfo[animFrame].width*sprScale - x*512)) / 2;
 						//println("X OFFSET: " + wepx + " " + partOffsetX);
@@ -258,7 +266,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	bool Deploy()
 	{
 		bool bResult = self.DefaultDeploy( self.GetV_Model( fixPath("models/doom/null.mdl") ), 
-											self.GetP_Model( fixPath("models/doom/null.mdl") ), 3, "crowbar" );
+											self.GetP_Model( fixPath(pmodel) ), 3, panims );
 		active = true;
 		pev.nextthink = g_Engine.time;
 		SetFrame(0);
@@ -420,8 +428,38 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			
 			firstShot = accurateFirstShot and g_Engine.time - lastAttack > cooldown + 0.1f;
 			lastAttack = g_Engine.time;
+			
+			if (reloadAnimSpeed > 0) {
+				nextReloadAnim = g_Engine.time + 0.4;
+			}
 			Shoot();
 		}
+	}
+	
+	void toggleThirdPerson()
+	{
+		if (nextViewToggle > g_Engine.time) {
+			return;
+		}
+		nextViewToggle = g_Engine.time + 0.5f;
+		PlayerState@ state = getPlayerState(getPlayer());
+		
+		if (state.viewMode == ViewMode_FirstPerson) {
+			state.viewMode = ViewMode_ThirdPerson;
+		} else {
+			state.viewMode = ViewMode_FirstPerson;
+		}
+		lastHudLightLevel = -1234; // force a hud update
+	}
+	
+	void SecondaryAttack()
+	{
+		toggleThirdPerson();
+	}
+	
+	void TertiaryAttack()
+	{
+		openPlayerMenu(getPlayer());
 	}
 	
 	void WeaponThink()
@@ -430,6 +468,21 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			return;
 	
 		RenderHUD();
+		
+		CBasePlayer@ plr = getPlayer();
+		if (nextReloadAnim != 0 and nextReloadAnim < g_Engine.time) {
+			nextReloadAnim = 0;
+			
+			plr.m_Activity = ACT_RELOAD;
+			plr.pev.frame = 0;
+			plr.pev.sequence = 66;
+			
+			plr.ResetSequenceInfo();
+			plr.pev.framerate = reloadAnimSpeed;
+		}
+		
+		PlayerState@ state = getPlayerState(plr);
+		plr.SetViewMode(state.viewMode);
 		
 		pev.nextthink = g_Engine.time;
 	}
@@ -445,6 +498,8 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		float damage = Math.RandomLong(5, 15);
 		HitScan(plr, vecSrc, g_Engine.v_forward, firstShot ? 0 : spread, damage);
 
+		plr.SetAnimation( PLAYER_ATTACK1 );
+		
 		if (!extraShot)
 		{
 			int ammoLeft = plr.m_rgAmmo(self.m_iPrimaryAmmoType);
@@ -469,6 +524,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 		Vector attackDir = g_Engine.v_forward;
 		g_Utility.TraceLine( vecSrc, vecSrc + attackDir*80*g_world_scale, dont_ignore_monsters, plr.edict(), tr );
 		CBaseEntity@ phit = g_EntityFuncs.Instance( tr.pHit );
+		plr.SetAnimation( PLAYER_ATTACK1 );
 		
 		if (phit !is null and tr.flFraction < 1.0f)
 		{
