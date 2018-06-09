@@ -166,6 +166,8 @@ class item_barrel : ScriptBaseEntity
 			animDir = 1;
 			pev.nextthink = g_Engine.time + 0.17f;
 			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
+			
+			te_dlight(pev.origin, 30, Color(64,40,32,255), 3, 16);
 		}
 		
 		return 0;
@@ -202,7 +204,6 @@ class item_barrel : ScriptBaseEntity
 		if (dead and pev.frame == 11)
 		{
 			RadiusDamage(pev.origin, self.pev, self.pev, 128, 128*g_monster_scale, 0, DMG_BLAST);
-			println("ZOMG BLOW");
 		}
 		pev.nextthink = g_Engine.time + 0.17f;
 	}
@@ -303,6 +304,9 @@ class item_prop : ScriptBaseEntity
 				break;
 			case 53:
 				frameStart = frameMax = 60;
+				break;
+			case 54:
+				frameStart = frameMax = 159;
 				break;
 			case 55:
 				frameStart = 122;

@@ -493,18 +493,15 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	{
 		if ( bitsDamageType & DMG_ALWAYSGIB != 0 )
 		{
-			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, fixPath("doom/DSSLOP.wav"), 1.0f, 1.0f, 0, 100);
 			ent.Killed( pevAttacker, GIB_ALWAYS );
 		}
 		else if ( bitsDamageType & DMG_NEVERGIB != 0 )
 		{
-			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, fixPath("doom/DSPLDETH.wav"), 1.0f, 1.0f, 0, 100);
 			ent.Killed( pevAttacker, GIB_NEVER );
 		}
 		else
 		{
 			// TODO: What's the normal gib damage amount?
-			g_SoundSystem.PlaySound(ent.edict(), CHAN_BODY, fixPath("doom/DSPLDETH.wav"), 1.0f, 1.0f, 0, 100);
 			ent.Killed( pevAttacker, GIB_NORMAL );
 		}
 		return 0;
@@ -711,4 +708,17 @@ Vector spreadDir(Vector dir, float degrees, int spreadFunc=SPREAD_UNIFORM)
 	vecAiming = matMultVector(pitRotMat, vecAiming).Normalize();
 			
 	return vecAiming;
+}
+
+CBasePlayer@ getAnyPlayer() 
+{
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null) {
+			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
+			return plr;
+		}
+	} while (ent !is null);
+	return null;
 }

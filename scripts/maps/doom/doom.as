@@ -8,39 +8,37 @@
 #include "info_node_sound"
 
 // TODO:
-// monsters should open doors, react to sounds without sight
-// player models should be doom guy sprite (colored?)
-// health/armor/ammo hud?
-// (doom door breaks regular doors): 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
-// teleport effects dont show when in different vis area
-// lite textures need editing (full bar)
-// cacodemon sprite has transparency in blue mouth
-// cacdemon gets stuck at tiny lips when it could easily float around them
-// replace gib sound with slop
-// replace death beeps (custom sentence?)
-// teleports dont work in old maps
-// explosion barrel dlight
-// monsters aim too high
-// eye button needs updating in dead simple
-// probably need to limit sound graph per level
-// scale up monster sprites 2x?
-// somehow exceeding ammo limit for pistol (dropped weapons?)
-// disable fall damage somehow
-// doom skies
+// alert players that their movement will get rekt if they don't edit config
+// add changelevel and to-never-be-continued message
+// copy bug notice to ep2
+
+// TEST: teleport in tricks and traps
+// TEST WITH LAG: teleport effects dont show when in different vis area
+
+// TODO (bugs I'm ignoring cuz 2 lazy):
 // pain elemental gets stuck when shooting shulls sometimes 
-// doors that monsters can open
-// being revived breaks weapons
-// You got the "X"! messages
-// pick up keys through doors (MAP10 blue key)
 // revived monsters sometimes invisible until your view angle changes
 // map11 souls trying to kill each other but hitting ceiling
-
-// TODO (items I'm ignoring cuz 2 lazy):
+// monsters aim too high
+// somehow exceeding ammo limit for pistol (dropped weapons?)
+// weapon sprites skip frames with high ping (need to redo everything with models :'<)
+// fall through level in dead simple next to teleport at start
+// cacdemon gets stuck at tiny lips when it could easily float around them
+// player models should be doom guy sprite (colored?)
+// doors that monsters can open
+// monsters should open doors, react to sounds without sight
+// health/armor/ammo hud?
+// probably need to limit sound graph per level
+// lite textures need editing (full bar)
+// eye button needs updating in dead simple
+// You got the "X"! messages
 // items don't get correct brightness
 // items sometimes sink into ground and u cant pickup
 // solid fireballs bounce off each other (tried SOLID_TOUCH already, projectiles kinda have to be solid)
 // crushers should go past monsters or go up after a while
 // use MOVETYPE_FOLLOW to reduce net usage (tried it but monsters flicker because sprite stops following when nodraw applied)
+// (doom door breaks regular doors): 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
+// being revived breaks weapons with mp_weapon_droprules 1
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -109,7 +107,9 @@ class PlayerState
 	float lastHudKeys = 0; // last time key hud was updated
 	int hudKeys = 0; // last key set displayed
 	int uiScale = 1;
+	PlayerViewMode viewMode = ViewMode_FirstPerson;
 	SoundNode@ soundNode = null;
+	bool acceptedStrafeBug = false;
 	
 	
 	void initMenu(CBasePlayer@ plr, TextMenuPlayerSlotCallback@ callback)
@@ -288,6 +288,15 @@ void MapInit()
 	g_Hooks.RegisterHook( Hooks::Player::PlayerPostThink, @PlayerPostThink );
 	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientJoin );
 		
+	PrecacheModel("models/hlclassic/p_9mmhandgun.mdl");
+	PrecacheModel("models/hlclassic/p_egon.mdl");
+	PrecacheModel("models/hlclassic/p_gauss.mdl");
+	PrecacheModel("models/hlclassic/p_rpg.mdl");
+	PrecacheModel("models/hlclassic/p_shotgun.mdl");
+	PrecacheModel("models/hlclassic/p_shotgun.mdl");
+	PrecacheModel("models/custom_weapons/cs16/p_chainsaw.mdl");
+	PrecacheModel("models/custom_weapons/cs16/p_m1887.mdl");
+	
 	PrecacheModel("sprites/doom/objects.spr");
 	PrecacheModel("sprites/doom/keys.spr");
 	PrecacheModel("sprites/doom/BAL.spr");
@@ -353,6 +362,24 @@ void MapInit()
 		
 	g_inter_music = PrecacheSound(g_inter_music);
 	g_ep_music = PrecacheSound(g_ep_music);
+}
+
+void initSettings(EHandle h_plr)
+{
+	if (!h_plr.IsValid())
+		return;
+	CBasePlayer@ plr = cast<CBasePlayer@>(h_plr.GetEntity());
+	
+	PlayerState@ state = getPlayerState(plr);
+	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
+	if (customKeys.HasKeyvalue("uiscale"))
+		state.uiScale = customKeys.GetKeyvalue("uiscale").GetInteger();
+}
+
+HookReturnCode ClientJoin( CBasePlayer@ plr )
+{
+	g_Scheduler.SetTimeout("initSettings", 0.05f, EHandle(plr));
+	return HOOK_CONTINUE;
 }
 
 void MapActivate()
@@ -435,6 +462,20 @@ void MapActivate()
 	g_EntityFuncs.CreateEntity("ambient_music", keys, true);
 	
 	createSoundGraph();
+	
+	g_Scheduler.SetTimeout("plugin_check", 2.0f);
+}
+
+void plugin_check()
+{
+	CBaseEntity@ ent = g_EntityFuncs.FindEntityByTargetname(null, "plugin_not_installed");
+	if (ent !is null) {
+		CBasePlayer@ anyPlr = getAnyPlayer();
+		g_PlayerFuncs.SayTextAll(anyPlr, "Add doom_fix to default_plugins.txt to fix your installation.");
+		g_PlayerFuncs.CenterPrintAll("Map installed incorrectly");
+		g_PlayerFuncs.ShowMessageAll("Map installed incorrectly");
+		g_Scheduler.SetTimeout("plugin_check", 2.0f);
+	}
 }
 
 int getSpriteAngle(Vector spritePos, Vector spriteForward, Vector spriteRight, Vector lookPos)
@@ -566,6 +607,8 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 			{
 				string prefix = getMapName() + "_";
 				// add prefix to entity names so multiple levels don't conflict
+				if (string(ent.pev.targetname).StartsWith("strobe"))
+					continue; // HACK: fixes strobe arrows in tunnels
 				if (string(ent.pev.targetname).Length() > 0)
 					ent.pev.targetname = prefix + ent.pev.targetname;
 				if (string(ent.pev.target).Length() > 0 and ent.pev.target != "secret_revealed" and ent.pev.target != "teleport_thing" and ent.pev.target != "exit_level")
@@ -880,19 +923,6 @@ HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 	return HOOK_CONTINUE;
 }
 
-void clientCommand(CBaseEntity@ plr, string cmd)
-{
-	NetworkMessage m(MSG_ONE, NetworkMessages::NetworkMessageType(9), plr.edict());
-		m.WriteString(cmd);
-	m.End();
-}
-
-HookReturnCode ClientJoin( CBasePlayer@ plr )
-{
-	clientCommand(plr, "cl_forwardspeed 9000;cl_sidespeed 9000;cl_backspeed 9000");
-	return HOOK_CONTINUE;
-}
-
 void doTheStatic(CBaseEntity@ ent)
 {
 	//g_EngineFuncs.MakeStatic(ent.edict());
@@ -931,24 +961,27 @@ void playerMenuCallback(CTextMenu@ menu, CBasePlayer@ plr, int page, const CText
 	
 	if (action == "scale-tiny")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nTINY\n");
+		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nTINY\n");
 		state.uiScale = 3;
 	}
 	if (action == "scale-small")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nSMALL\n");
+		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nSMALL\n");
 		state.uiScale = 2;
 	}
 	if (action == "scale-large")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nLARGE\n");
+		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nLARGE\n");
 		state.uiScale = 1;
 	}
 	if (action == "scale-xl")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("UI Scale:\n\nX-LARGE\n");
+		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nX-LARGE\n");
 		state.uiScale = 0;
 	}
+	
+	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
+	customKeys.SetKeyvalue("uiscale", state.uiScale);
 	
 	g_Scheduler.SetTimeout("openPlayerMenu", 0, @plr);
 	menu.Unregister();
@@ -960,7 +993,7 @@ void openPlayerMenu(CBasePlayer@ plr)
 	PlayerState@ state = getPlayerState(plr);
 	state.initMenu(plr, playerMenuCallback);
 
-	state.menu.SetTitle("UI Scale:\n");
+	state.menu.SetTitle("HUD Scale:\n");
 	state.menu.AddItem("Tiny       (for resolutions near 800x600)", any("scale-tiny"));
 	state.menu.AddItem("Small     (for resolutions near 1024x768)", any("scale-small"));
 	state.menu.AddItem("Large     (for resolutions near 1920x1080)", any("scale-large"));
