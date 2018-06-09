@@ -11,6 +11,9 @@
 // alert players that their movement will get rekt if they don't edit config
 // add changelevel and to-never-be-continued message
 // copy bug notice to ep2
+// floating barrells in map2
+// secrets not working in tunnels?
+// invisible fireballs from hell knioghts
 
 // TEST: teleport in tricks and traps
 // TEST WITH LAG: teleport effects dont show when in different vis area
@@ -50,6 +53,8 @@ int g_total_items = 0;
 int g_keys = 0;
 int g_map_num = 1;
 bool g_strict_keys = false; // if false, only color of key matters when opening door
+
+CCVar@ g_dmgScale;
 
 array<int> g_par_times = {30, 90, 120, 120, 90, 150, 120, 120, 270, 90, 210};
 array<string> g_map_music = {
@@ -206,6 +211,8 @@ string base36(int num)
 
 void MapInit()
 {
+	@g_dmgScale = CCVar( "dmg_scale", 1, "Percentage of damage taken by players");
+	
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_imp", "monster_imp" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_zombieman", "monster_zombieman" );
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_shotgunguy", "monster_shotgunguy" );
@@ -432,7 +439,7 @@ void MapActivate()
 	CBaseEntity@ map_info = g_EntityFuncs.FindEntityByTargetname(null, "map_info");
 	if (map_info !is null)
 	{
-		g_map_num = map_info.pev.renderfx;
+		g_map_num += (map_info.pev.renderfx-1);
 		println("INITIAL MAP: " + g_map_num);
 	}
 	
@@ -471,7 +478,7 @@ void plugin_check()
 	CBaseEntity@ ent = g_EntityFuncs.FindEntityByTargetname(null, "plugin_not_installed");
 	if (ent !is null) {
 		CBasePlayer@ anyPlr = getAnyPlayer();
-		g_PlayerFuncs.SayTextAll(anyPlr, "Add doom_fix to default_plugins.txt to fix your installation.");
+		g_PlayerFuncs.SayTextAll(anyPlr, "Add doom_maps to default_plugins.txt to fix your installation.");
 		g_PlayerFuncs.CenterPrintAll("Map installed incorrectly");
 		g_PlayerFuncs.ShowMessageAll("Map installed incorrectly");
 		g_Scheduler.SetTimeout("plugin_check", 2.0f);
@@ -605,10 +612,11 @@ void level_started(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 			if (ent.pev.absmin.x > level_min.x and ent.pev.absmin.y > level_min.y and ent.pev.absmin.z > level_min.z and
 				ent.pev.absmax.x < level_max.x and ent.pev.absmax.y < level_max.y and ent.pev.absmax.z < level_max.z)
 			{
-				string prefix = getMapName() + "_";
-				// add prefix to entity names so multiple levels don't conflict
 				if (string(ent.pev.targetname).StartsWith("strobe"))
 					continue; // HACK: fixes strobe arrows in tunnels
+					
+				// add prefix to entity names so multiple levels don't conflict
+				string prefix = getMapName() + "_";
 				if (string(ent.pev.targetname).Length() > 0)
 					ent.pev.targetname = prefix + ent.pev.targetname;
 				if (string(ent.pev.target).Length() > 0 and ent.pev.target != "secret_revealed" and ent.pev.target != "teleport_thing" and ent.pev.target != "exit_level")
