@@ -94,7 +94,7 @@ void letThemPlay(CBasePlayer@ plr)
 {
 	g_PlayerFuncs.RespawnPlayer(plr, true, true);
 	plr.SetHasSuit(true);
-	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, false);
+	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, true);
 	
 	PlayerState@ state = getPlayerState(plr);
 	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
