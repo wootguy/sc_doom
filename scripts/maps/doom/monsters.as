@@ -4,7 +4,7 @@ class monster_imp : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/TROO.spr";
+		bodySprite = "sprites/doom/troo.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -14,13 +14,13 @@ class monster_imp : monster_doom
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(69, 76, 0.5f, false)); // ANIM_GIB		
 		
-		idleSounds.insertLast("doom/DSBGACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSBGDTH1.wav");
-		deathSounds.insertLast("doom/DSBGDTH2.wav");
-		alertSounds.insertLast("doom/DSBGSIT1.wav");
-		alertSounds.insertLast("doom/DSBGSIT2.wav");
-		meleeSound = "doom/DSCLAW.wav";
+		idleSounds.insertLast("doom/dsbgact.wav");
+		painSound = "doom/dspopain.wav";
+		deathSounds.insertLast("doom/dsbgdth1.wav");
+		deathSounds.insertLast("doom/dsbgdth2.wav");
+		alertSounds.insertLast("doom/dsbgsit1.wav");
+		alertSounds.insertLast("doom/dsbgsit2.wav");
+		meleeSound = "doom/dsclaw.wav";
 		
 		this.hasMelee = true;
 		this.hasRanged = true;
@@ -53,7 +53,7 @@ class monster_imp : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL.spr";
+		keys["model"] = "sprites/doom/bal.spr";
 		keys["speed"] = "" + 350;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "1";
@@ -78,7 +78,7 @@ class monster_zombieman : monster_doom
 {
 	void Spawn()
 	{
-		this.bodySprite = "sprites/doom/POSS.spr";
+		this.bodySprite = "sprites/doom/poss.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -95,15 +95,15 @@ class monster_zombieman : monster_doom
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		
-		idleSounds.insertLast("doom/DSPOSACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSPODTH2.wav");
-		deathSounds.insertLast("doom/DSPODTH3.wav");
-		deathSounds.insertLast("doom/DSPODTH1.wav");
-		alertSounds.insertLast("doom/DSPOSIT1.wav");
-		alertSounds.insertLast("doom/DSPOSIT2.wav");
-		alertSounds.insertLast("doom/DSPOSIT3.wav");
-		shootSound = "doom/DSPISTOL.wav";
+		idleSounds.insertLast("doom/dsposact.wav");
+		painSound = "doom/dspopain.wav";
+		deathSounds.insertLast("doom/dspodth2.wav");
+		deathSounds.insertLast("doom/dspodth3.wav");
+		deathSounds.insertLast("doom/dspodth1.wav");
+		alertSounds.insertLast("doom/dsposit1.wav");
+		alertSounds.insertLast("doom/dsposit2.wav");
+		alertSounds.insertLast("doom/dsposit3.wav");
+		shootSound = "doom/dspistol.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -136,7 +136,7 @@ class monster_shotgunguy : monster_doom
 {
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/SPOS.spr";
+		bodySprite = "sprites/doom/spos.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -153,14 +153,14 @@ class monster_shotgunguy : monster_doom
 		animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		
-		idleSounds.insertLast("doom/DSPOSACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSPODTH2.wav");
-		deathSounds.insertLast("doom/DSPODTH3.wav");
-		deathSounds.insertLast("doom/DSPODTH1.wav");
-		alertSounds.insertLast("doom/DSPOSIT1.wav");
-		alertSounds.insertLast("doom/DSPOSIT2.wav");
-		shootSound = "doom/DSSHOTGN.wav";
+		idleSounds.insertLast("doom/dsposact.wav");
+		painSound = "doom/dspopain.wav";
+		deathSounds.insertLast("doom/dspodth2.wav");
+		deathSounds.insertLast("doom/dspodth3.wav");
+		deathSounds.insertLast("doom/dspodth1.wav");
+		alertSounds.insertLast("doom/dsposit1.wav");
+		alertSounds.insertLast("doom/dsposit2.wav");
+		shootSound = "doom/dsshotgn.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -195,7 +195,7 @@ class monster_hwdude : monster_doom
 {
 	void Spawn()
 	{
-		this.bodySprite = "sprites/doom/CPOS.spr";
+		this.bodySprite = "sprites/doom/cpos.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -216,15 +216,15 @@ class monster_hwdude : monster_doom
 		//animInfo[ANIM_ATTACK].frameIndices.insertLast(5);
 		//animInfo[ANIM_ATTACK].frameIndices.insertLast(4);
 		
-		idleSounds.insertLast("doom/DSPOSACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSPODTH2.wav");
-		deathSounds.insertLast("doom/DSPODTH3.wav");
-		deathSounds.insertLast("doom/DSPODTH1.wav");
-		alertSounds.insertLast("doom/DSPOSIT1.wav");
-		alertSounds.insertLast("doom/DSPOSIT2.wav");
-		alertSounds.insertLast("doom/DSPOSIT3.wav");
-		shootSound = "doom/DSSHOTGN.wav";
+		idleSounds.insertLast("doom/dsposact.wav");
+		painSound = "doom/dspopain.wav";
+		deathSounds.insertLast("doom/dspodth2.wav");
+		deathSounds.insertLast("doom/dspodth3.wav");
+		deathSounds.insertLast("doom/dspodth1.wav");
+		alertSounds.insertLast("doom/dsposit1.wav");
+		alertSounds.insertLast("doom/dsposit2.wav");
+		alertSounds.insertLast("doom/dsposit3.wav");
+		shootSound = "doom/dsshotgn.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -260,7 +260,7 @@ class monster_demon : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/SARG.spr";
+		bodySprite = "sprites/doom/sarg.spr";
 		
 		walkSpeed = 10.0f;
 		
@@ -275,11 +275,11 @@ class monster_demon : monster_doom
 		animInfo[ANIM_DEAD].frameIndices.insertAt(1, 65);
 		animInfo[ANIM_DEAD].frameIndices.insertAt(0, 64);
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSSGTDTH.wav");
-		alertSounds.insertLast("doom/DSSGTSIT.wav");
-		meleeSound = "doom/DSSGTATK.wav";
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dssgtdth.wav");
+		alertSounds.insertLast("doom/dssgtsit.wav");
+		meleeSound = "doom/dssgtatk.wav";
 		
 		this.hasMelee = true;
 		this.hasRanged = false;
@@ -311,7 +311,7 @@ class monster_cacodemon : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/HEAD.spr";
+		bodySprite = "sprites/doom/head.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 0, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 0, 0.25f, true)); // ANIM_MOVE
@@ -321,10 +321,10 @@ class monster_cacodemon : monster_doom
 		animInfo.insertLast(AnimInfo(48, 53, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(48, 53, 0.5f, false)); // ANIM_GIB		
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSCACDTH.wav");
-		alertSounds.insertLast("doom/DSCACSIT.wav");
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dscacdth.wav");
+		alertSounds.insertLast("doom/dscacsit.wav");
 		
 		this.hasMelee = true;
 		this.hasRanged = true;
@@ -359,7 +359,7 @@ class monster_cacodemon : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL.spr";
+		keys["model"] = "sprites/doom/bal.spr";
 		keys["speed"] = "" + 350;
 		keys["moveFrameStart"] = "5";
 		keys["moveFrameEnd"] = "6";
@@ -384,7 +384,7 @@ class monster_painelemental : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/PAIN.spr";
+		bodySprite = "sprites/doom/pain.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 0, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 2, 0.25f, true)); // ANIM_MOVE
@@ -394,10 +394,10 @@ class monster_painelemental : monster_doom
 		animInfo.insertLast(AnimInfo(56, 61, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(56, 61, 0.5f, false)); // ANIM_GIB		
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSPEPAIN.wav";
-		deathSounds.insertLast("doom/DSPEDTH.wav");
-		alertSounds.insertLast("doom/DSPESIT.wav");
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dspepain.wav";
+		deathSounds.insertLast("doom/dspedth.wav");
+		alertSounds.insertLast("doom/dspesit.wav");
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -422,9 +422,7 @@ class monster_painelemental : monster_doom
 	}
 	
 	void DeathBoom()
-	{
-		println("ZOMG BOOM");
-		
+	{		
 		g_EngineFuncs.MakeVectors(pev.angles);
 		Vector forward = g_Engine.v_forward;
 		Vector right = g_Engine.v_right;
@@ -515,7 +513,7 @@ class monster_lostsoul : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/SKUL.spr";
+		bodySprite = "sprites/doom/skul.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.25f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 1, 0.25f, true)); // ANIM_MOVE
@@ -525,10 +523,10 @@ class monster_lostsoul : monster_doom
 		animInfo.insertLast(AnimInfo(40, 45, 0.5f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(40, 45, 0.5f, false)); // ANIM_GIB		
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSFIRXPL.wav");
-		this.meleeSound = "doom/DSSKLATK.wav";
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dsfirxpl.wav");
+		this.meleeSound = "doom/dssklatk.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -568,7 +566,7 @@ class monster_baron : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/BOSS.spr";
+		bodySprite = "sprites/doom/boss.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -578,11 +576,11 @@ class monster_baron : monster_doom
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSBRSDTH.wav");
-		alertSounds.insertLast("doom/DSBRSSIT.wav");
-		meleeSound = "doom/DSCLAW.wav";
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dsbrsdth.wav");
+		alertSounds.insertLast("doom/dsbrssit.wav");
+		meleeSound = "doom/dsclaw.wav";
 		
 		this.hasMelee = true;
 		this.hasRanged = true;
@@ -616,7 +614,7 @@ class monster_baron : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL7.spr";
+		keys["model"] = "sprites/doom/bal7.spr";
 		keys["speed"] = "" + 525;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "1";
@@ -642,7 +640,7 @@ class monster_hellknight : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/BOS2.spr";
+		bodySprite = "sprites/doom/bos2.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -652,11 +650,11 @@ class monster_hellknight : monster_doom
 		animInfo.insertLast(AnimInfo(64, 68, 0.25f, false)); // ANIM_DEAD
 		animInfo.insertLast(AnimInfo(64, 68, 0.5f, false)); // ANIM_GIB		
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSKNTDTH.wav");
-		alertSounds.insertLast("doom/DSKNTSIT.wav");
-		meleeSound = "doom/DSCLAW.wav";
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dskntdth.wav");
+		alertSounds.insertLast("doom/dskntsit.wav");
+		meleeSound = "doom/dsclaw.wav";
 		
 		this.hasMelee = true;
 		this.hasRanged = true;
@@ -690,7 +688,7 @@ class monster_hellknight : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL7.spr";
+		keys["model"] = "sprites/doom/bal7.spr";
 		keys["speed"] = "" + 525;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "1";
@@ -718,7 +716,7 @@ class monster_archvile : monster_doom
 
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/VILE.spr";
+		bodySprite = "sprites/doom/vile.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.5f, true)); // ANIM_MOVE
@@ -733,11 +731,11 @@ class monster_archvile : monster_doom
 		animInfo[ANIM_ATTACK2].frameIndices.insertLast(15);
 		animInfo[ANIM_ATTACK2].frameIndices.insertLast(15);
 		
-		idleSounds.insertLast("doom/DSVILACT.wav");
-		painSound = "doom/DSVIPAIN.wav";
-		deathSounds.insertLast("doom/DSVILDTH.wav");
-		alertSounds.insertLast("doom/DSVILSIT.wav");
-		meleeSound = "doom/DSVILATK.wav";
+		idleSounds.insertLast("doom/dsvilact.wav");
+		painSound = "doom/dsvipain.wav";
+		deathSounds.insertLast("doom/dsvildth.wav");
+		alertSounds.insertLast("doom/dsvilsit.wav");
+		meleeSound = "doom/dsvilatk.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -767,7 +765,7 @@ class monster_archvile : monster_doom
 		
 		dictionary keys;
 		keys["origin"] = enemy.pev.origin.ToString();
-		keys["model"] = "sprites/doom/FIRE.spr";
+		keys["model"] = "sprites/doom/fire.spr";
 		keys["speed"] = "0";
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "7";
@@ -778,8 +776,8 @@ class monster_archvile : monster_doom
 		keys["damage_max"] = "64";
 		keys["is_vile_fire"] = "64";
 		keys["radius_dmg"] = "70";
-		keys["death_sound"] = "doom/DSBAREXP.wav";
-		keys["spawn_sound"] = "doom/DSFLAME.wav";
+		keys["death_sound"] = "doom/dsbarexp.wav";
+		keys["spawn_sound"] = "doom/dsflame.wav";
 		
 		CBaseEntity@ fire = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fire.pev.owner = @self.edict();
@@ -823,7 +821,7 @@ class monster_revenant : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/SKEL.spr";
+		bodySprite = "sprites/doom/skel.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.5f, true)); // ANIM_MOVE
@@ -849,12 +847,12 @@ class monster_revenant : monster_doom
 		animInfo[ANIM_ATTACK2].attackFrames.resize(0);
 		animInfo[ANIM_ATTACK2].attackFrames.insertLast(3);
 		
-		idleSounds.insertLast("doom/DSSKEACT.wav");
-		painSound = "doom/DSPOPAIN.wav";
-		deathSounds.insertLast("doom/DSSKEDTH.wav");
-		alertSounds.insertLast("doom/DSSKESIT.wav");
-		meleeSound = "doom/DSSKEPCH.wav";
-		meleeWindupSound = "doom/DSSKESWG.wav";
+		idleSounds.insertLast("doom/dsskeact.wav");
+		painSound = "doom/dspopain.wav";
+		deathSounds.insertLast("doom/dsskedth.wav");
+		alertSounds.insertLast("doom/dsskesit.wav");
+		meleeSound = "doom/dsskepch.wav";
+		meleeWindupSound = "doom/dsskeswg.wav";
 		
 		this.hasMelee = true;
 		this.hasRanged = true;
@@ -893,7 +891,7 @@ class monster_revenant : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/FATB.spr";
+		keys["model"] = "sprites/doom/fatb.spr";
 		keys["speed"] = "" + 350;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "1";
@@ -903,9 +901,9 @@ class monster_revenant : monster_doom
 		keys["damage_min"] = "10";
 		keys["damage_max"] = "80";
 		keys["oriented"] = "1";
-		keys["spawn_sound"] = "doom/DSSKEATK.wav";
-		keys["death_sound"] = "doom/DSBAREXP.wav";
-		keys["trail_sprite"] = "sprites/doom/PUFF.spr";
+		keys["spawn_sound"] = "doom/dsskeatk.wav";
+		keys["death_sound"] = "doom/dsbarexp.wav";
+		keys["trail_sprite"] = "sprites/doom/puff.spr";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @self.edict();
@@ -927,7 +925,7 @@ class monster_mancubus : monster_doom
 	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/FATT.spr";
+		bodySprite = "sprites/doom/fatt.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
@@ -946,10 +944,10 @@ class monster_mancubus : monster_doom
 		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		this.constantAttackLoopFrame = 2;
 		
-		idleSounds.insertLast("doom/DSPOSACT.wav");
-		painSound = "doom/DSMNPAIN.wav";
-		deathSounds.insertLast("doom/DSMANDTH.wav");
-		alertSounds.insertLast("doom/DSMANSIT.wav");
+		idleSounds.insertLast("doom/dsposact.wav");
+		painSound = "doom/dsmnpain.wav";
+		deathSounds.insertLast("doom/dsmandth.wav");
+		alertSounds.insertLast("doom/dsmansit.wav");
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -982,7 +980,7 @@ class monster_mancubus : monster_doom
 		dictionary keys;
 		keys["origin"] = origin.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/MANF.spr";
+		keys["model"] = "sprites/doom/manf.spr";
 		keys["speed"] = "" + 700;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "0";
@@ -1035,7 +1033,7 @@ class monster_arachnotron : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/BSPI.spr";
+		bodySprite = "sprites/doom/bspi.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
@@ -1056,11 +1054,11 @@ class monster_arachnotron : monster_doom
 		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		this.constantAttackLoopFrame = 3;
 		
-		idleSounds.insertLast("doom/DSBSPACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSBSPDTH.wav");
-		alertSounds.insertLast("doom/DSBSPSIT.wav");
-		walkSound = "doom/DSBSPWLK.wav";
+		idleSounds.insertLast("doom/dsbspact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dsbspdth.wav");
+		alertSounds.insertLast("doom/dsbspsit.wav");
+		walkSound = "doom/dsbspwlk.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;
@@ -1091,7 +1089,7 @@ class monster_arachnotron : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL.spr";
+		keys["model"] = "sprites/doom/bal.spr";
 		keys["speed"] = "" + 875;
 		keys["moveFrameStart"] = "28";
 		keys["moveFrameEnd"] = "29";
@@ -1100,7 +1098,7 @@ class monster_arachnotron : monster_doom
 		keys["flash_color"] = "32 255 32";
 		keys["damage_min"] = "5";
 		keys["damage_max"] = "40";
-		keys["spawn_sound"] = "doom/DSPLASMA.wav";
+		keys["spawn_sound"] = "doom/dsplasma.wav";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @self.edict();
@@ -1117,7 +1115,7 @@ class monster_cyberdemon : monster_doom
 {	
 	void Spawn()
 	{
-		bodySprite = "sprites/doom/CYBR.spr";
+		bodySprite = "sprites/doom/cybr.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 3, 0.25f, true)); // ANIM_MOVE
@@ -1132,12 +1130,12 @@ class monster_cyberdemon : monster_doom
 		animInfo[ANIM_ATTACK].attackFrames.insertLast(1);
 		animInfo[ANIM_ATTACK2] = animInfo[ANIM_ATTACK];
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSCYBDTH.wav");
-		alertSounds.insertLast("doom/DSCYBSIT.wav");
-		meleeSound = "doom/DSCLAW.wav";
-		walkSound = "doom/DSHOOF.wav";
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dscybdth.wav");
+		alertSounds.insertLast("doom/dscybsit.wav");
+		meleeSound = "doom/dsclaw.wav";
+		walkSound = "doom/dshoof.wav";
 		hullModel = "models/doom/null_large.mdl";
 		
 		this.hasMelee = false;
@@ -1173,7 +1171,7 @@ class monster_cyberdemon : monster_doom
 		dictionary keys;
 		keys["origin"] = bodyPos.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/MISL.spr";
+		keys["model"] = "sprites/doom/misl.spr";
 		keys["speed"] = "" + 700;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "0";
@@ -1183,10 +1181,10 @@ class monster_cyberdemon : monster_doom
 		keys["damage_min"] = "20";
 		keys["damage_max"] = "160";
 		keys["oriented"] = "1";
-		keys["spawn_sound"] = "doom/DSRLAUNC.wav";
-		keys["death_sound"] = "doom/DSBAREXP.wav";
+		keys["spawn_sound"] = "doom/dsrlaunc.wav";
+		keys["death_sound"] = "doom/dsbarexp.wav";
 		keys["radius_dmg"] = "128";
-		keys["trail_sprite"] = "sprites/doom/PUFF.spr";
+		keys["trail_sprite"] = "sprites/doom/puff.spr";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @self.edict();
@@ -1203,7 +1201,7 @@ class monster_spiderdemon : monster_doom
 {
 	void Spawn()
 	{
-		this.bodySprite = "sprites/doom/SPID.spr";
+		this.bodySprite = "sprites/doom/spid.spr";
 		
 		animInfo.insertLast(AnimInfo(0, 1, 0.125f, true)); // ANIM_IDLE
 		animInfo.insertLast(AnimInfo(0, 5, 0.25f, true)); // ANIM_MOVE
@@ -1222,12 +1220,12 @@ class monster_spiderdemon : monster_doom
 		animInfo[ANIM_DEAD].frameIndices.insertAt(0, 72);
 		animInfo[ANIM_GIB].frameIndices = animInfo[ANIM_DEAD].frameIndices;
 		
-		idleSounds.insertLast("doom/DSDMACT.wav");
-		painSound = "doom/DSDMPAIN.wav";
-		deathSounds.insertLast("doom/DSSPIDTH.wav");
-		alertSounds.insertLast("doom/DSSPISIT.wav");
-		shootSound = "doom/DSSHOTGN.wav";
-		walkSound = "doom/DSMETAL.wav";
+		idleSounds.insertLast("doom/dsdmact.wav");
+		painSound = "doom/dsdmpain.wav";
+		deathSounds.insertLast("doom/dsspidth.wav");
+		alertSounds.insertLast("doom/dsspisit.wav");
+		shootSound = "doom/dsshotgn.wav";
+		walkSound = "doom/dsmetal.wav";
 		
 		this.hasMelee = false;
 		this.hasRanged = true;

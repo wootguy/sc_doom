@@ -70,15 +70,15 @@ class func_doom_door : ScriptBaseEntity
 	
 	void Precache()
 	{
-		PrecacheSound("doom/DSBDCLS.wav"); // close quick
-		PrecacheSound("doom/DSDORCLS.wav"); // close
-		PrecacheSound("doom/DSBDOPN.wav"); // open quick
-		PrecacheSound("doom/DSDOROPN.wav"); // open
-		PrecacheSound("doom/DSSWTCHN.wav"); // switch sound
-		PrecacheSound("doom/DSSWTCHX.wav"); // switch sound2
-		PrecacheSound("doom/DSPSTOP.wav"); // floor stop
-		PrecacheSound("doom/DSPSTART.wav"); // floor start
-		PrecacheSound("doom/DSSTNMOV.wav"); // floor move
+		PrecacheSound("doom/dsbdcls.wav"); // close quick
+		PrecacheSound("doom/dsdorcls.wav"); // close
+		PrecacheSound("doom/dsbdopn.wav"); // open quick
+		PrecacheSound("doom/dsdoropn.wav"); // open
+		PrecacheSound("doom/dsswtchn.wav"); // switch sound
+		PrecacheSound("doom/dsswtchx.wav"); // switch sound2
+		PrecacheSound("doom/dspstop.wav"); // floor stop
+		PrecacheSound("doom/dspstart.wav"); // floor start
+		PrecacheSound("doom/dsstnmov.wav"); // floor move
 	}
 	
 	void Spawn()
@@ -107,36 +107,36 @@ class func_doom_door : ScriptBaseEntity
 		if (isButton)
 		{
 			if (sounds == 0)
-				switchSnd = "doom/DSSWTCHN.wav";
+				switchSnd = "doom/dsswtchn.wav";
 			else
-				switchSnd = "doom/DSSWTCHX.wav";
+				switchSnd = "doom/dsswtchx.wav";
 		}
 		else
 		{
 			if (sounds == 0)
 			{
-				openSnd = "doom/DSDOROPN.wav";
-				closeSnd = "doom/DSDORCLS.wav";
+				openSnd = "doom/dsdoropn.wav";
+				closeSnd = "doom/dsdorcls.wav";
 			}
 			else if (sounds == 1)
 			{
-				openSnd = "doom/DSBDOPN.wav";
-				closeSnd = "doom/DSBDCLS.wav";
+				openSnd = "doom/dsbdopn.wav";
+				closeSnd = "doom/dsbdcls.wav";
 			}
 			else if (sounds == 2)
 			{
-				openSnd = "doom/DSPSTART.wav";
-				closeSnd = "doom/DSPSTOP.wav";
+				openSnd = "doom/dspstart.wav";
+				closeSnd = "doom/dspstop.wav";
 			}
 			else if (sounds == 3)
 			{
-				openSnd = "doom/DSSTNMOV.wav";
-				closeSnd = "doom/DSPSTOP.wav";
+				openSnd = "doom/dsstnmov.wav";
+				closeSnd = "doom/dspstop.wav";
 			}
 			else if (sounds == 4)
 			{
-				openSnd = "doom/DSPSTOP.wav";
-				closeSnd = "doom/DSPSTOP.wav";
+				openSnd = "doom/dspstop.wav";
+				closeSnd = "doom/dspstop.wav";
 			}
 		}
 		
@@ -189,7 +189,6 @@ class func_doom_door : ScriptBaseEntity
 		if (bitsDamageType & DMG_BLAST == 0)
 		{
 			CBaseEntity@ activator = g_EntityFuncs.Instance( pevAttacker );
-			println("USE IT ");
 			//Useit(activator, activator, USE_TOGGLE, 0, true);
 			
 			// for some reason button won't activate if triggered now so have to wait a frame
@@ -399,7 +398,7 @@ class func_doom_door : ScriptBaseEntity
 		{
 			lastCrush = g_Engine.time;
 			doomTakeDamage( pOther, pev, pev, pev.dmg, DMG_CRUSH );
-			te_bloodsprite(pOther.pev.origin + pOther.pev.view_ofs, fixPath("sprites/doom/BLUD.spr"), "sprites/blood.spr", 70, 5);
+			te_bloodsprite(pOther.pev.origin + pOther.pev.view_ofs, fixPath("sprites/doom/blud.spr"), "sprites/blood.spr", 70, 5);
 		}
 
 		// if a door has a negative wait, it would never come back if blocked,

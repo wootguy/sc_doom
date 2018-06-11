@@ -79,7 +79,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	
 	bool shouldRespawn = false;
 	
-	string shootSound = "doom/DSPISTOL.wav";
+	string shootSound = "doom/dspistol.wav";
 	string deploySound;
 	
 	string panims = "python";
@@ -531,7 +531,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 			if (phit.IsBSPModel())
 				doomBulletImpact(tr.vecEndPos, tr.vecPlaneNormal, phit);
 			g_WeaponFuncs.ClearMultiDamage();
-			phit.TraceAttack(plr.pev, damage, attackDir, tr, DMG_SLASH);
+			TraceAttack(phit, plr.pev, damage, attackDir, tr, DMG_SLASH);
 			g_WeaponFuncs.ApplyMultiDamage(plr.pev, plr.pev);
 			return !phit.IsBSPModel();
 		}
@@ -601,7 +601,7 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 			g_PlayerFuncs.ScreenFade(plr, Vector(255, 240, 64), 0.2f, 0, 32, FFADE_IN);
 			if (playPickupSound)
 			{
-				string pickupSound = giveWeapon.Length() > 0 ? "doom/DSWPNUP.wav" : "doom/DSITEMUP.wav";
+				string pickupSound = giveWeapon.Length() > 0 ? "doom/dswpnup.wav" : "doom/dsitemup.wav";
 				g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, fixPath(pickupSound), 1.0f, 0.5f, 0, 100);
 			}
 			g_EntityFuncs.Remove(self);

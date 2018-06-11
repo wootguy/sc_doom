@@ -2,8 +2,8 @@
 
 class fireball : ScriptBaseAnimating
 {
-	string spawnSound = "doom/DSFIRSHT.wav";
-	string deathSound = "doom/DSFIRXPL.wav";
+	string spawnSound = "doom/dsfirsht.wav";
+	string deathSound = "doom/dsfirxpl.wav";
 	string trailSprite;
 	bool dead = false;
 	bool oriented = false;
@@ -89,18 +89,22 @@ class fireball : ScriptBaseAnimating
 				dictionary ckeys;
 				ckeys["origin"] = pev.origin.ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
 				ckeys["model"] = string(pev.model);
-				ckeys["spawnflags"] = "1";
+				ckeys["spawnflags"] = "0";
 				ckeys["rendermode"] = "2";
 				ckeys["renderamt"] = "0";
 				ckeys["rendercolor"] = "255 255 255";
 				ckeys["scale"] = string(pev.scale);
+				ckeys["framerate"] = "0";
 				ckeys["targetname"] = "m" + g_monster_idx + "s" + i;
 				CBaseEntity@ client_sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
 				sprites.insertLast(EHandle(client_sprite));
 				g_EntityFuncs.SetSize(client_sprite.pev, Vector(0,0,0), Vector(0,0,0)); 
 				client_sprite.pev.solid = SOLID_NOT;
-				client_sprite.pev.movetype = MOVETYPE_FOLLOW;
-				@client_sprite.pev.aiment = @self.edict();
+				client_sprite.pev.movetype = MOVETYPE_FLY;
+				client_sprite.pev.velocity = pev.velocity;
+				client_sprite.pev.effects = EF_NODRAW;
+				
+				//@client_sprite.pev.aiment = @self.edict();
 				
 				dictionary rkeys;
 				rkeys["target"] = string(client_sprite.pev.targetname);
@@ -111,10 +115,10 @@ class fireball : ScriptBaseAnimating
 				
 				rkeys["renderamt"] = "0";
 				CBaseEntity@ hide = g_EntityFuncs.CreateEntity("env_render_individual", rkeys, true);
-				renderHideEnts.insertLast(EHandle(hide));
+				renderHideEnts.insertLast(EHandle(hide));				
 			}
-			//pev.effects |= EF_NODRAW;
-			pev.rendermode = 1;
+			pev.effects |= EF_NODRAW;
+			//pev.rendermode = 1;
 		}
 		SetThink( ThinkFunction( Think ) );
 		Think();
@@ -181,7 +185,7 @@ class fireball : ScriptBaseAnimating
 		
 		int damage = Math.RandomLong(damageMin, damageMax);
 		Vector oldVel = pOther.pev.velocity;
-		pOther.TakeDamage(self.pev, owner is null ? self.pev : owner.pev, damage, DMG_GENERIC);
+		doomTakeDamage(pOther, self.pev, owner is null ? self.pev : owner.pev, damage, DMG_GENERIC);
 		pOther.pev.velocity = oldVel; // prevent vertical launching
 		knockBack(pOther, pev.velocity.Normalize()*(100 + damage*2)*g_world_scale);
 		
@@ -216,13 +220,13 @@ class fireball : ScriptBaseAnimating
 					{
 						float rayDamage = Math.RandomLong(47, 87);
 						Vector oldRayVel = pHit.pev.velocity;	
-						pHit.TakeDamage(owner.pev, owner.pev, rayDamage, DMG_SHOCK);
+						doomTakeDamage(pHit, owner.pev, owner.pev, rayDamage, DMG_SHOCK);
 						pHit.pev.velocity = oldRayVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
 						
 						if (!targets.exists(pHit.entindex()))
 						{
 							targets[pHit.entindex()] = true; // only 1 effect per monstie
-							te_explosion(tr.vecEndPos, fixPath("sprites/doom/BFE2.spr"), 10, 5, 15);
+							te_explosion(tr.vecEndPos, fixPath("sprites/doom/bfe2.spr"), 10, 5, 15);
 						}
 					}
 				}
@@ -257,6 +261,8 @@ class fireball : ScriptBaseAnimating
 				for (int i = 0; i < 8; i++)
 				{
 					CBaseEntity@ client_sprite = sprites[i];
+					if (frameCounter > 1) // hide initial frame that always seems to be in the wrong orientation
+						client_sprite.pev.effects &= ~EF_NODRAW;
 					bool shouldVisible = i == angleIdx;
 					
 					if (shouldVisible != state.isVisibleEnt(client_sprite.pev.targetname))
@@ -314,7 +320,8 @@ class fireball : ScriptBaseAnimating
 		{
 			g_EngineFuncs.MakeVectors(target.IsPlayer() ? target.pev.v_angle : target.pev.angles);
 			Vector offset = target.IsPlayer() ? Vector(0,0,-35) : Vector(0,0,0);
-			g_EntityFuncs.SetOrigin(self, target.pev.origin + g_Engine.v_forward*16 + offset);
+			Vector newPos = target.pev.origin + g_Engine.v_forward*16 + offset;
+			g_EntityFuncs.SetOrigin(self, newPos);
 		}
 
 		pev.frame = moveFrameStart + (frameCounter) % ((moveFrameEnd-moveFrameStart) + 1);
@@ -390,6 +397,11 @@ class fireball : ScriptBaseAnimating
 					dir = matMultVector(rotMat, dir).Normalize();
 					pev.velocity = dir*speed;
 					g_EngineFuncs.VecToAngles(pev.velocity, pev.angles);	
+				}
+				
+				for (int i = 0; i < 8; i++) {
+					CBaseEntity@ client_sprite = sprites[i];
+					client_sprite.pev.velocity = pev.velocity;
 				}
 			}
 			

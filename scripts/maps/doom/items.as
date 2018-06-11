@@ -165,7 +165,7 @@ class item_barrel : ScriptBaseEntity
 			animFrameMax = 11;
 			animDir = 1;
 			pev.nextthink = g_Engine.time + 0.17f;
-			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/dsbarexp.wav"), 1.0f, 1.0f, 0, 100);
 			
 			te_dlight(pev.origin, 30, Color(64,40,32,255), 3, 16);
 		}
@@ -392,7 +392,7 @@ class item_doom : ScriptBaseItemEntity
 	bool giveGoggles = false;
 	bool intermission = false;
 	bool giveBackpack = false;
-	string pickupSnd = "doom/DSITEMUP.wav";
+	string pickupSnd = "doom/dsitemup.wav";
 	
 	int animDir = 1;
 	
@@ -683,7 +683,7 @@ class item_doom_megasphere : item_doom
 		itemFrame = 82;
 		itemFrameMax = 85;
 		intermission = true;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -702,7 +702,7 @@ class item_doom_soulsphere : item_doom
 		giveHealthMax = 200;
 		itemFrame = 136;
 		itemFrameMax = 139;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -721,7 +721,7 @@ class item_doom_god : item_doom
 		itemFrame = 91;
 		itemFrameMax = 94;
 		intermission = true;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -741,7 +741,7 @@ class item_doom_berserk : item_doom
 		giveBerserk = true;
 		itemFrame = 110;
 		intermission = true;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -760,7 +760,7 @@ class item_doom_invis : item_doom
 		itemFrame = 87;
 		itemFrameMax = 90;
 		intermission = true;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -778,7 +778,7 @@ class item_doom_suit : item_doom
 		giveSuit = true;
 		itemFrame = 141;
 		itemFrameMax = 141;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
@@ -797,7 +797,7 @@ class item_doom_goggles : item_doom
 		itemFrame = 111;
 		itemFrameMax = 112;
 		intermission = true;
-		pickupSnd = "doom/DSGETPOW.wav";
+		pickupSnd = "doom/dsgetpow.wav";
 		SetThink(ThinkFunction(Think));
 		ItemSpawn();
 	}
