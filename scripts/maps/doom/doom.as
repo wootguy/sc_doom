@@ -886,16 +886,22 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 				g_Scheduler.SetTimeout("printkeybind", 3.0f, msg);
 				g_Scheduler.SetTimeout("printkeybind", 4.0f, msg);
 				
-				msg = "Disappointed?\n\nThis should help you feel better...";
-				g_Scheduler.SetTimeout("printkeybind", 6.0f, msg);
-				g_Scheduler.SetTimeout("printkeybind", 7.0f, msg);
-				g_Scheduler.SetTimeout("printkeybind", 8.0f, msg);
+				if (!g_friendly_fire)
+				{
+					msg = "Disappointed?\n\nThis should help you feel better...";
+					g_Scheduler.SetTimeout("printkeybind", 6.0f, msg);
+					g_Scheduler.SetTimeout("printkeybind", 7.0f, msg);
+					g_Scheduler.SetTimeout("printkeybind", 8.0f, msg);
 				
-				msg = "FRIENDLY FIRE ENABLED";
-				g_Scheduler.SetTimeout("printkeybind", 9.0f, msg);
+					msg = "FRIENDLY FIRE ENABLED";
+					g_Scheduler.SetTimeout("printkeybind", 9.0f, msg);
+					
+					g_Scheduler.SetTimeout("loner_check", 13.0f);
+				}
+				
 				g_Scheduler.SetTimeout("end_game_dm", 9.0f);
 				
-				g_Scheduler.SetTimeout("loner_check", 13.0f);
+				
 				
 				msg = "Don't forget to add cl_sidespeed 400\n\nto your config.cfg";
 				g_Scheduler.SetTimeout("printkeybind", 27.0f, msg);
@@ -1286,7 +1292,7 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 	
 	if ( args.ArgC() > 0 )
 	{
-		if (args[0] == "idkfa")
+		if (args[0] == ".idkfa")
 		{
 			if (!isAdmin) {
 				g_PlayerFuncs.SayText(plr, "You don't have access to that command, peasent\n");
@@ -1307,6 +1313,20 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("bullets"), 1000000);
 			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("shells"), 1000000);
 			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("rockets"), 1000000);
+			return true;
+		}
+		else if (args[0] == ".ff")
+		{
+			if (!isAdmin) {
+				g_PlayerFuncs.SayText(plr, "You don't have access to that command, peasent\n");
+				return true;
+			}
+			g_friendly_fire = !g_friendly_fire;
+			if (g_friendly_fire) {
+				g_PlayerFuncs.SayTextAll(plr, "Friendly fire enabled\n");
+			} else {
+				g_PlayerFuncs.SayTextAll(plr, "Friendly fire disabled\n");
+			}
 			return true;
 		}
 	}
