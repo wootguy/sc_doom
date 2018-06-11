@@ -445,7 +445,7 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	
 	// disable friendly fire
 	CBaseEntity@ attacker = g_EntityFuncs.Instance( pevAttacker );
-	if (ent.IsPlayer() and attacker.IsPlayer() and ent.entindex() != attacker.entindex())
+	if (ent.IsPlayer() and attacker.IsPlayer() and ent.entindex() != attacker.entindex() and !g_friendly_fire)
 		return 0;
 	
 	float	flTake;
@@ -457,7 +457,7 @@ int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAtta
 	if ( ent.pev.deadflag == DEAD_NO )
 	{
 		// no pain sound during death animation.
-		g_SoundSystem.PlaySound(ent.edict(), CHAN_STATIC, fixPath("doom/DSPLPAIN.wav"), 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(ent.edict(), CHAN_STATIC, fixPath("doom/dsplpain.wav"), 1.0f, 1.0f, 0, 100);
 		g_PlayerFuncs.ScreenFade(ent, Vector(255, 0, 0), 0.2f, 0, 32, FFADE_IN);
 	}
 
@@ -531,8 +531,8 @@ void TraceAttack(CBaseEntity@ victim, entvars_t@ pevAttacker, float flDamage, Ve
 		
 		if ( blood != DONT_BLEED )
 		{
-			te_bloodsprite(vecOrigin, fixPath("sprites/doom/BLUD.spr"), "sprites/blood.spr", 70, 5);
-			//te_explosion(vecOrigin, "sprites/doom/BLUD.spr", 10, 10, 15);
+			te_bloodsprite(vecOrigin, fixPath("sprites/doom/blud.spr"), "sprites/blood.spr", 70, 5);
+			//te_explosion(vecOrigin, "sprites/doom/blud.spr", 10, 10, 15);
 		}
 	}
 }
@@ -672,7 +672,7 @@ void doomBulletImpact(Vector pos, Vector normal, CBaseEntity@ phit)
 		normal = normal * 3.0f;
 	else if (normal.z > 0.1f)
 		normal = normal * 0;
-	te_explosion(pos + normal*4, fixPath("sprites/doom/PUFF.spr"), 14, 10, 15);
+	te_explosion(pos + normal*4, fixPath("sprites/doom/puff.spr"), 14, 10, 15);
 }
 
 // Randomize the direction of a vector by some amount

@@ -63,7 +63,7 @@ class weapon_doom_shotgun : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/shotgun.spr";
-		shootSound = "doom/DSSHOTGN.wav";
+		shootSound = "doom/dsshotgn.wav";
 		itemFrame = 121;
 		
 		array<FrameInfo> frameInfo = {
@@ -211,7 +211,7 @@ class weapon_doom_rpg : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/rpg.spr";
-		shootSound = "doom/DSSHOTGN.wav";
+		shootSound = "doom/dsshotgn.wav";
 		itemFrame = 80;
 
 		array<FrameInfo> frameInfo = {
@@ -273,7 +273,7 @@ class weapon_doom_rpg : weapon_doom
 		dictionary keys;
 		keys["origin"] = vecSrc.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/MISL.spr";
+		keys["model"] = "sprites/doom/misl.spr";
 		keys["speed"] = "" + 700;
 		keys["moveFrameStart"] = "0";
 		keys["moveFrameEnd"] = "0";
@@ -283,10 +283,10 @@ class weapon_doom_rpg : weapon_doom
 		keys["damage_min"] = "20";
 		keys["damage_max"] = "160";
 		keys["oriented"] = "1";
-		keys["spawn_sound"] = "doom/DSRLAUNC.wav";
-		keys["death_sound"] = "doom/DSBAREXP.wav";
+		keys["spawn_sound"] = "doom/dsrlaunc.wav";
+		keys["death_sound"] = "doom/dsbarexp.wav";
 		keys["radius_dmg"] = "128";
-		keys["trail_sprite"] = "sprites/doom/PUFF.spr";
+		keys["trail_sprite"] = "sprites/doom/puff.spr";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @plr.edict();
@@ -309,7 +309,7 @@ class weapon_doom_fist : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/fist.spr";
-		shootSound = "doom/DSPUNCH.wav";
+		shootSound = "doom/dspunch.wav";
 		panims = "crowbar";
 		
 		array<FrameInfo> frameInfo = {
@@ -367,8 +367,8 @@ class weapon_doom_fist : weapon_doom
 
 class weapon_doom_chainsaw : weapon_doom
 {
-	string missSound = "doom/DSSAWFUL.wav";
-	string idleSound = "doom/DSSAWIDL.wav";
+	string missSound = "doom/dssawful.wav";
+	string idleSound = "doom/dssawidl.wav";
 	float nextIdleSound = 0;
 	float nextFrame = 0;
 	int idleFrame = 0;
@@ -376,8 +376,8 @@ class weapon_doom_chainsaw : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/chainsaw.spr";
-		shootSound = "doom/DSSAWHIT.wav";
-		deploySound = "doom/DSSAWUP.wav";
+		shootSound = "doom/dssawhit.wav";
+		deploySound = "doom/dssawup.wav";
 		itemFrame = 46;
 		
 		array<FrameInfo> frameInfo = {
@@ -526,7 +526,7 @@ class weapon_doom_plasmagun : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/plasmagun.spr";
-		shootSound = "doom/DSPLASMA.wav";
+		shootSound = "doom/dsplasma.wav";
 		itemFrame = 95;
 		
 		array<FrameInfo> frameInfo = {
@@ -587,7 +587,7 @@ class weapon_doom_plasmagun : weapon_doom
 		dictionary keys;
 		keys["origin"] = vecSrc.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL.spr";
+		keys["model"] = "sprites/doom/bal.spr";
 		keys["speed"] = "" + 875;
 		keys["moveFrameStart"] = "13";
 		keys["moveFrameEnd"] = "14";
@@ -619,7 +619,7 @@ class weapon_doom_bfg : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/bfg.spr";
-		shootSound = "doom/DSBFG.wav";
+		shootSound = "doom/dsbfg.wav";
 		numFrames = 4;
 		itemFrame = 14;
 		
@@ -691,7 +691,7 @@ class weapon_doom_bfg : weapon_doom
 		dictionary keys;
 		keys["origin"] = vecSrc.ToString();
 		keys["angles"] = angles.ToString();
-		keys["model"] = "sprites/doom/BAL.spr";
+		keys["model"] = "sprites/doom/bal.spr";
 		keys["speed"] = "" + 875;
 		keys["moveFrameStart"] = "20";
 		keys["moveFrameEnd"] = "21";
@@ -703,7 +703,7 @@ class weapon_doom_bfg : weapon_doom
 		keys["bbox_size"] = "8";
 		keys["spawn_sound"] = "";
 		keys["is_bfg"] = "1";
-		keys["death_sound"] = "doom/DSRXPLOD.wav";
+		keys["death_sound"] = "doom/dsrxplod.wav";
 		
 		CBaseEntity@ fireball = g_EntityFuncs.CreateEntity("fireball", keys, false);
 		@fireball.pev.owner = @plr.edict();

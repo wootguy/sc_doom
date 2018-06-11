@@ -86,7 +86,7 @@ bool canHearSound(SoundNode@ start, SoundNode@ end, Vector b=Vector(0,0,0), CBas
 		// check reachability cache
 		//println("CHECK REACH " + reach.hasPath + " " + start.id + " " + end.id);
 		bool reachable = cast<NodeReach@>( start.reachability[end.id] ).isReachable();
-		if (false and reachable)
+		if (debug_mode and reachable)
 		{
 			array<SoundNode@> route = AStarRouteWaypoint(start, end, true);
 			if (route.length() > 0 and listener !is null)
@@ -203,12 +203,15 @@ array<SoundNode@> AStarRouteWaypoint(SoundNode@ start, SoundNode@ goal, bool ign
 		return array<SoundNode@>();
 	
 	//println("ROUTE FROM " + start.id + " TO " + goal.id);
-	 
-	if (start is null)
-		println("FAILED TO START");
-	if (goal is null)
-		println("FAILED TO GOAL");
-		
+	
+	if (debug_mode)
+	{
+		if (start is null)
+			println("FAILED TO START");
+		if (goal is null)
+			println("FAILED TO GOAL");
+	}
+	
 	if (start.id == goal.id)
 	{
 		array<SoundNode@> route;

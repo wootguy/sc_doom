@@ -3,7 +3,7 @@ const int FL_TP_ON_EXIT = 32;
 
 void delay_tele_effect(Vector pos)
 {
-	te_explosion(pos, fixPath("sprites/doom/TFOG.spr"), 10, 5, 15);
+	te_explosion(pos, fixPath("sprites/doom/tfog.spr"), 10, 5, 15);
 }
 
 class trigger_doom_teleport : ScriptBaseEntity
@@ -61,7 +61,7 @@ class trigger_doom_teleport : ScriptBaseEntity
 					mon.DelayAttack(); // get out of the way for other monsters
 			}
 			
-			te_explosion(other.pev.origin - offset, fixPath("sprites/doom/TFOG.spr"), 10, 5, 15);
+			te_explosion(other.pev.origin - offset, fixPath("sprites/doom/tfog.spr"), 10, 5, 15);
 			g_EntityFuncs.SetOrigin(other, target.pev.origin + offset);
 			
 			CBaseEntity@ ent = null;
@@ -82,8 +82,8 @@ class trigger_doom_teleport : ScriptBaseEntity
 			g_EngineFuncs.MakeVectors(target.pev.angles);
 			g_Scheduler.SetTimeout("delay_tele_effect", 0.05f, other.pev.origin - offset + g_Engine.v_forward*32);
 			
-			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/DSTELEPT.wav"), 1.0f, 1.0f, 0, 100);
-			g_SoundSystem.PlaySound(target.edict(), CHAN_STATIC, fixPath("doom/DSTELEPT.wav"), 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(self.edict(), CHAN_STATIC, fixPath("doom/dstelept.wav"), 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(target.edict(), CHAN_STATIC, fixPath("doom/dstelept.wav"), 1.0f, 1.0f, 0, 100);
 			
 			other.pev.velocity = Vector(0,0,0);
 			other.pev.angles = target.pev.angles;

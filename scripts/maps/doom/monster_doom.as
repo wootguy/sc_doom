@@ -171,7 +171,7 @@ class monster_doom : ScriptBaseMonsterEntity
 		shootSound = PrecacheSound(shootSound);
 		painSound = PrecacheSound(painSound);
 		walkSound = PrecacheSound(walkSound);
-		PrecacheSound("doom/DSSLOP.wav");
+		PrecacheSound("doom/dsslop.wav");
 		bodySprite = PrecacheModel(bodySprite);
 		hullModel = PrecacheModel(hullModel);
 	}
@@ -358,7 +358,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			string snd = deathSounds[Math.RandomLong(0, deathSounds.size()-1)];
 			bool canGib = animInfo[ANIM_DEAD].frameIndices[0] != animInfo[ANIM_GIB].frameIndices[0];
 			if (gib and canGib)
-				snd = fixPath("doom/DSSLOP.wav");
+				snd = fixPath("doom/dsslop.wav");
 			g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, snd, 1.0f, 0.5f, 0, 100);
 			
 			DoomThink();
@@ -528,7 +528,7 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 	void Revive()
 	{
-		g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, fixPath("doom/DSSLOP.wav"), 1.0f, 0.5f, 0, 100);
+		g_SoundSystem.PlaySound(self.edict(), CHAN_ITEM, fixPath("doom/dsslop.wav"), 1.0f, 0.5f, 0, 100);
 		isCorpse = false;
 		
 		AnimInfo reverseAnim;
@@ -563,7 +563,7 @@ class monster_doom : ScriptBaseMonsterEntity
 				monster_doom@ mon = cast<monster_doom@>(CastToScriptClass(ent));
 				if (mon !is null and !mon.isBeingRevived)
 				{
-					println("NEARBY MON: " + mon.pev.classname);
+					//println("NEARBY MON: " + mon.pev.classname);
 					mon.Revive();
 					mon.h_enemy = h_enemy;
 					return true;
@@ -929,6 +929,9 @@ class monster_doom : ScriptBaseMonsterEntity
 									g_Utility.TraceLine( eyePos, enemy.pev.origin, dont_ignore_monsters, self.edict(), tr );
 									CBaseEntity@ pHit = g_EntityFuncs.Instance( tr.pHit );
 									keepAttacking = pHit !is null and pHit.entindex() == enemy.entindex();
+									
+									// HACK
+									keepAttacking = keepAttacking or pev.classname == "monster_cyberdemon";
 								}
 								if (!keepAttacking)
 								{

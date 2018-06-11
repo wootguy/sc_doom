@@ -8,22 +8,16 @@
 #include "info_node_sound"
 
 // TODO:
-// alert players that their movement will get rekt if they don't edit config
-// add changelevel and to-never-be-continued message
-// copy bug notice to ep2
-// floating barrells in map2
-// secrets not working in tunnels?
-// invisible fireballs from hell knioghts
-
-// TEST: teleport in tricks and traps
-// TEST WITH LAG: teleport effects dont show when in different vis area
+// TEST WITH LAG: teleport effects dont show when in different vis area + skellie bombs
+// remove debug prints
 
 // TODO (bugs I'm ignoring cuz 2 lazy):
+// oriented fireballs aren't always visible (seems related to amount of active monsters)
 // pain elemental gets stuck when shooting shulls sometimes 
 // revived monsters sometimes invisible until your view angle changes
 // map11 souls trying to kill each other but hitting ceiling
 // monsters aim too high
-// somehow exceeding ammo limit for pistol (dropped weapons?)
+// somehow exceeding ammo limits (dropped weapons?)
 // weapon sprites skip frames with high ping (need to redo everything with models :'<)
 // fall through level in dead simple next to teleport at start
 // cacdemon gets stuck at tiny lips when it could easily float around them
@@ -33,7 +27,6 @@
 // health/armor/ammo hud?
 // probably need to limit sound graph per level
 // lite textures need editing (full bar)
-// eye button needs updating in dead simple
 // You got the "X"! messages
 // items don't get correct brightness
 // items sometimes sink into ground and u cant pickup
@@ -42,6 +35,7 @@
 // use MOVETYPE_FOLLOW to reduce net usage (tried it but monsters flicker because sprite stops following when nodraw applied)
 // (doom door breaks regular doors): 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
 // being revived breaks weapons with mp_weapon_droprules 1
+// teleport on exit logic (tricks and traps imp room)
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -53,6 +47,18 @@ int g_total_items = 0;
 int g_keys = 0;
 int g_map_num = 1;
 bool g_strict_keys = false; // if false, only color of key matters when opening door
+
+bool loadedUnlocks = false;
+int g_unlocks = 0;
+
+bool g_wait_for_noobs = true;
+bool g_friendly_fire = false;
+bool g_timer_started = false;
+float g_unblock_time = 0;
+float g_noob_delay = 20; // timer value when new player joins who hasn't accepted the bug disclaimer
+
+bool g_game_over = false; // final map complete
+bool debug_mode = false;
 
 CCVar@ g_dmgScale;
 
@@ -166,8 +172,8 @@ array<string> sprite_angles = {
 	"1", "2?8", "3?7", "4?6", "5", "6?4", "7?3", "8?2"
 };
 
-string beta_dir = "beta/";
-string beta_dir2 = "/beta";
+string beta_dir = "";
+string beta_dir2 = "";
 
 string fixPath(string asset)
 {
@@ -211,6 +217,7 @@ string base36(int num)
 
 void MapInit()
 {
+	g_wait_for_noobs = g_Engine.mapname == "doom2_ep1_beta";
 	@g_dmgScale = CCVar( "dmg_scale", 1, "Percentage of damage taken by players");
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_imp", "monster_imp" );
@@ -249,7 +256,7 @@ void MapInit()
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_fist", "doom" + beta_dir2, "");
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_chainsaw", "doom" + beta_dir2, "");
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_pistol", "doom" + beta_dir2, "bullets", "", "ammo_doom_bullets");
-	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom" + beta_dir2, "bullets", "", "ammo_doom_bullets");
+	g_ItemRegistry.RegisterWeapon( "weapon_doom_chaingun", "doom" + beta_dir2, "bullets", "", "ammo_doom_bulletbox");
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_shotgun", "doom" + beta_dir2, "shells", "", "ammo_doom_shells");
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_supershot", "doom" + beta_dir2, "shells", "", "ammo_doom_shells");
 	g_ItemRegistry.RegisterWeapon( "weapon_doom_rpg", "doom" + beta_dir2, "rockets", "", "ammo_doom_rocket");
@@ -306,16 +313,16 @@ void MapInit()
 	
 	PrecacheModel("sprites/doom/objects.spr");
 	PrecacheModel("sprites/doom/keys.spr");
-	PrecacheModel("sprites/doom/BAL.spr");
-	PrecacheModel("sprites/doom/BAL7.spr");
-	PrecacheModel("sprites/doom/MISL.spr");
-	PrecacheModel("sprites/doom/BFE2.spr");
-	PrecacheModel("sprites/doom/PUFF.spr");
-	PrecacheModel("sprites/doom/BLUD.spr");
-	PrecacheModel("sprites/doom/TFOG.spr");
-	PrecacheModel("sprites/doom/FATB.spr");
-	PrecacheModel("sprites/doom/MANF.spr");
-	PrecacheModel("sprites/doom/FIRE.spr");
+	PrecacheModel("sprites/doom/bal.spr");
+	PrecacheModel("sprites/doom/bal7.spr");
+	PrecacheModel("sprites/doom/misl.spr");
+	PrecacheModel("sprites/doom/bfe2.spr");
+	PrecacheModel("sprites/doom/puff.spr");
+	PrecacheModel("sprites/doom/blud.spr");
+	PrecacheModel("sprites/doom/tfog.spr");
+	PrecacheModel("sprites/doom/fatb.spr");
+	PrecacheModel("sprites/doom/manf.spr");
+	PrecacheModel("sprites/doom/fire.spr");
 	PrecacheModel("models/doom/null.mdl");
 	PrecacheModel("sprites/null.spr");
 	
@@ -328,7 +335,7 @@ void MapInit()
 	PrecacheModel("sprites/doom/rpg.spr");
 	PrecacheModel("sprites/doom/plasmagun.spr");
 	PrecacheModel("sprites/doom/bfg.spr");
-	PrecacheModel("sprites/doom/TEXT.spr");
+	PrecacheModel("sprites/doom/text.spr");
 	
 	PrecacheGeneric("sprites/doom/weapon_doom_fist.txt");
 	PrecacheGeneric("sprites/doom/weapon_doom_chainsaw.txt");
@@ -339,29 +346,29 @@ void MapInit()
 	PrecacheGeneric("sprites/doom/weapon_doom_rpg.txt");
 	PrecacheGeneric("sprites/doom/weapon_doom_bfg.txt");
 	
-	PrecacheSound("doom/DSFIRSHT.wav");
-	PrecacheSound("doom/DSFIRXPL.wav");
-	PrecacheSound("doom/DSRLAUNC.wav");
-	PrecacheSound("doom/DSBAREXP.wav");
+	PrecacheSound("doom/dsfirsht.wav");
+	PrecacheSound("doom/dsfirxpl.wav");
+	PrecacheSound("doom/dsrlaunc.wav");
+	PrecacheSound("doom/dsbarexp.wav");
 	PrecacheSound("doom/supershot.flac");
-	PrecacheSound("doom/DSPUNCH.wav");
-	PrecacheSound("doom/DSSAWUP.wav");
-	PrecacheSound("doom/DSSAWIDL.wav");
-	PrecacheSound("doom/DSSAWFUL.wav");
-	PrecacheSound("doom/DSSAWHIT.wav");
-	PrecacheSound("doom/DSPLASMA.wav");
-	PrecacheSound("doom/DSSKEATK.wav");
-	PrecacheSound("doom/DSRXPLOD.wav");
-	PrecacheSound("doom/DSBFG.wav");
-	PrecacheSound("doom/DSGETPOW.wav");
-	PrecacheSound("doom/DSTELEPT.wav");
-	PrecacheSound("doom/DSWPNUP.wav");
-	PrecacheSound("doom/DSFLAME.wav");
-	PrecacheSound("doom/DSSKLDTH.wav"); // player use
-	PrecacheSound("doom/DSPLPAIN.wav"); // player pain
-	PrecacheSound("doom/DSPLDETH.wav"); // player death
-	PrecacheSound("doom/DSITMBK.wav"); // item respawn
-	PrecacheSound("doom/DSITEMUP.wav"); // item collect
+	PrecacheSound("doom/dspunch.wav");
+	PrecacheSound("doom/dssawup.wav");
+	PrecacheSound("doom/dssawidl.wav");
+	PrecacheSound("doom/dssawful.wav");
+	PrecacheSound("doom/dssawhit.wav");
+	PrecacheSound("doom/dsplasma.wav");
+	PrecacheSound("doom/dsskeatk.wav");
+	PrecacheSound("doom/dsrxplod.wav");
+	PrecacheSound("doom/dsbfg.wav");
+	PrecacheSound("doom/dsgetpow.wav");
+	PrecacheSound("doom/dstelept.wav");
+	PrecacheSound("doom/dswpnup.wav");
+	PrecacheSound("doom/dsflame.wav");
+	PrecacheSound("doom/dsskldth.wav"); // player use
+	PrecacheSound("doom/dsplpain.wav"); // player pain
+	PrecacheSound("doom/dspldeth.wav"); // player death
+	PrecacheSound("doom/dsitmbk.wav"); // item respawn
+	PrecacheSound("doom/dsitemup.wav"); // item collect
 	PrecacheSound("doom/dssecret.flac"); // secret revealed
 	
 	for (uint i = 0; i < g_map_music.length(); i++)
@@ -369,24 +376,6 @@ void MapInit()
 		
 	g_inter_music = PrecacheSound(g_inter_music);
 	g_ep_music = PrecacheSound(g_ep_music);
-}
-
-void initSettings(EHandle h_plr)
-{
-	if (!h_plr.IsValid())
-		return;
-	CBasePlayer@ plr = cast<CBasePlayer@>(h_plr.GetEntity());
-	
-	PlayerState@ state = getPlayerState(plr);
-	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
-	if (customKeys.HasKeyvalue("uiscale"))
-		state.uiScale = customKeys.GetKeyvalue("uiscale").GetInteger();
-}
-
-HookReturnCode ClientJoin( CBasePlayer@ plr )
-{
-	g_Scheduler.SetTimeout("initSettings", 0.05f, EHandle(plr));
-	return HOOK_CONTINUE;
 }
 
 void MapActivate()
@@ -412,7 +401,7 @@ void MapActivate()
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "env_sprite");
 		if (ent !is null)
 		{
-			g_EntityFuncs.SetModel(ent, fixPath("sprites/doom/TEXT.spr"));
+			g_EntityFuncs.SetModel(ent, fixPath("sprites/doom/text.spr"));
 		}
 	} while (ent !is null);
 	
@@ -440,7 +429,7 @@ void MapActivate()
 	if (map_info !is null)
 	{
 		g_map_num += (map_info.pev.renderfx-1);
-		println("INITIAL MAP: " + g_map_num);
+		//println("INITIAL MAP: " + g_map_num);
 	}
 	
 	CBaseEntity@ spawn_room = g_EntityFuncs.FindEntityByTargetname(null, "map_start");
@@ -480,7 +469,6 @@ void plugin_check()
 		CBasePlayer@ anyPlr = getAnyPlayer();
 		g_PlayerFuncs.SayTextAll(anyPlr, "Add doom_maps to default_plugins.txt to fix your installation.");
 		g_PlayerFuncs.CenterPrintAll("Map installed incorrectly");
-		g_PlayerFuncs.ShowMessageAll("Map installed incorrectly");
 		g_Scheduler.SetTimeout("plugin_check", 2.0f);
 	}
 }
@@ -707,13 +695,140 @@ void next_level()
 	g_EntityFuncs.FireTargets("next_level", null, null, USE_TOGGLE);
 	
 	g_map_num++;
-	
+
 	if (g_map_num == 7)
 	{
-		g_Scheduler.SetTimeout("episode_end", 1.0f);
+		//g_Scheduler.SetTimeout("episode_end", 1.0f);
+		g_EntityFuncs.FireTargets("change_level", null, null, USE_TOGGLE);		
 	}
 	else
 		g_Scheduler.SetTimeout("trigger_next_level", 3.0f);
+}
+
+void end_game()
+{
+	g_EntityFuncs.FireTargets("end", null, null, USE_TOGGLE);
+}
+
+void printkeybind(string msg)
+{
+	g_PlayerFuncs.PrintKeyBindingStringAll(msg);
+}
+
+void end_game_dm()
+{
+	dictionary ckeys;
+	ckeys["targetname"] = "dm_equip";
+	ckeys["spawnflags"] = "4";
+	ckeys["weapon_doom_bfg"] = "1";
+	ckeys["weapon_doom_plasmagun"] = "1";
+	ckeys["weapon_doom_rpg"] = "1";
+	ckeys["weapon_doom_chainsaw"] = "1";
+	ckeys["weapon_doom_supershot"] = "1";
+	ckeys["ammo_doom_shellbox"] = "1";
+	ckeys["ammo_doom_rocketbox"] = "5";
+	ckeys["ammo_doom_cells"] = "1";
+	
+	g_friendly_fire = true;
+	
+	CBaseEntity@ equip = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
+	
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null and ent.IsAlive())
+		{
+			g_EntityFuncs.FireTargets("dm_equip", ent, ent, USE_TOGGLE);
+		}
+	} while(ent !is null);
+}
+
+void loner_check()
+{
+	int numPlayers = 0;
+	
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null) {
+			numPlayers++;
+		}
+	} while(ent !is null);
+	
+	if (numPlayers == 1) {
+		string msg = "Oh, you're alone. How sad.";
+		g_Scheduler.SetTimeout("printkeybind", 0.0f, msg);
+		g_Scheduler.SetTimeout("printkeybind", 1.0f, msg);
+	}
+}
+
+void unlock_item(bool notify)
+{
+	g_unlocks++;
+	
+	dictionary ckeys;
+	string msg = "PERFECT SCORE\n\nReward: ";
+	if (g_unlocks == 1) {
+		msg += "Chainsaw";
+		ckeys["weapon_doom_chainsaw"] = "1";
+	} else if (g_unlocks == 2) {
+		msg += "Shotgun";
+		ckeys["weapon_doom_shotgun"] = "1";
+	} else if (g_unlocks == 3) {
+		msg += "Chaingun";
+		ckeys["weapon_doom_chaingun"] = "1";
+	} else if (g_unlocks == 4) {
+		msg += "Extra Ammo";
+		ckeys["ammo_doom_shellbox"] = "1";
+		ckeys["ammo_doom_bulletbox"] = "1";
+	} else if (g_unlocks == 5) {
+		msg += "Super Shotgun";
+		ckeys["weapon_doom_supershot"] = "1";
+	} else if (g_unlocks == 6) {
+		msg += "Rocket Launcher";
+		ckeys["weapon_doom_rpg"] = "1";
+	}  else if (g_unlocks == 7) {
+		msg += "Plasma Gun";
+		ckeys["weapon_doom_plasmagun"] = "1";
+	} else if (g_unlocks == 8) {
+		msg += "Maximum ammo";
+		ckeys["ammo_doom_bulletbox"] = "3";
+		ckeys["ammo_doom_shellbox"] = "4";
+		ckeys["ammo_doom_cellbox"] = "6";
+	} else if (g_unlocks == 9) {
+		msg += "BFG";
+		ckeys["weapon_doom_bfg"] = "1";
+	} else if (g_unlocks == 10) {
+		msg += "Mega Sphere";
+		ckeys["item_doom_megasphere"] = "1";
+	} 
+	
+	ckeys["spawnflags"] = "8";
+	CBaseEntity@ equip = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
+	
+	ckeys["spawnflags"] = "1";
+	ckeys["targetname"] = "use_unlock" + g_unlocks;
+	CBaseEntity@ equipuse = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
+	
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null and ent.IsAlive()) {
+			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
+			g_EntityFuncs.FireTargets(equipuse.pev.targetname, ent, ent, USE_OFF);
+		}
+	} while(ent !is null);
+	
+	if (!notify) {
+		return;
+	}
+	
+	CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
+	count.pev.frags = g_unlocks;
+	
+	g_SoundSystem.PlaySound(null, CHAN_STATIC, fixPath("doom/dssecret.flac"), 1.0f, ATTN_NONE, 0, 100);
+	g_Scheduler.SetTimeout("printkeybind", 0.0f, msg);
+	g_Scheduler.SetTimeout("printkeybind", 1.0f, msg);
 }
 
 void tally_time(string item, int time, int targetTime, bool playSound)
@@ -751,17 +866,52 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 	if (time < targetTime)
 	{
 		if (playSound)
-			g_SoundSystem.PlaySound(colon.edict(), CHAN_STATIC, fixPath("doom/DSPISTOL.wav"), 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(colon.edict(), CHAN_STATIC, fixPath("doom/dspistol.wav"), 1.0f, 1.0f, 0, 100);
 		int step = Math.max(targetTime / 15, 3);
 		g_Scheduler.SetTimeout("tally_time", 0.05, item, time+step, targetTime, !playSound);
 	}
 	else
 	{
-		g_SoundSystem.PlaySound(secOnes.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(secOnes.edict(), CHAN_STATIC, fixPath("doom/dsbarexp.wav"), 1.0f, 1.0f, 0, 100);
 		if (item == "time")
 			g_Scheduler.SetTimeout("tally_time", 0.8, "par", 0, g_par_times[g_map_num-1], !playSound);
 		if (item == "par")
-			g_Scheduler.SetTimeout("next_level", 4.0);
+		{
+			if (g_map_num == 11) {			
+				g_Scheduler.SetTimeout("end_game", 32.0);
+				CBasePlayer@ plr = getAnyPlayer();
+				
+				string msg = "ERROR: Mapper too lazy to finish series.\n\nGame ends in 30 seconds.";
+				g_Scheduler.SetTimeout("printkeybind", 2.0f, msg);
+				g_Scheduler.SetTimeout("printkeybind", 3.0f, msg);
+				g_Scheduler.SetTimeout("printkeybind", 4.0f, msg);
+				
+				msg = "Disappointed?\n\nThis should help you feel better...";
+				g_Scheduler.SetTimeout("printkeybind", 6.0f, msg);
+				g_Scheduler.SetTimeout("printkeybind", 7.0f, msg);
+				g_Scheduler.SetTimeout("printkeybind", 8.0f, msg);
+				
+				msg = "FRIENDLY FIRE ENABLED";
+				g_Scheduler.SetTimeout("printkeybind", 9.0f, msg);
+				g_Scheduler.SetTimeout("end_game_dm", 9.0f);
+				
+				g_Scheduler.SetTimeout("loner_check", 13.0f);
+				
+				msg = "Don't forget to add cl_sidespeed 400\n\nto your config.cfg";
+				g_Scheduler.SetTimeout("printkeybind", 27.0f, msg);
+				g_Scheduler.SetTimeout("printkeybind", 28.0f, msg);
+				g_Scheduler.SetTimeout("printkeybind", 29.0f, msg);
+				
+				return;
+			}
+			
+			bool perfectScore = g_item_gets == g_total_items and g_secrets == g_total_secrets and g_kills == g_total_monsters;
+			
+			if (perfectScore or true) {
+				g_Scheduler.SetTimeout("unlock_item", 1.0f, true);
+			}
+			g_Scheduler.SetTimeout("next_level", perfectScore ? 6.0 : 4.0);
+		}
 	}
 }
 
@@ -793,12 +943,12 @@ void tally_score(string item, int percentage, int targetPercent, bool playSound)
 	if (percentage < targetPercent)
 	{
 		if (playSound)
-			g_SoundSystem.PlaySound(ones.edict(), CHAN_STATIC, fixPath("doom/DSPISTOL.wav"), 1.0f, 1.0f, 0, 100);
+			g_SoundSystem.PlaySound(ones.edict(), CHAN_STATIC, fixPath("doom/dspistol.wav"), 1.0f, 1.0f, 0, 100);
 		g_Scheduler.SetTimeout("tally_score", 0.05, item, percentage+13, targetPercent, !playSound);
 	}
 	else
 	{
-		g_SoundSystem.PlaySound(tens.edict(), CHAN_STATIC, fixPath("doom/DSBAREXP.wav"), 1.0f, 1.0f, 0, 100);
+		g_SoundSystem.PlaySound(tens.edict(), CHAN_STATIC, fixPath("doom/dsbarexp.wav"), 1.0f, 1.0f, 0, 100);
 		
 		if (item == "kills")
 		{
@@ -898,6 +1048,125 @@ void ep_text(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, fl
 	g_Scheduler.SetTimeout("ep_scroll_line", 0.0f, 1, 0, 10);
 }
 
+void initSettings(EHandle h_plr)
+{
+	if (!h_plr.IsValid())
+		return;
+	CBasePlayer@ plr = cast<CBasePlayer@>(h_plr.GetEntity());
+	
+	PlayerState@ state = getPlayerState(plr);
+	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
+	if (customKeys.HasKeyvalue("uiscale"))
+		state.uiScale = customKeys.GetKeyvalue("uiscale").GetInteger();
+		
+	if (g_wait_for_noobs)
+	{
+		if (plr.pev.targetname != "let_me_play_damnit" and g_timer_started) {
+			resetTimer();
+		}
+	}
+	
+	if (!loadedUnlocks) {
+		loadedUnlocks = true;
+		
+		CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
+		if (count !is null) {
+			println("Loaded " + count.pev.frags + " unlocks");
+			for (int i = 0; i < int(count.pev.frags); i++) {
+				unlock_item(false);
+			}
+		}
+	}
+}
+
+HookReturnCode ClientJoin( CBasePlayer@ plr )
+{
+	g_Scheduler.SetTimeout("initSettings", 0.05f, EHandle(plr));
+	return HOOK_CONTINUE;
+}
+
+void new_lobby_player(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	/*
+	bool noobsExist = false;
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null) {
+			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
+			if (string(ent.pev.targetname) != "let_me_play_damnit")
+			{
+				noobsExist = true;
+				break;
+			}
+		}
+	} while (ent !is null);
+	*/
+	
+	if (g_wait_for_noobs and !g_timer_started) {
+		resetTimer();
+	}
+}
+
+void resetTimer()
+{
+	g_timer_started = true;
+	g_unblock_time = g_Engine.time + g_noob_delay;
+	updateTimer();
+}
+
+void clearTimer()
+{
+	HUDNumDisplayParams params;
+	params.channel = 15;
+	params.flags = HUD_ELEM_HIDDEN;
+	g_PlayerFuncs.HudTimeDisplay( null, params );
+}
+
+// thanks th_escape for le codes :>
+void updateTimer()
+{	
+	HUDNumDisplayParams params;
+	
+	params.channel = 15;
+	
+	params.flags = HUD_ELEM_SCR_CENTER_X | HUD_ELEM_DEFAULT_ALPHA |
+		HUD_TIME_MINUTES | HUD_TIME_SECONDS | HUD_TIME_COUNT_DOWN;
+	
+	float timeLeft = g_unblock_time - g_Engine.time;
+	params.value = timeLeft;
+	
+	params.x = 0;
+	params.y = 0.06;
+	params.color1 = RGBA_SVENCOOP;
+	params.spritename = "stopwatch";
+	
+	array<CBaseEntity@> waitingPlayers;
+	
+	CBaseEntity@ ent = null;
+	do {
+		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
+		if (ent !is null) {
+			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
+			if (string(ent.pev.targetname) == "let_me_play_damnit")
+				waitingPlayers.insertLast(ent);
+		}
+	} while (ent !is null);
+	
+	for (uint i = 0; i < waitingPlayers.length(); i++)
+	{
+		g_PlayerFuncs.HudTimeDisplay( null, params );
+	}
+	
+	if (timeLeft > 0) {
+		g_Scheduler.SetTimeout("updateTimer", 1.0f);
+	} else {
+		clearTimer();
+		g_EntityFuncs.FireTargets("ep_wall", null, null, USE_ON);
+		return;
+	}
+}
+
 
 HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 {	
@@ -926,7 +1195,8 @@ HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 			}
 		} while (ent !is null);
 		*/
-		phit.Use(plr, plr, USE_TOGGLE);
+		if (phit.pev.classname == "func_doom_door")
+			phit.Use(plr, plr, USE_TOGGLE);
 	}
 	return HOOK_CONTINUE;
 }
@@ -956,7 +1226,7 @@ void doEffect(CBasePlayer@ plr)
 		}
 	} while(ent !is null);
 	
-	println("Setup " + numMonsters + " monsters");
+	//println("Setup " + numMonsters + " monsters");
 }
 
 void playerMenuCallback(CTextMenu@ menu, CBasePlayer@ plr, int page, const CTextMenuItem@ item)
@@ -969,22 +1239,22 @@ void playerMenuCallback(CTextMenu@ menu, CBasePlayer@ plr, int page, const CText
 	
 	if (action == "scale-tiny")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nTINY\n");
+		g_PlayerFuncs.PrintKeyBindingString(plr, "HUD Scale:\n\nTINY\n");
 		state.uiScale = 3;
 	}
 	if (action == "scale-small")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nSMALL\n");
+		g_PlayerFuncs.PrintKeyBindingString(plr, "HUD Scale:\n\nSMALL\n");
 		state.uiScale = 2;
 	}
 	if (action == "scale-large")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nLARGE\n");
+		g_PlayerFuncs.PrintKeyBindingString(plr, "HUD Scale:\n\nLARGE\n");
 		state.uiScale = 1;
 	}
 	if (action == "scale-xl")
 	{
-		g_PlayerFuncs.PrintKeyBindingStringAll("HUD Scale:\n\nX-LARGE\n");
+		g_PlayerFuncs.PrintKeyBindingString(plr, "HUD Scale:\n\nX-LARGE\n");
 		state.uiScale = 0;
 	}
 	
@@ -1012,21 +1282,16 @@ void openPlayerMenu(CBasePlayer@ plr)
 
 bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 {	
+	bool isAdmin = g_PlayerFuncs.AdminLevel(plr) >= ADMIN_YES;
+	
 	if ( args.ArgC() > 0 )
 	{
-		if (args[0] == ".test")
-		{
-			//g_Scheduler.SetInterval("doEffect", 0.025, -1, @plr);
-			doEffect(plr);
-			return true;
-		}
-		if (args[0] == ".options")
-		{
-			openPlayerMenu(plr);
-			return true;
-		}
 		if (args[0] == "idkfa")
 		{
+			if (!isAdmin) {
+				g_PlayerFuncs.SayText(plr, "You don't have access to that command, peasent\n");
+				return true;
+			}
 			g_keys = 0xff;
 			
 			plr.GiveNamedItem("weapon_doom_fist", 0, 0);
