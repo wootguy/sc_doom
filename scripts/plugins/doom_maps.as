@@ -6,6 +6,8 @@
 // 3) mp_footsteps doesn't work in the map cfg
 
 bool isDoomMap = false;
+bool loaded_unlocks = false;
+int g_unlocks = 0;
 
 void PluginInit()
 {
@@ -20,11 +22,17 @@ void PluginInit()
 void MapInit()
 {
 	string map = g_Engine.mapname;
-	isDoomMap = map.Find("doom2_") == 0 or map == "out" or true;
+	isDoomMap = map.Find("doom2_") == 0;
 	if (isDoomMap)
-	{	
+	{
+		loaded_unlocks = false;
 		g_EngineFuncs.ServerCommand("sv_stepsize 35; mp_footsteps 0\n");
 		g_EngineFuncs.ServerExecute();
+		
+		if (map.Find("doom2_ep1") == 0)
+			g_unlocks = 0; // don't keep unlocks if restarting the compaign
+	} else {
+		g_unlocks = 0;
 	}
 }
 
@@ -36,6 +44,9 @@ HookReturnCode MapChange()
 		PlayerState@ state = cast<PlayerState@>( player_states[stateKeys[i]] );
 		if (!state.h_plr.IsValid())
 			continue;
+		
+		CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
+		g_unlocks = int(count.pev.frags);
 		
 		CBasePlayer@ plr = cast<CBasePlayer@>(state.h_plr.GetEntity());
 		CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
@@ -74,6 +85,9 @@ PlayerState@ getPlayerState(CBasePlayer@ plr)
 	return cast<PlayerState@>( player_states[steamId] );
 }
 
+void print(string text) { g_Game.AlertMessage( at_console, text); }
+void println(string text) { print(text + "\n"); }
+
 void clientCommand(CBaseEntity@ plr, string cmd)
 {
 	NetworkMessage m(MSG_ONE, NetworkMessages::NetworkMessageType(9), plr.edict());
@@ -111,6 +125,16 @@ HookReturnCode ClientJoin( CBasePlayer@ plr )
 {
 	if (!isDoomMap or plr is null)
 		return HOOK_CONTINUE;
+		
+	if (!loaded_unlocks) {
+		loaded_unlocks = true;
+		CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
+		if (count !is null) {
+			count.pev.frags = g_unlocks;
+			println("doom_maps: loaded " + g_unlocks + " unlocks");
+			g_unlocks = 0;
+		}		
+	}
 		
 	// remember that player accepted the movement bug. Don't spawn them in the "Attention!" room.
 	PlayerState@ state = getPlayerState(plr);
