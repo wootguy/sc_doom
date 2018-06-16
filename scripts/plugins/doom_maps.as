@@ -8,6 +8,7 @@
 bool isDoomMap = false;
 bool loaded_unlocks = false;
 int g_unlocks = 0;
+CScheduledFunction@ unlock_poll = null;
 
 void PluginInit()
 {
@@ -28,24 +29,38 @@ void MapInit()
 		g_EngineFuncs.ServerCommand("sv_stepsize 35; mp_footsteps 0\n");
 		g_EngineFuncs.ServerExecute();
 		
-		if (map.Find("doom2_ep1") == 0)
+		if (map.Find("doom2_ep1") == 0) {
 			g_unlocks = 0; // don't keep unlocks if restarting the compaign
+		}
 	} else {
 		g_unlocks = 0;
 	}
 }
 
+// for some reason I can't get the counter value on MapChange, so I have to poll for updates...
+void save_unlocks() {
+	if (!isDoomMap) {
+		return;
+	}
+	CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
+	if (count !is null) {
+		g_unlocks = int(count.pev.frags);
+	}
+	
+	@unlock_poll = g_Scheduler.SetTimeout("save_unlocks", 1);
+}
+
 HookReturnCode MapChange()
 {
+	g_Scheduler.RemoveTimer(unlock_poll);
+	@unlock_poll = null;
+	
 	array<string>@ stateKeys = player_states.getKeys();
 	for (uint i = 0; i < stateKeys.length(); i++)
 	{
 		PlayerState@ state = cast<PlayerState@>( player_states[stateKeys[i]] );
 		if (!state.h_plr.IsValid())
 			continue;
-		
-		CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
-		g_unlocks = int(count.pev.frags);
 		
 		CBasePlayer@ plr = cast<CBasePlayer@>(state.h_plr.GetEntity());
 		CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
@@ -95,6 +110,7 @@ HookReturnCode ClientJoin( CBasePlayer@ plr )
 			count.pev.frags = g_unlocks;
 			println("doom_maps: loaded " + g_unlocks + " unlocks");
 			g_unlocks = 0;
+			g_Scheduler.SetTimeout("save_unlocks", 1);
 		}		
 	}
 	
