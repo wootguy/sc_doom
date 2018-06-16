@@ -49,7 +49,7 @@ class func_doom_water : ScriptBaseEntity
 	
 	void Touch(CBaseEntity@ other)
 	{		
-		if (!other.IsPlayer())
+		if (!other.IsPlayer() or !other.IsAlive())
 			return;
 			
 		int idx = other.entindex();
