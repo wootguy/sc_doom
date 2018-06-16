@@ -1344,6 +1344,22 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 			plr.m_rgAmmo(g_PlayerFuncs.GetAmmoIndex("rockets"), 1000000);
 			return true;
 		}
+		else if (args[0] == ".score")
+		{
+			int killPercentage = 100;
+			int itemPercentage = 100;
+			int secretPercentage = 100;
+			if (g_total_items > 0)
+				itemPercentage = int((g_item_gets / float(g_total_items))*100);
+			if (g_total_monsters > 0)
+				killPercentage = int((g_kills / float(g_total_monsters))*100);
+			if (g_total_secrets > 0)
+				secretPercentage = int((g_secrets / float(g_total_secrets))*100);
+			string score = "Kills: " + killPercentage + "%  Items: " + itemPercentage + "%  Secrets: " + secretPercentage + "%";
+			g_PlayerFuncs.SayText(plr, score + "\n");
+			
+			return true;
+		}
 		else if (args[0] == ".ff")
 		{
 			if (!isAdmin) {
