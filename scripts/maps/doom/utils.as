@@ -438,7 +438,7 @@ float DamageForce( CBaseEntity@ ent, float damage )
 // armor should only absord a reasonable of damage, not all of it.
 int doomTakeDamage(CBaseEntity@ ent, entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType)
 {
-	if (!ent.IsPlayer())
+	if (!ent.IsPlayer() or !ent.IsAlive())
 		return ent.TakeDamage( pevAttacker, pevAttacker, flDamage, bitsDamageType);
 		
 	flDamage *= g_dmgScale.GetFloat();

@@ -8,8 +8,9 @@
 #include "info_node_sound"
 
 // TODO:
-// TEST WITH LAG: teleport effects dont show when in different vis area + skellie bombs
 // remove debug prints
+// no sound on super shot?
+// crash at factory
 
 // TODO (bugs I'm ignoring cuz 2 lazy):
 // oriented fireballs aren't always visible (seems related to amount of active monsters)
@@ -217,7 +218,7 @@ string base36(int num)
 
 void MapInit()
 {
-	g_wait_for_noobs = g_Engine.mapname == "doom2_ep1_beta";
+	g_wait_for_noobs = string(g_Engine.mapname).Find("doom2_ep1") == 0;
 	@g_dmgScale = CCVar( "dmg_scale", 1, "Percentage of damage taken by players");
 	
 	g_CustomEntityFuncs.RegisterCustomEntity( "monster_imp", "monster_imp" );
@@ -571,6 +572,38 @@ void secret_revealed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE use
 	g_secrets += 1;
 }
 
+void printkeybind(EHandle h_plr, string msg)
+{
+	if (!h_plr.IsValid())
+		return;
+	CBasePlayer@ plr = cast<CBasePlayer@>(h_plr.GetEntity());
+	
+	g_PlayerFuncs.PrintKeyBindingString(plr, msg);
+}
+
+void let_me_play(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
+{
+	if (pActivator is null or !pActivator.IsPlayer())
+		return;
+	CBasePlayer@ plr = cast<CBasePlayer@>(pActivator);
+	
+	plr.pev.targetname = "let_me_play_damnit"; // map script will wait for this before letting them start
+	
+	g_PlayerFuncs.RespawnPlayer(plr, true, true);
+	plr.SetHasSuit(true);
+	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, true);
+	
+	PlayerState@ state = getPlayerState(plr);
+	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
+	customKeys.SetKeyvalue("uiscale", state.uiScale);
+	
+	string msg = "[Secondary Fire] = Toggle thirdperson\n\n[Tertiary Fire] = Change HUD scale";
+	g_Scheduler.SetTimeout("printkeybind", 2.0f, EHandle(plr), msg);
+	g_Scheduler.SetTimeout("printkeybind", 3.0f, EHandle(plr), msg);
+	g_Scheduler.SetTimeout("printkeybind", 4.0f, EHandle(plr), msg);
+	g_Scheduler.SetTimeout("printkeybind", 5.0f, EHandle(plr), msg);	
+}
+
 string getMapName()
 {
 	if (g_map_num < 10)
@@ -913,7 +946,7 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 			
 			bool perfectScore = g_item_gets == g_total_items and g_secrets == g_total_secrets and g_kills == g_total_monsters;
 			
-			if (perfectScore or true) {
+			if (perfectScore) {
 				g_Scheduler.SetTimeout("unlock_item", 1.0f, true);
 			}
 			g_Scheduler.SetTimeout("next_level", perfectScore ? 6.0 : 4.0);
