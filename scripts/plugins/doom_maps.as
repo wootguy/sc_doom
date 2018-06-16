@@ -14,7 +14,6 @@ void PluginInit()
 	g_Module.ScriptInfo.SetAuthor( "w00tguy" );
 	g_Module.ScriptInfo.SetContactInfo( "w00tguy123 - forums.svencoop.com" );
 	
-	g_Hooks.RegisterHook( Hooks::Player::ClientSay, @ClientSay );
 	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientJoin );
 	g_Hooks.RegisterHook( Hooks::Game::MapChange, @MapChange );
 }
@@ -60,10 +59,6 @@ class PlayerState
 {
 	EHandle h_plr;
 	
-	// true if this player has accepted the consequences of playing the doom maps.
-	// Let this player bypass the "Attention!" room next time.
-	bool acceptsStrafeBug = false;
-	
 	// keep uiScale across maps (CPersistance doesn't work last I tried, and global states can't store steamids)
 	int uiScale = 1;
 }
@@ -88,39 +83,6 @@ PlayerState@ getPlayerState(CBasePlayer@ plr)
 void print(string text) { g_Game.AlertMessage( at_console, text); }
 void println(string text) { print(text + "\n"); }
 
-void clientCommand(CBaseEntity@ plr, string cmd)
-{
-	NetworkMessage m(MSG_ONE, NetworkMessages::NetworkMessageType(9), plr.edict());
-		m.WriteString(cmd);
-	m.End();
-}
-
-void printkeybind(EHandle h_plr, string msg)
-{
-	if (!h_plr.IsValid())
-		return;
-	CBasePlayer@ plr = cast<CBasePlayer@>(h_plr.GetEntity());
-	
-	g_PlayerFuncs.PrintKeyBindingString(plr, msg);
-}
-
-void letThemPlay(CBasePlayer@ plr)
-{
-	g_PlayerFuncs.RespawnPlayer(plr, true, true);
-	plr.SetHasSuit(true);
-	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, true);
-	
-	PlayerState@ state = getPlayerState(plr);
-	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
-	customKeys.SetKeyvalue("uiscale", state.uiScale);
-	
-	string msg = "[Secondary Fire] = Toggle thirdperson\n\n[Tertiary Fire] = Change HUD scale";
-	g_Scheduler.SetTimeout("printkeybind", 2.0f, EHandle(plr), msg);
-	g_Scheduler.SetTimeout("printkeybind", 3.0f, EHandle(plr), msg);
-	g_Scheduler.SetTimeout("printkeybind", 4.0f, EHandle(plr), msg);
-	g_Scheduler.SetTimeout("printkeybind", 5.0f, EHandle(plr), msg);	
-}
-
 HookReturnCode ClientJoin( CBasePlayer@ plr )
 {
 	if (!isDoomMap or plr is null)
@@ -135,43 +97,8 @@ HookReturnCode ClientJoin( CBasePlayer@ plr )
 			g_unlocks = 0;
 		}		
 	}
-		
-	// remember that player accepted the movement bug. Don't spawn them in the "Attention!" room.
-	PlayerState@ state = getPlayerState(plr);
-	if (state !is null and state.acceptsStrafeBug or plr.pev.flags & FL_FAKECLIENT != 0) {
-		plr.pev.targetname = "let_me_play_damnit";
-		clientCommand(plr, "cl_forwardspeed 9000;cl_sidespeed 9000;cl_backspeed 9000");
-		letThemPlay(plr);
-	}
 	
 	g_EntityFuncs.Remove(g_EntityFuncs.FindEntityByTargetname(null, "plugin_not_installed"));
-	
-	return HOOK_CONTINUE;
-}
-
-HookReturnCode ClientSay( SayParameters@ pParams )
-{
-	if (!isDoomMap)
-		return HOOK_CONTINUE;
-		
-	CBasePlayer@ plr = pParams.GetPlayer();
-	PlayerState@ state = getPlayerState(plr);
-	const CCommand@ args = pParams.GetArguments();
-	
-	if (args.ArgC() > 0 and args[0].ToLowercase() == "accept")
-	{
-		if (state.acceptsStrafeBug)
-			return HOOK_CONTINUE; // already accepted the bug, chat as normal
-			
-		state.acceptsStrafeBug = true;
-		clientCommand(plr, "cl_forwardspeed 9000;cl_sidespeed 9000;cl_backspeed 9000");
-		g_PlayerFuncs.SayText(plr, "Movement speeds updated. Enjoy the map!\n");
-		plr.pev.targetname = "let_me_play_damnit"; // map script will wait for this before letting them start
-		letThemPlay(plr);
-		
-		pParams.ShouldHide = true;
-		return HOOK_HANDLED;
-	}
 	
 	return HOOK_CONTINUE;
 }
