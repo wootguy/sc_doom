@@ -8,9 +8,8 @@
 #include "info_node_sound"
 
 // TODO:
-// remove debug prints
-// no sound on super shot?
 // crash at factory
+// recompile witout extra wads
 
 // TODO (bugs I'm ignoring cuz 2 lazy):
 // oriented fireballs aren't always visible (seems related to amount of active monsters)
@@ -593,6 +592,10 @@ void let_me_play(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType
 	plr.SetHasSuit(true);
 	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, true);
 	
+	for (int i = 1; i <= g_unlocks; i++) {
+		g_EntityFuncs.FireTargets("use_unlock" + i, plr, plr, USE_TOGGLE);
+	}
+	
 	PlayerState@ state = getPlayerState(plr);
 	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
 	customKeys.SetKeyvalue("uiscale", state.uiScale);
@@ -843,18 +846,18 @@ void unlock_item(bool notify)
 	ckeys["targetname"] = "use_unlock" + g_unlocks;
 	CBaseEntity@ equipuse = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
 	
+	if (!notify) {
+		return;
+	}
+	
 	CBaseEntity@ ent = null;
 	do {
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
 		if (ent !is null and ent.IsAlive()) {
 			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
-			g_EntityFuncs.FireTargets(equipuse.pev.targetname, ent, ent, USE_OFF);
+			g_EntityFuncs.FireTargets(equipuse.pev.targetname, ent, ent, USE_ON);
 		}
 	} while(ent !is null);
-	
-	if (!notify) {
-		return;
-	}
 	
 	CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
 	count.pev.frags = g_unlocks;
@@ -933,13 +936,6 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 				}
 				
 				g_Scheduler.SetTimeout("end_game_dm", 9.0f);
-				
-				
-				
-				msg = "Don't forget to add cl_sidespeed 400\n\nto your config.cfg";
-				g_Scheduler.SetTimeout("printkeybind", 27.0f, msg);
-				g_Scheduler.SetTimeout("printkeybind", 28.0f, msg);
-				g_Scheduler.SetTimeout("printkeybind", 29.0f, msg);
 				
 				return;
 			}

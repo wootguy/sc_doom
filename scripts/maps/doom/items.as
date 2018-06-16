@@ -825,6 +825,7 @@ class item_doom_key_red : item_doom
 	
 	bool CustomPickup()
 	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("Picked up a red keycard");
 		g_keys |= KEY_RED;
 		return true;
 	}
@@ -847,6 +848,7 @@ class item_doom_key_blue : item_doom
 	
 	bool CustomPickup()
 	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("Picked up a blue keycard");
 		g_keys |= KEY_BLUE;
 		return true;
 	}
@@ -869,6 +871,7 @@ class item_doom_key_yellow : item_doom
 	
 	bool CustomPickup()
 	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("Picked up a yellow keycard");
 		g_keys |= KEY_YELLOW;
 		return true;
 	}
@@ -891,6 +894,7 @@ class item_doom_skull_red : item_doom
 	
 	bool CustomPickup()
 	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("Picked up a red skull key");
 		g_keys |= SKULL_RED;
 		return true;
 	}
@@ -913,6 +917,7 @@ class item_doom_skull_blue : item_doom
 	
 	bool CustomPickup()
 	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("Picked up a blue skull key");
 		g_keys |= SKULL_BLUE;
 		return true;
 	}
@@ -935,6 +940,7 @@ class item_doom_skull_yellow : item_doom
 	
 	bool CustomPickup()
 	{
+		g_PlayerFuncs.PrintKeyBindingStringAll("Picked up a yellow skull key");
 		g_keys |= SKULL_YELLOW;
 		return true;
 	}
