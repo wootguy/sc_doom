@@ -8,8 +8,6 @@
 #include "info_node_sound"
 
 // TODO:
-// crash at factory
-// recompile witout extra wads
 
 // TODO (bugs I'm ignoring cuz 2 lazy):
 // oriented fireballs aren't always visible (seems related to amount of active monsters)
@@ -36,6 +34,8 @@
 // (doom door breaks regular doors): 10:11 AM - Streamfaux: Yeah better be waiting. Also you should investigate this just in case. Putting a door with a targetname and a button targgeting it should be enough to test. And I meanfunc_door and func_button.
 // being revived breaks weapons with mp_weapon_droprules 1
 // teleport on exit logic (tricks and traps imp room)
+
+// NOTE: ep2 needs Normalized clip type or else you fall through level in tricks and traps near end-tele
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -350,7 +350,7 @@ void MapInit()
 	PrecacheSound("doom/dsfirxpl.wav");
 	PrecacheSound("doom/dsrlaunc.wav");
 	PrecacheSound("doom/dsbarexp.wav");
-	PrecacheSound("doom/supershot.flac");
+	PrecacheSound("doom/supershot.wav");
 	PrecacheSound("doom/dspunch.wav");
 	PrecacheSound("doom/dssawup.wav");
 	PrecacheSound("doom/dssawidl.wav");
@@ -369,7 +369,7 @@ void MapInit()
 	PrecacheSound("doom/dspldeth.wav"); // player death
 	PrecacheSound("doom/dsitmbk.wav"); // item respawn
 	PrecacheSound("doom/dsitemup.wav"); // item collect
-	PrecacheSound("doom/dssecret.flac"); // secret revealed
+	PrecacheSound("doom/dssecret.wav"); // secret revealed
 	
 	for (uint i = 0; i < g_map_music.length(); i++)
 		g_map_music[i] = PrecacheSound(g_map_music[i]);
@@ -566,7 +566,7 @@ void player_killed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useTy
 
 void secret_revealed(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
 {
-	g_SoundSystem.PlaySound(pActivator.edict(), CHAN_STATIC, fixPath("doom/dssecret.flac"), 1.0f, ATTN_NONE, 0, 100);
+	g_SoundSystem.PlaySound(pActivator.edict(), CHAN_STATIC, fixPath("doom/dssecret.wav"), 1.0f, ATTN_NONE, 0, 100);
 	g_PlayerFuncs.PrintKeyBindingStringAll("A SECRET IS REVEALED!\n");
 	g_secrets += 1;
 }
@@ -827,10 +827,13 @@ void unlock_item(bool notify)
 		msg += "Plasma Gun";
 		ckeys["weapon_doom_plasmagun"] = "1";
 	} else if (g_unlocks == 8) {
-		msg += "Maximum ammo";
-		ckeys["ammo_doom_bulletbox"] = "3";
-		ckeys["ammo_doom_shellbox"] = "4";
-		ckeys["ammo_doom_cellbox"] = "6";
+		msg += "Extra ammo";
+		ckeys["ammo_doom_bulletbox"] = "1";
+		ckeys["ammo_doom_shellbox"] = "1";
+		ckeys["ammo_doom_cellbox"] = "1";
+		ckeys["ammo_doom_cells"] = "1";
+		ckeys["ammo_doom_rocketbox"] = "3";
+		ckeys["ammo_doom_rocket"] = "3";
 	} else if (g_unlocks == 9) {
 		msg += "BFG";
 		ckeys["weapon_doom_bfg"] = "1";
@@ -839,6 +842,7 @@ void unlock_item(bool notify)
 		ckeys["item_doom_megasphere"] = "1";
 	} 
 	
+	ckeys["origin"] = g_EntityFuncs.FindEntityByTargetname(null, "end").pev.origin.ToString();
 	ckeys["spawnflags"] = "8";
 	CBaseEntity@ equip = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
 	
@@ -862,7 +866,7 @@ void unlock_item(bool notify)
 	CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
 	count.pev.frags = g_unlocks;
 	
-	g_SoundSystem.PlaySound(null, CHAN_STATIC, fixPath("doom/dssecret.flac"), 1.0f, ATTN_NONE, 0, 100);
+	g_SoundSystem.PlaySound(null, CHAN_STATIC, fixPath("doom/dssecret.wav"), 1.0f, ATTN_NONE, 0, 100);
 	g_Scheduler.SetTimeout("printkeybind", 0.0f, msg);
 	g_Scheduler.SetTimeout("printkeybind", 1.0f, msg);
 }
@@ -1198,6 +1202,7 @@ void updateTimer()
 	} else {
 		clearTimer();
 		g_EntityFuncs.FireTargets("ep_wall", null, null, USE_ON);
+		g_wait_for_noobs = false;
 		return;
 	}
 }
