@@ -376,6 +376,13 @@ class item_prop : ScriptBaseEntity
 	}
 }
 
+void make_me_fall(EHandle h_ent)
+{
+	if (h_ent)
+	{
+		h_ent.GetEntity().pev.movetype = MOVETYPE_TOSS;
+	}
+}
 
 class item_doom : ScriptBaseItemEntity
 {	
@@ -399,6 +406,10 @@ class item_doom : ScriptBaseItemEntity
 	void ItemSpawn()
 	{
 		pickupSnd = fixPath(pickupSnd);
+		
+		// items spawn in the floor due to sven item code i guess
+		pev.movetype = MOVETYPE_FLY;
+		g_Scheduler.SetTimeout("make_me_fall", 1.0f, EHandle(self));
 		
 		// set the model we actually want
 		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );

@@ -134,7 +134,7 @@ class weapon_doom_supershot : weapon_doom
 	void Spawn()
 	{
 		hud_sprite = "sprites/doom/supershot.spr";
-		shootSound = "doom/supershot.flac";
+		shootSound = "doom/supershot.wav";
 		itemFrame = 119;
 		
 		array<FrameInfo> frameInfo = {
