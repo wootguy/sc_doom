@@ -115,8 +115,10 @@ class monster_doom : ScriptBaseMonsterEntity
 	float nextIdleSound = 0;
 	bool dormant = true;
 	bool superDormant = true; // not even loaded yet
+	bool spritesCreated = false; // client sprites for rendering
 	bool isCorpse = false;
 	bool isBeingRevived = false;
+	bool entsCreated = false;
 	uint brighten = 0; // if > 0 then draw full-bright. Decremented each frame
 	bool dashing = false;
 	Vector dashVel;
@@ -230,7 +232,8 @@ class monster_doom : ScriptBaseMonsterEntity
 	
 		superDormant = false;
 		pev.solid = SOLID_SLIDEBOX;
-		CreateRenderSprites();
+		if (!killPoints) // monster was spawned by something, create sprites now to avoid invisible monster bug
+			CreateRenderSprites();
 		pev.nextthink = g_Engine.time + g_stagger_think;
 
 		g_stagger_think += 0.01f;
@@ -273,6 +276,7 @@ class monster_doom : ScriptBaseMonsterEntity
 			renderHideEnts.insertLast(EHandle(hide));
 		}
 		
+		spritesCreated = true;
 		g_monster_idx++;
 	}
 	
@@ -967,6 +971,8 @@ class monster_doom : ScriptBaseMonsterEntity
 				{
 					@edt = @plr.pev.chain;
 					visibleToAnyone = true;
+					if (!spritesCreated)
+						CreateRenderSprites();
 					
 					int angleIdx = getSpriteAngle(pev.origin, forward, right, plr.pev.origin);
 						
