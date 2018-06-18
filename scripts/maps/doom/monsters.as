@@ -469,9 +469,10 @@ class monster_painelemental : monster_doom
 		g_EntityFuncs.DispatchSpawn(soul.edict());
 		
 		monster_lostsoul@ mon = cast<monster_lostsoul@>(CastToScriptClass(soul));
+		mon.killPoints = false;
 		mon.Setup();
 		mon.dormant = false;
-		mon.killPoints = false;
+		
 		
 		Vector soulDir = aimDir;
 		if (atEnemy) 

@@ -842,7 +842,7 @@ void unlock_item(bool notify)
 		ckeys["item_doom_megasphere"] = "1";
 	} 
 	
-	ckeys["origin"] = g_EntityFuncs.FindEntityByTargetname(null, "end").pev.origin.ToString();
+	ckeys["origin"] = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter").pev.origin.ToString();
 	ckeys["spawnflags"] = "8";
 	CBaseEntity@ equip = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
 	
@@ -1363,6 +1363,11 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 			string score = "Kills: " + killPercentage + "%  Items: " + itemPercentage + "%  Secrets: " + secretPercentage + "%";
 			g_PlayerFuncs.SayText(plr, score + "\n");
 			
+			return true;
+		}
+		else if (args[0] == ".version")
+		{
+			g_PlayerFuncs.SayText(plr, "Script version: v3 (June 17, 2018)\n");
 			return true;
 		}
 		else if (args[0] == ".ff")
