@@ -7,6 +7,7 @@
 
 bool isDoomMap = false;
 bool loaded_unlocks = false;
+int g_rewards = 0;
 int g_unlocks = 0;
 CScheduledFunction@ unlock_poll = null;
 
@@ -21,6 +22,7 @@ void PluginInit()
 
 void MapInit()
 {
+	bool oldDoomMap = isDoomMap;
 	string map = g_Engine.mapname;
 	isDoomMap = map.Find("doom2_") == 0;
 	if (isDoomMap)
@@ -31,9 +33,17 @@ void MapInit()
 		
 		if (map.Find("doom2_ep1") == 0) {
 			g_unlocks = 0; // don't keep unlocks if restarting the compaign
+			g_rewards = 0;
 		}
 	} else {
+		if (oldDoomMap)
+		{
+			println("Re-enabled footstep sounds");
+			g_EngineFuncs.ServerCommand(";mp_footsteps 1;\n");
+			g_EngineFuncs.ServerExecute();
+		}
 		g_unlocks = 0;
+		g_rewards = 0;
 	}
 }
 
@@ -44,7 +54,8 @@ void save_unlocks() {
 	}
 	CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
 	if (count !is null) {
-		g_unlocks = int(count.pev.frags);
+		g_rewards = int(count.pev.frags);
+		g_unlocks = int(count.pev.health);
 	}
 	
 	@unlock_poll = g_Scheduler.SetTimeout("save_unlocks", 1);
@@ -107,9 +118,11 @@ HookReturnCode ClientJoin( CBasePlayer@ plr )
 		loaded_unlocks = true;
 		CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
 		if (count !is null) {
-			count.pev.frags = g_unlocks;
-			println("doom_maps: loaded " + g_unlocks + " unlocks");
+			count.pev.frags = g_rewards;
+			count.pev.health = g_unlocks;
+			println("doom_maps: loaded " + g_unlocks + " unlocks and " + g_rewards + " rewards");
 			g_unlocks = 0;
+			g_rewards = 0;
 			g_Scheduler.SetTimeout("save_unlocks", 1);
 		}		
 	}
