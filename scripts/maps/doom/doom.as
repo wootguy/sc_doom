@@ -8,6 +8,7 @@
 #include "info_node_sound"
 
 // TODO:
+// delay moving platforms
 
 // TODO (bugs I'm ignoring cuz 2 lazy):
 // oriented fireballs aren't always visible (seems related to amount of active monsters)
@@ -36,6 +37,7 @@
 // teleport on exit logic (tricks and traps imp room)
 
 // NOTE: ep2 needs Normalized clip type or else you fall through level in tricks and traps near end-tele
+// NOTE: Compile options = clip economy + cliptype normalized + 45 min light
 
 float g_level_time = 0;
 int g_secrets = 0;
@@ -48,7 +50,17 @@ int g_keys = 0;
 int g_map_num = 1;
 bool g_strict_keys = false; // if false, only color of key matters when opening door
 
+const int UNLOCK_CHAINSAW = 1;
+const int UNLOCK_SHOTGUN = 2;
+const int UNLOCK_SUPER_SHOTGUN = 4;
+const int UNLOCK_CHAINGUN = 8;
+const int UNLOCK_RPG = 16;
+const int UNLOCK_PLASMA = 32;
+const int UNLOCK_BFG = 64;
+const int UNLOCK_PERFECT_REWARD = 128;
+
 bool loadedUnlocks = false;
+int g_rewards = 0;
 int g_unlocks = 0;
 
 bool g_wait_for_noobs = true;
@@ -592,7 +604,10 @@ void let_me_play(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType
 	plr.SetHasSuit(true);
 	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, true);
 	
-	for (int i = 1; i <= g_unlocks; i++) {
+	for (int i = 1; i <= g_rewards; i++) {
+		g_EntityFuncs.FireTargets("use_reward" + i, plr, plr, USE_TOGGLE);
+	}
+	for (int i = 1; i <= g_unlocks; i <<= 1) {
 		g_EntityFuncs.FireTargets("use_unlock" + i, plr, plr, USE_TOGGLE);
 	}
 	
@@ -798,56 +813,129 @@ void loner_check()
 	}
 }
 
-void unlock_item(bool notify)
+void unlock_weapon(bool notify)
 {
-	g_unlocks++;
+	
+}
+
+void unlock_item(bool notify, int type)
+{
+	if (g_rewards >= 10 or type == 0)
+		return;
+	
+	bool isReward = type == UNLOCK_PERFECT_REWARD;
+	if (isReward)
+		g_rewards++;
+	else
+	{
+		if (g_unlocks & type != 0)
+			return;
+		g_unlocks |= type;
+	}
 	
 	dictionary ckeys;
-	string msg = "PERFECT SCORE\n\nReward: ";
-	if (g_unlocks == 1) {
-		msg += "Chainsaw";
-		ckeys["weapon_doom_chainsaw"] = "1";
-	} else if (g_unlocks == 2) {
-		msg += "Shotgun";
-		ckeys["weapon_doom_shotgun"] = "1";
-	} else if (g_unlocks == 3) {
-		msg += "Chaingun";
-		ckeys["weapon_doom_chaingun"] = "1";
-	} else if (g_unlocks == 4) {
-		msg += "Extra Ammo";
-		ckeys["ammo_doom_shellbox"] = "1";
-		ckeys["ammo_doom_bulletbox"] = "1";
-	} else if (g_unlocks == 5) {
-		msg += "Super Shotgun";
-		ckeys["weapon_doom_supershot"] = "1";
-	} else if (g_unlocks == 6) {
-		msg += "Rocket Launcher";
-		ckeys["weapon_doom_rpg"] = "1";
-	}  else if (g_unlocks == 7) {
-		msg += "Plasma Gun";
-		ckeys["weapon_doom_plasmagun"] = "1";
-	} else if (g_unlocks == 8) {
-		msg += "Extra ammo";
-		ckeys["ammo_doom_bulletbox"] = "1";
-		ckeys["ammo_doom_shellbox"] = "1";
-		ckeys["ammo_doom_cellbox"] = "1";
-		ckeys["ammo_doom_cells"] = "1";
-		ckeys["ammo_doom_rocketbox"] = "3";
-		ckeys["ammo_doom_rocket"] = "3";
-	} else if (g_unlocks == 9) {
-		msg += "BFG";
-		ckeys["weapon_doom_bfg"] = "1";
-	} else if (g_unlocks == 10) {
-		msg += "Mega Sphere";
-		ckeys["item_doom_megasphere"] = "1";
-	} 
+	string msg = isReward ? "PERFECT SCORE\nReward: " : "WEAPON DISCOVERED\n";
+	
+	if (isReward)
+	{
+		switch(g_rewards)
+		{
+			case 1:
+				msg += "Extra Ammo";
+				ckeys["ammo_doom_shells"] = "2";
+				ckeys["ammo_doom_bullets"] = "5";
+				break;
+			case 2:
+				msg += "Extra ammo";
+				ckeys["ammo_doom_bulletbox"] = "1";
+				ckeys["ammo_doom_shellbox"] = "1";
+				ckeys["ammo_doom_rocket"] = "1";
+				break;
+			case 3:
+				msg += "Armor";
+				ckeys["item_doom_armor"] = "1";
+				break;
+			case 4:
+				msg += "Extra ammo";
+				ckeys["ammo_doom_bulletbox"] = "1";
+				ckeys["ammo_doom_shellbox"] = "1";
+				ckeys["ammo_doom_rocket"] = "2";
+				break;
+			case 5:
+				msg += "Extra ammo";
+				ckeys["ammo_doom_shellbox"] = "1";
+				ckeys["ammo_doom_cells"] = "3";
+				ckeys["ammo_doom_rocketbox"] = "1";
+				break;
+			case 6:
+				msg += "Mega Armor";
+				ckeys["item_doom_megaarmor"] = "1";
+				break;
+			case 7:
+				msg += "Extra ammo";
+				ckeys["ammo_doom_cellbox"] = "1";
+				ckeys["ammo_doom_rocketbox"] = "2";
+				break;
+			case 8:
+				msg += "Extra ammo";
+				ckeys["ammo_doom_cellbox"] = "1";
+				ckeys["ammo_doom_rocketbox"] = "4";
+				break;
+			case 9:
+				msg += "Full ammo";
+				ckeys["ammo_doom_cellbox"] = "3";
+				ckeys["ammo_doom_rocketbox"] = "12";
+				break;
+			case 10:
+				msg += "Soul Sphere";
+				ckeys["item_doom_soulsphere"] = "1";
+				break;
+		}
+	}
+	else
+	{
+		switch(type)
+		{
+			case UNLOCK_CHAINSAW:
+				msg += "Chainsaw";
+				ckeys["weapon_doom_chainsaw"] = "1";
+				break;
+			case UNLOCK_SHOTGUN:
+				msg += "Shotgun";
+				ckeys["weapon_doom_shotgun"] = "1";
+				break;
+			case UNLOCK_CHAINGUN:
+				msg += "Chaingun";
+				ckeys["weapon_doom_chaingun"] = "1";
+				break;
+			case UNLOCK_SUPER_SHOTGUN:
+				msg += "Super Shotgun";
+				ckeys["weapon_doom_supershot"] = "1";
+				break;
+			case UNLOCK_RPG:
+				msg += "Rocket Launcher";
+				ckeys["weapon_doom_rpg"] = "1";
+				break;
+			case UNLOCK_PLASMA:
+				msg += "Plasma Gun";
+				ckeys["weapon_doom_plasmagun"] = "1";
+				break;
+			case UNLOCK_BFG:
+				msg += "BFG";
+				ckeys["weapon_doom_bfg"] = "1";
+				break;
+		}
+	}
 	
 	ckeys["origin"] = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter").pev.origin.ToString();
 	ckeys["spawnflags"] = "8";
 	CBaseEntity@ equip = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
 	
 	ckeys["spawnflags"] = "1";
-	ckeys["targetname"] = "use_unlock" + g_unlocks;
+	if (isReward)
+		ckeys["targetname"] = "use_reward" + g_rewards;
+	else
+		ckeys["targetname"] = "use_unlock" + type;
 	CBaseEntity@ equipuse = g_EntityFuncs.CreateEntity("game_player_equip", ckeys, true);
 	
 	if (!notify) {
@@ -864,15 +952,19 @@ void unlock_item(bool notify)
 	} while(ent !is null);
 	
 	CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
-	count.pev.frags = g_unlocks;
+	count.pev.frags = g_rewards;
+	count.pev.health = g_unlocks;
 	
 	g_SoundSystem.PlaySound(null, CHAN_STATIC, fixPath("doom/dssecret.wav"), 1.0f, ATTN_NONE, 0, 100);
 	g_Scheduler.SetTimeout("printkeybind", 0.0f, msg);
 	g_Scheduler.SetTimeout("printkeybind", 1.0f, msg);
+	
+	if (g_rewards >= 10)
+		g_Scheduler.SetTimeout("printkeybind", 5.0f, "All rewards have been given!");
 }
 
 void tally_time(string item, int time, int targetTime, bool playSound)
-{
+{	
 	if (time > targetTime)
 		time = targetTime;
 		
@@ -947,7 +1039,7 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 			bool perfectScore = g_item_gets == g_total_items and g_secrets == g_total_secrets and g_kills == g_total_monsters;
 			
 			if (perfectScore) {
-				g_Scheduler.SetTimeout("unlock_item", 1.0f, true);
+				g_Scheduler.SetTimeout("unlock_item", 1.0f, true, UNLOCK_PERFECT_REWARD);
 			}
 			g_Scheduler.SetTimeout("next_level", perfectScore ? 6.0 : 4.0);
 		}
@@ -1110,9 +1202,15 @@ void initSettings(EHandle h_plr)
 		
 		CBaseEntity@ count = g_EntityFuncs.FindEntityByTargetname(null, "unlock_counter");
 		if (count !is null) {
-			println("Loaded " + count.pev.frags + " unlocks");
+			//count.pev.frags = 9;
+			//count.pev.health = 0xffff;			
+			println("Loaded " + count.pev.frags + " rewards");
+			println("Loaded " + count.pev.health + " weapon unlocks");
 			for (int i = 0; i < int(count.pev.frags); i++) {
-				unlock_item(false);
+				unlock_item(false, UNLOCK_PERFECT_REWARD);
+			}
+			for (int i = 1; i <= int(count.pev.health) and i < UNLOCK_PERFECT_REWARD; i <<= 1) {
+				unlock_item(false, i);
 			}
 		}
 	}
@@ -1367,7 +1465,7 @@ bool doDoomCommand(CBasePlayer@ plr, const CCommand@ args)
 		}
 		else if (args[0] == ".version")
 		{
-			g_PlayerFuncs.SayText(plr, "Script version: v3 (June 17, 2018)\n");
+			g_PlayerFuncs.SayText(plr, "Script version: v4 (September 12, 2018)\n");
 			return true;
 		}
 		else if (args[0] == ".ff")

@@ -40,7 +40,7 @@ class weapon_doom_pistol : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 1;
 		info.iPosition 	= 10;
-		info.iFlags 	= 6;
+		info.iFlags 	= 2;
 		info.iWeight 	= 3;
 		
 		return true;
@@ -65,6 +65,7 @@ class weapon_doom_shotgun : weapon_doom
 		hud_sprite = "sprites/doom/shotgun.spr";
 		shootSound = "doom/dsshotgn.wav";
 		itemFrame = 121;
+		unlockType = UNLOCK_SHOTGUN;
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(79, 60, 0),
@@ -94,7 +95,7 @@ class weapon_doom_shotgun : weapon_doom
 		cooldown = 1.0f;
 		frameRate = 0.12;
 		
-		self.m_iDefaultAmmo = 8;
+		self.m_iDefaultAmmo = 12;
 		
 		DoomSpawn();
 		
@@ -109,7 +110,7 @@ class weapon_doom_shotgun : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 2;
 		info.iPosition 	= 10;
-		info.iFlags 	= 6;
+		info.iFlags 	= 2;
 		info.iWeight 	= 4;
 		
 		return true;
@@ -136,6 +137,7 @@ class weapon_doom_supershot : weapon_doom
 		hud_sprite = "sprites/doom/supershot.spr";
 		shootSound = "doom/supershot.wav";
 		itemFrame = 119;
+		unlockType = UNLOCK_SUPER_SHOTGUN;
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(59, 55, 0),
@@ -186,7 +188,7 @@ class weapon_doom_supershot : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 2;
 		info.iPosition 	= 11;
-		info.iFlags 	= 6;
+		info.iFlags 	= 2;
 		info.iWeight 	= 6;
 		
 		return true;
@@ -213,7 +215,8 @@ class weapon_doom_rpg : weapon_doom
 		hud_sprite = "sprites/doom/rpg.spr";
 		shootSound = "doom/dsshotgn.wav";
 		itemFrame = 80;
-
+		unlockType = UNLOCK_RPG;
+		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(87, 47, 0),
 			FrameInfo(87, 63, 0),
@@ -255,7 +258,7 @@ class weapon_doom_rpg : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 4;
 		info.iPosition 	= 10;
-		info.iFlags 	= 6;
+		info.iFlags 	= 2;
 		info.iWeight 	= 7;
 		
 		return true;
@@ -347,7 +350,7 @@ class weapon_doom_fist : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 0;
 		info.iPosition 	= 10;
-		info.iFlags 	= 6;
+		info.iFlags 	= 7;
 		info.iWeight 	= 1;
 		
 		return true;
@@ -379,6 +382,7 @@ class weapon_doom_chainsaw : weapon_doom
 		shootSound = "doom/dssawhit.wav";
 		deploySound = "doom/dssawup.wav";
 		itemFrame = 46;
+		unlockType = UNLOCK_CHAINSAW;
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(153, 89, 0),
@@ -420,7 +424,7 @@ class weapon_doom_chainsaw : weapon_doom
 		info.iMaxClip 	= 200;
 		info.iSlot 		= 0;
 		info.iPosition 	= 11;
-		info.iFlags 	= 6;
+		info.iFlags 	= 7;
 		info.iWeight 	= 2;
 		
 		return true;
@@ -465,6 +469,7 @@ class weapon_doom_chaingun : weapon_doom
 	{
 		hud_sprite = "sprites/doom/chaingun.spr";
 		itemFrame = 86;
+		unlockType = UNLOCK_CHAINGUN;
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(114, 51, 0),
@@ -488,7 +493,7 @@ class weapon_doom_chaingun : weapon_doom
 		frameRate = 0.12;
 		cooldown = 0.22f;
 		
-		self.m_iDefaultAmmo = 50;
+		self.m_iDefaultAmmo = 25;
 		
 		DoomSpawn();
 		
@@ -503,7 +508,7 @@ class weapon_doom_chaingun : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 3;
 		info.iPosition 	= 10;
-		info.iFlags 	= 6;
+		info.iFlags 	= 2;
 		info.iWeight 	= 5;
 		
 		return true;
@@ -528,6 +533,7 @@ class weapon_doom_plasmagun : weapon_doom
 		hud_sprite = "sprites/doom/plasmagun.spr";
 		shootSound = "doom/dsplasma.wav";
 		itemFrame = 95;
+		unlockType = UNLOCK_PLASMA;
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(83, 61, 0),
@@ -569,8 +575,8 @@ class weapon_doom_plasmagun : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 5;
 		info.iPosition 	= 11;
-		info.iFlags 	= 6;
-		info.iWeight 	= 8;
+		info.iFlags 	= 2;
+		info.iWeight 	= 9;
 		
 		return true;
 	}
@@ -622,6 +628,7 @@ class weapon_doom_bfg : weapon_doom
 		shootSound = "doom/dsbfg.wav";
 		numFrames = 4;
 		itemFrame = 14;
+		unlockType = UNLOCK_BFG;
 		
 		array<FrameInfo> frameInfo = {
 			FrameInfo(170, 52, 0),
@@ -647,7 +654,7 @@ class weapon_doom_bfg : weapon_doom
 		cooldown = 1.1f;
 		frameRate = 0.2f;
 		ammoPerShot = 40;
-		self.m_iDefaultAmmo = 40;
+		self.m_iDefaultAmmo = 0;
 		
 		DoomSpawn();
 		
@@ -662,8 +669,8 @@ class weapon_doom_bfg : weapon_doom
 		info.iMaxClip 	= -1;
 		info.iSlot 		= 5;
 		info.iPosition 	= 12;
-		info.iFlags 	= 6;
-		info.iWeight 	= 9;
+		info.iFlags 	= 2;
+		info.iWeight 	= 8;
 		
 		return true;
 	}

@@ -320,7 +320,14 @@ class monster_doom : ScriptBaseMonsterEntity
 		if (dmgImmunity & bitsDamageType != 0)
 			return 0;
 		
+		if (pevAttacker.classname == "player")
+		{
+			float points = Math.min(flDamage, pev.health)*0.05f;
+			pevAttacker.frags += points;
+		}
+		
 		pev.health -= flDamage;
+		
 		if (pev.health <= 0)
 		{
 			if (self.m_iTriggerCondition == 4)

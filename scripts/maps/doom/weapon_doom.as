@@ -76,6 +76,7 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	float spread = 5.5f;
 	float cooldown = 0.4;
 	int ammoPerShot = 1;
+	int unlockType = 0;
 	
 	bool shouldRespawn = false;
 	
@@ -88,6 +89,8 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	float nextReloadAnim = 0;
 	
 	float nextViewToggle = 0;
+	
+	EHandle renderEnt;
 	
 	void Precache()
 	{
@@ -109,12 +112,48 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	{
 		ChooseScale(1);
 		Precache();
-		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
+		//g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
+		g_EntityFuncs.SetModel( self, fixPath("models/doom/null.mdl") );
 		self.m_iClip = -1;
 		self.pev.frame = itemFrame;
 		self.FallInit();
 		
+		pev.gravity = 4;
+		
+		// spawning now would cause wrong sprite to be used for some reason
+		g_Scheduler.SetTimeout("delay_render_wep", 0, EHandle(self));
+		
 		shouldRespawn = true;
+	}
+	
+	void SpawnRenderEnt()
+	{
+		if (renderEnt)
+			return;
+		dictionary ckeys;
+		ckeys["origin"] = pev.origin.ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
+		ckeys["model"] = fixPath("sprites/doom/objects.spr");
+		ckeys["spawnflags"] = "1";
+		ckeys["rendermode"] = "2";
+		ckeys["renderamt"] = "255";
+		ckeys["rendercolor"] = "255 255 255";
+		ckeys["scale"] = string(g_monster_scale);
+		CBaseEntity@ sprite = g_EntityFuncs.CreateEntity("env_sprite", ckeys, true);
+		g_EntityFuncs.SetSize(sprite.pev, Vector(0,0,0), Vector(0,0,0)); 
+		sprite.pev.solid = SOLID_NOT;
+		sprite.pev.frame = itemFrame;
+		renderEnt = sprite;
+		
+		sprite.pev.movetype = MOVETYPE_TOSS;
+		sprite.pev.velocity = pev.velocity;
+		sprite.pev.friction = pev.friction;
+		sprite.pev.gravity = pev.gravity;
+		
+		g_Scheduler.SetTimeout("delay_follow", 0.0, EHandle(sprite), EHandle(self));
+		
+		int light_level = self.Illumination();
+		//println("ILLUM " + light_level);
+		sprite.pev.rendercolor = Vector(light_level, light_level, light_level);
 	}
 	
 	CBasePlayer@ getPlayer()
@@ -352,6 +391,10 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 				int ammoLeft = pPlayer.m_rgAmmo(ammoType);
 				pPlayer.m_rgAmmo(ammoType, ammoLeft + self.m_iDefaultAmmo);
 			}
+			
+			g_EntityFuncs.Remove(renderEnt);
+			unlock_item(true, unlockType);
+			
 			return true;
 		}
 		return false;
@@ -464,6 +507,9 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	
 	void WeaponThink()
 	{
+		if (pev.movetype != MOVETYPE_FOLLOW)
+			SpawnRenderEnt();
+				
 		if (!active)
 			return;
 	
@@ -539,6 +585,46 @@ class weapon_doom : ScriptBasePlayerWeaponEntity
 	}
 }
 
+void delay_render_ammo(EHandle h_ent)
+{
+	if (!h_ent.IsValid())
+		return;
+		
+	ammo_doom@ ent = cast<ammo_doom@>(CastToScriptClass(h_ent.GetEntity()));		
+	ent.SpawnRenderEnt();
+}
+
+void delay_render_wep(EHandle h_ent)
+{
+	if (!h_ent.IsValid())
+		return;
+		
+	weapon_doom@ ent = cast<weapon_doom@>(CastToScriptClass(h_ent.GetEntity()));		
+	ent.SpawnRenderEnt();
+}
+
+void delay_follow(EHandle h_ent, EHandle h_follow)
+{
+	if (!h_ent.IsValid())
+		return;
+	if (!h_follow.IsValid() or h_follow.GetEntity().pev.effects & EF_NODRAW != 0)
+	{
+		g_EntityFuncs.Remove(h_ent);
+		return;
+	}
+	
+	CBaseEntity@ ent = h_ent;
+	CBaseEntity@ follow = h_follow;
+
+	if ( ((ent.pev.origin - follow.pev.origin)).Length() > 8)
+	{
+		ent.pev.origin = follow.pev.origin;
+		ent.pev.velocity = follow.pev.velocity;
+	}
+	
+	g_Scheduler.SetTimeout("delay_follow", follow.pev.velocity.Length() > 0 ? 0.05f : 0.5f, h_ent, h_follow);
+}
+
 class ammo_doom : ScriptBasePlayerAmmoEntity
 {	
 	int itemFrame;
@@ -546,14 +632,15 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 	string ammoType;
 	int maxAmmo;
 	string giveWeapon; // give this weapon if player doesn't have it already
+	EHandle renderEnt;
 	
 	void AmmoSpawn()
 	{
 		g_EntityFuncs.SetModel( self, fixPath("models/doom/null.mdl") ); // game crashes if this is a sprite
 		BaseClass.Spawn();
-		
+
 		// set the model we actually want
-		g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
+		//g_EntityFuncs.SetModel( self, fixPath("sprites/doom/objects.spr") );
 		pev.frame = itemFrame;
 		pev.scale = g_monster_scale;
 		pev.gravity = 4;
@@ -563,6 +650,40 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 		pev.rendercolor = Vector(light_level, light_level, light_level);
 		
 		g_EntityFuncs.SetSize(self.pev, Vector(-8, -8, -4), Vector(8, 8, 8));
+		
+		// spawning now would cause wrong sprite to be used for some reason
+		g_Scheduler.SetTimeout("delay_render_ammo", 0.0, EHandle(self));
+	}
+	
+	void SpawnRenderEnt()
+	{
+		if (renderEnt)
+			return;
+			
+		dictionary ckeys;
+		ckeys["origin"] = pev.origin.ToString(); // sprite won't spawn if origin is in a bad place (outside world?)
+		ckeys["model"] = fixPath("sprites/doom/objects.spr");
+		ckeys["spawnflags"] = "1";
+		ckeys["rendermode"] = "2";
+		ckeys["renderamt"] = "255";
+		ckeys["rendercolor"] = "255 255 255";
+		ckeys["scale"] = string(g_monster_scale);
+		CBaseEntity@ sprite = g_EntityFuncs.CreateEntity("item_generic", ckeys, true);
+		g_EntityFuncs.SetSize(sprite.pev, Vector(0,0,0), Vector(0,0,0));
+		sprite.pev.solid = SOLID_NOT;
+		sprite.pev.frame = itemFrame;
+		renderEnt = sprite;
+		
+		sprite.pev.movetype = MOVETYPE_TOSS;
+		sprite.pev.velocity = pev.velocity;
+		sprite.pev.friction = pev.friction;
+		sprite.pev.gravity = pev.gravity;
+		
+		g_Scheduler.SetTimeout("delay_follow", 0.0, EHandle(sprite), EHandle(self));
+		
+		int light_level = self.Illumination();
+		//println("ILLUM " + light_level);
+		sprite.pev.rendercolor = Vector(light_level, light_level, light_level);
 	}
 	
 	void Precache()
@@ -604,6 +725,7 @@ class ammo_doom : ScriptBasePlayerAmmoEntity
 				string pickupSound = giveWeapon.Length() > 0 ? "doom/dswpnup.wav" : "doom/dsitemup.wav";
 				g_SoundSystem.PlaySound(plr.edict(), CHAN_WEAPON, fixPath(pickupSound), 1.0f, 0.5f, 0, 100);
 			}
+			g_EntityFuncs.Remove(renderEnt);
 			g_EntityFuncs.Remove(self);
 			return true;
 		}
