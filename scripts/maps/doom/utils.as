@@ -402,13 +402,15 @@ void HitScan(CBaseEntity@ attacker, Vector vecSrc, Vector dir, float spread, flo
 				// set both classes in case this a pvp map where classes are always changing
 				int oldClass1 = attacker.GetClassification(0);
 				int oldClass2 = pHit.GetClassification(0);
-				attacker.SetClassification(CLASS_PLAYER);
-				pHit.SetClassification(CLASS_ALIEN_MILITARY);
+				
+				// SetClassification crashes in SC 5.22
+				attacker.KeyValue("classify", CLASS_PLAYER);
+				pHit.KeyValue("classify", CLASS_ALIEN_MILITARY);
 				
 				g_WeaponFuncs.ApplyMultiDamage(attacker.pev, attacker.pev);
 				
-				attacker.SetClassification(oldClass1);
-				pHit.SetClassification(oldClass2);
+				attacker.KeyValue("classify", oldClass1);
+				pHit.KeyValue("classify", oldClass2);
 				
 				pHit.pev.velocity = oldVel; // prevent high damage from launching unless we ask for it (unless DMG_LAUNCH)
 
