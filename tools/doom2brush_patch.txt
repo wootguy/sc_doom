@@ -1,0 +1,27 @@
+doom2brush.patch created for revision 546 of this repo:
+
+svn://svn.code.sf.net/p/glbsp/code/trunk
+
+The patch adds doors/buttons/liquids to the converted map, though it often breaks and puts things in the wrong starting positions or the wrong heights, iirc.
+
+
+Summary of the commit that the patch is applied on:
+
+Revision: 546
+Author: ajapted
+Date: Saturday, November 17, 2012 1:48:00 AM
+Message:
+CHANGES.txt : section for v2.27
+
+
+Last edit times for the files in the patch:
+
+01/08/2018  07:28 PM asserts.h
+02/17/2018  04:55 PM brush.cc
+01/08/2018  10:27 PM brush.h
+01/28/2018  04:43 PM defs.h
+02/02/2018  02:34 PM level.cc
+02/18/2018  07:28 PM main.cc
+01/08/2018  07:21 PM Makefile.xming
+02/02/2018  02:48 PM texture.cc
+01/08/2018  07:24 PM util.cc
