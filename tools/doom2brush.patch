@@ -1,0 +1,2109 @@
+Index: doom2brush/asserts.h
+===================================================================
+--- doom2brush/asserts.h	(revision 546)
++++ doom2brush/asserts.h	(working copy)
+@@ -27,7 +27,7 @@
+ 
+ #elif 1  // FIXME: proper test for __func__
+ #define SYS_ASSERT(cond)  ((cond) ? (void)0 :  \
+-  AssertFail("Assertion (%s) failed\nIn function %s (%s:%d)\n", #cond , __func__, __FILE__, __LINE__))
++  AssertFail("Assertion (%s) failed\nIn function %s (%s:%d)\n", #cond , __FUNCTION__, __FILE__, __LINE__))
+ 
+ #else
+ #define SYS_ASSERT(cond)  ((cond) ? (void)0 :  \
+Index: doom2brush/brush.cc
+===================================================================
+--- doom2brush/brush.cc	(revision 546)
++++ doom2brush/brush.cc	(working copy)
+@@ -19,10 +19,8 @@
+ // this includes everything we need
+ #include "defs.h"
+ 
+-
+ #define DUMMY_TEX  "e7/e7panelwood2"
+ 
+-
+ class brush_side_c
+ {
+ public:
+@@ -34,8 +32,1043 @@
+   ~brush_side_c() { }
+ };
+ 
+-static void GetBrushSides(subsec_c *sub, std::vector<brush_side_c>& sides)
++double GetInteriorAngle(vertex_c *V, linedef_c *L, bool isButton=false);
++void GetBrushSides(subsec_c *sub, std::vector<brush_side_c>& sides);
++void WriteSlopedFloor(sector_c *S, const char *tex);
++void WriteSlopedCeiling(sector_c *S, const char *tex);
++const char *DetermineSideTex(subsec_c *sub, brush_side_c& b, int is_ceil);
++
++enum door_locks
+ {
++	LOCK_BLUE = 1,
++	LOCK_YELLOW = 2,
++	LOCK_RED = 4,
++	LOCK_BLUE_SKULL = 8,
++	LOCK_YELLOW_SKULL = 16,
++	LOCK_RED_SKULL = 32,
++};
++
++enum trigger_mode
++{
++	TRIG_PUSH,
++	TRIG_SWITCH,
++	TRIG_TOUCH
++};
++
++struct Door
++{
++	int tag;
++	int sector; // used if tag is 0
++	int wait; // seconds before closing
++	int moveDist;
++	bool downNotUp; // door goes down, not up
++	int moveSpeed;
++	bool startOpen;
++	bool onceOnly; // can't be be retriggered
++	bool monsters; // can monsters open this?
++	bool crusher; // smush monsties in the way and constantly open/close
++	bool bounce; // bounce back when hitting object
++	bool touch; // touch opens
++	bool alwaysUsable; // +use opens even if it has a targetname
++	int change; // texture changes after opening, or something
++	int changeModel;
++	bool silent;
++	bool looped; // door constantly opens/closes until triggered
++	bool isFloor;
++	int sounds;
++	int neighborMode;
++	int lock;
++	int linedef;
++	std::string targetname; // for switched doors
++};
++
++enum neighbor_mode
++{
++	LOWEST_FLOOR,
++	LOWEST_CEILING,
++	HIGHEST_FLOOR,
++	HIGHEST_CEILING,
++};
++
++std::vector<Door> g_doors;
++int g_door_id = 1;
++
++bool GetDoor(int tag, int sector, Door& doorOut)
++{
++	for (int i = 0; i < g_doors.size(); i++)
++	{
++		if ((tag != 0 && g_doors[i].tag == tag) || (g_doors[i].sector != -1 && g_doors[i].sector == sector))
++		{
++			doorOut = g_doors[i];
++			return true;
++		}
++	}
++	return false;
++}
++
++void FindDoors(void)
++{
++	const int slower_speed = 1*35;
++	const int slow_speed = 2*35;
++	const int normal_speed = 4*35;
++	const int fast_speed = 8*35;
++	const int turbo_speed = 10*35;
++
++	for (int i = 0; i < lev_linedefs.num; i++)
++	{
++		bool isExitButton = false;
++		bool isFence = false;
++		bool isTeleport = false;
++		bool telePlayers = true;
++		bool isLight = false;
++		bool isScroll = false;
++		bool stairBuilder = false;
++		int triggerMode = TRIG_PUSH;
++		linedef_c *L = lev_linedefs.Get(i);
++
++		if (L->zero_len)
++		  continue;
++		
++		isFence = (L->flags & 0x01) && (L->flags & 0x04) && L->two_sided;
++
++		Door door;
++		memset(&door, 0, sizeof(door));
++		door.neighborMode = LOWEST_CEILING;
++		bool isDoor = true;
++		door.sounds = 0;
++		switch(L->type)
++		{
++		case 3:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 4:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.monsters = true;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 8: // step size 8
++			door.wait = -1;
++			door.isFloor = true;
++			door.sounds = 3;
++			door.moveSpeed = slower_speed;
++			stairBuilder = true;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 100: // step size 16
++			door.wait = -1;
++			door.isFloor = true;
++			door.sounds = 3;
++			door.moveSpeed = slow_speed;
++			stairBuilder = true;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 15:
++			door.wait = -1;
++			door.isFloor = true;
++			door.moveSpeed = slow_speed;
++			door.sounds = 3;
++			door.neighborMode = HIGHEST_FLOOR; // ACTUALLY RAISE 24 units
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 18:
++			door.wait = -1;
++			door.isFloor = true;
++			door.moveSpeed = slow_speed;
++			door.sounds = 3;
++			door.neighborMode = LOWEST_FLOOR; // ACTUALLY NEXT NEIGHBOR FLOOR
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 19:
++			door.wait = -1;
++			door.isFloor = true;
++			door.downNotUp = true;
++			door.moveSpeed = slower_speed;
++			door.sounds = 3;
++			door.neighborMode = HIGHEST_FLOOR;
++			door.touch = true;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 20:
++			door.wait = -1;
++			door.moveSpeed = slower_speed;
++			door.neighborMode = HIGHEST_FLOOR; // ACTUALLY RAISE_NEXT_FLOOR WTV THAT MEANS
++			door.isFloor = true;
++			door.sounds = 3;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 22:
++			door.wait = -1;
++			door.moveSpeed = slower_speed;
++			door.neighborMode = HIGHEST_FLOOR; // ACTUALLY RAISE_NEXT_FLOOR WTV THAT MEANS
++			door.isFloor = true;
++			door.sounds = 3;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 23:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			door.neighborMode = LOWEST_FLOOR;
++			door.isFloor = true;
++			door.sounds = 3;
++			door.downNotUp = true;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 26:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.lock = LOCK_BLUE;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 27:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.lock = LOCK_YELLOW;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 28:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.lock = LOCK_RED;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 31:
++			door.moveSpeed = slow_speed;
++			door.wait = -1;
++			break;
++		case 32:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			door.lock = LOCK_BLUE;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 33:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			door.lock = LOCK_RED;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 34:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			door.lock = LOCK_YELLOW;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 37:
++			door.moveSpeed = slow_speed;
++			door.wait = 0;
++			door.sounds = 3;
++			door.isFloor = true;
++			door.downNotUp = true;
++			door.neighborMode = LOWEST_FLOOR;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 38:
++			door.moveSpeed = slow_speed;
++			door.wait = 0;
++			door.sounds = 2;
++			door.isFloor = true;
++			door.downNotUp = true;
++			door.neighborMode = LOWEST_FLOOR;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 46:
++			door.moveSpeed = slow_speed;
++			door.wait = -1;
++			door.sounds = 0;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 49:
++			door.moveSpeed = slower_speed;
++			door.wait = 0;
++			door.sounds = 4; // silent move, floor close sound
++			door.crusher = true;
++			triggerMode = TRIG_SWITCH;
++			//triggerMode = TRIG_TOUCH;
++			break;
++		case 61:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 62:
++			door.downNotUp = true;
++			door.wait = 3;
++			door.moveSpeed = normal_speed;
++			door.neighborMode = LOWEST_FLOOR;
++			door.isFloor = true;
++			door.sounds = 2;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 63:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.sounds = 0;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 71:
++			door.moveSpeed = fast_speed;
++			door.wait = -1;
++			door.sounds = 2;
++			door.isFloor = true;
++			door.downNotUp = true;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 74:
++			door.moveSpeed = fast_speed;
++			door.wait = 0;
++			door.sounds = 3;
++			door.crusher = true;
++			door.neighborMode = HIGHEST_FLOOR; // also +8
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 86:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 88:
++			door.wait = 3;
++			door.moveSpeed = fast_speed;
++			door.sounds = 2;
++			door.isFloor = true;
++			door.downNotUp = true;
++			door.alwaysUsable = true;
++			door.neighborMode = LOWEST_FLOOR;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 90:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.sounds = 0;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 99:
++			door.wait = -1;
++			door.moveSpeed = fast_speed;
++			door.sounds = 1;
++			door.lock = LOCK_BLUE;
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 102:
++			door.downNotUp = true;
++			door.moveSpeed = slower_speed;
++			door.neighborMode = HIGHEST_FLOOR;
++			door.isFloor = true;
++			door.wait = -1;
++			door.sounds = 3;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 103:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 105:
++			door.wait = 4;
++			door.moveSpeed = fast_speed;
++			triggerMode = TRIG_TOUCH;
++			door.sounds = 1;
++			break;
++		case 106:
++			door.wait = -1;
++			door.moveSpeed = fast_speed;
++			triggerMode = TRIG_TOUCH;
++			door.sounds = 1;
++			break;
++		case 109:
++			door.moveSpeed = fast_speed;
++			door.wait = -1;
++			door.touch = true;
++			door.sounds = 1;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 112:
++			door.moveSpeed = fast_speed;
++			door.wait = -1;
++			door.sounds = 1;
++			triggerMode = TRIG_SWITCH;
++			break;
++		case 114:
++			door.wait = 4;
++			door.moveSpeed = fast_speed;
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_PUSH;
++			door.sounds = 1;
++			break;
++		case 115:
++			door.wait = -1;
++			door.moveSpeed = fast_speed;
++			triggerMode = TRIG_SWITCH;
++			door.sounds = 1;
++			break;
++		case 117:
++			door.moveSpeed = fast_speed;
++			door.wait = 4;
++			triggerMode = TRIG_PUSH;
++			door.sounds = 1;
++			break;
++		case 120:
++			door.wait = 3;
++			door.downNotUp = true;
++			door.moveSpeed = fast_speed;
++			door.neighborMode = LOWEST_FLOOR;
++			door.touch = true;
++			door.isFloor = true;
++			door.sounds = 2;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 123:
++			door.wait = 3;
++			door.moveSpeed = fast_speed;
++			door.isFloor = true;
++			door.downNotUp = true;
++			door.sounds = 2;
++			door.neighborMode = LOWEST_FLOOR;
++			triggerMode = TRIG_SWITCH;
++			//triggerMode = TRIG_PUSH;
++			break;
++		case 134:
++			door.lock = LOCK_RED;
++			door.moveSpeed = fast_speed;
++			door.wait = -1;
++			door.sounds = 1;
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 136:
++			door.lock = LOCK_YELLOW;
++			door.moveSpeed = fast_speed;
++			door.wait = -1;
++			door.sounds = 1;
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 135:
++			door.lock = LOCK_RED;
++			door.moveSpeed = fast_speed;
++			door.wait = -1;
++			door.sounds = 1;
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_PUSH;
++			break;
++		case 141:
++			door.moveSpeed = slower_speed;
++			door.wait = 0;
++			door.sounds = 4; // silent move, floor close sound
++			door.crusher = true;
++			//triggerMode = TRIG_SWITCH;
++			triggerMode = TRIG_TOUCH;
++			break;
++		case 11:
++			isExitButton = true;
++			isDoor = false;
++			break;
++		case 1:
++			door.wait = 4;
++			door.moveSpeed = slow_speed;
++			door.monsters = true;
++			break;
++		case 2:
++			door.wait = -1;
++			door.moveSpeed = slow_speed;
++			door.monsters = true;
++			door.touch = true;
++			triggerMode = TRIG_TOUCH;
++			break;
++
++		case 48:
++			isScroll = true;
++			isDoor = false;
++			break;
++		case 97:
++			isTeleport = true;
++			isDoor = false;
++			break;
++		 case 125:
++			isTeleport = true;
++			telePlayers = false;
++			isDoor = false;
++			break;
++		case 126:
++			isTeleport = true;
++			telePlayers = false;
++			isDoor = false;
++			break;
++		case 138: case 139:
++			isLight = true;
++			triggerMode = TRIG_SWITCH;
++			isDoor = false;
++			break;
++
++		default:
++			isDoor = false;
++			if (L->type != 0)
++				fprintf(stdout, "Unhandled line type %d\n", L->type);		
++			break;
++		}
++
++		door.tag = L->tag;
++		door.sector = -1;	
++
++		door.linedef = L->type;
++
++		std::string buttonTarget;
++		bool buttonNeeded = true;
++		if (isDoor)
++		{	
++			bool needsSwitch = true;
++
++			if (door.tag == 0)
++			{
++				for (int k = 0; k < lev_subsecs.num; k++)
++				{
++					subsec_c *sub = lev_subsecs.Get(k);
++					sector_c *S = sub->sector;
++
++					for (int z = 0; z < sub->seg_list.size(); z++)
++					{
++						linedef_c * def = sub->seg_list[z]->linedef;
++						//fprintf(stdout, "CHECK %d\n", def->index);
++						if (def && def == L && L->left)
++						{
++							door.sector = L->left->sector->index;
++							//fprintf(stdout, "Added door for sector %d %d %d\n", door.sector, L->left->sector->index, L->type);
++							break;
++						}
++					}
++					if (door.sector != -1)
++						break;
++				}
++			}
++			else
++			{
++				// TODO: Check if switch is really needed (button right on top of it?)
++				// but what about the button on the floor in map01
++				/*
++				for (int k = 0; k < lev_subsecs.num; k++)
++				{
++					subsec_c *sub = lev_subsecs.Get(k);
++					sector_c *S = sub->sector;
++
++					if (S->tag == door.tag)
++					{
++						for (int z = 0; z < sub->seg_list.size(); z++)
++						{
++							linedef_c * def = sub->seg_list[z]->linedef;
++							if (def && def == L)
++							{
++								buttonNeeded = false;
++								fprintf(stdout, "button not needed\n", L->type);
++								break;
++							}
++						}
++					}
++				}
++				*/
++			}
++
++			std::string targetName;
++			if (triggerMode == TRIG_SWITCH || triggerMode == TRIG_TOUCH || door.tag != 0)
++				targetName = std::string("door") + std::to_string(door.tag != 0 ? door.tag : door.sector);
++			if (door.tag != 0 && triggerMode != TRIG_SWITCH && triggerMode != TRIG_TOUCH)
++				door.alwaysUsable = true;
++			door.targetname = targetName;
++			buttonTarget = targetName;
++
++			g_doors.push_back(door);
++		}
++
++		if (isDoor && triggerMode == TRIG_TOUCH || isTeleport)
++		{
++			subsec_c * touchSector = NULL;
++			subsec_c * teleSector = NULL;
++			for (int k = 0; k < lev_subsecs.num; k++)
++			{
++				subsec_c *sub = lev_subsecs.Get(k);
++				sector_c *S = sub->sector;
++
++				if (S->index == L->left->sector->index)
++					touchSector = sub;
++
++				/*
++				if (isTeleport && L->tag == S->tag && (!teleSector || teleSector->index > sub->index))
++					teleSector = sub;
++				*/
++			}
++
++			if (touchSector == NULL)
++				fprintf(stdout, "ZOMG NO TOUCH SECTOR\n", L->type);
++
++			if (touchSector)
++			{
++				if (touchSector->index == door.sector)
++				{
++					fprintf(stdout, "ZOMG TOUCH SAME AS DOOR\n", L->type);
++				}
++
++				//if (isDoor)
++				//	fprintf(stdout, "Adding touch for sector\n", touchSector->index);
++
++				FILE* old_fp = map_fp;
++				map_fp = ent_fp;
++
++				std::vector<brush_side_c> sides;
++				//fprintf(stdout, "Add touch trigger for type %d\n", L->type);
++				subsec_c *sub = touchSector;
++
++				sector_c *S = sub->sector;
++
++				if (! sub->sector)
++				{
++				  fprintf(stderr, "Warning: subsec:%d has no sector\n", i);
++				  continue;
++				}
++
++				GetBrushSides(sub, sides);
++
++				if (sides.size() < 3)
++				{
++				  fprintf(stderr, "Warning: subsec:%d in sector:%d invalid (only %d sides)\n",
++						  i, S->index, (int)sides.size());
++				  continue;
++				}
++
++				fprintf(map_fp, "{\n");
++				if (isTeleport)
++				{
++					Brush_WriteField("classname", "trigger_doom_teleport");
++					Brush_WriteField("target", "tp%d", L->tag);
++					if (!telePlayers)
++						Brush_WriteField("spawnflags", "2");
++				}
++				else
++				{
++					Brush_WriteField("classname", "trigger_multiple");				
++					Brush_WriteField("spawnflags", "48"); // fire on enter/exit
++					Brush_WriteField("target", (isExitButton ? "exit_level" : buttonTarget).c_str());	
++					Brush_WriteField("wait", "0.1");
++				}
++						
++
++				bool isFloor = false;
++
++				const char *tex_name = "aaatrigger";
++				double z1 = S->floor_h;
++				double z2 = S->ceil_h;
++				if (z1 == z2)
++				{
++					z2 += 64;
++					fprintf(stderr, "bad height for touch trigger for %s\n", door.targetname.c_str());
++				}
++
++				fprintf(map_fp, "{\n");
++
++				// Top
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++					tex_name);
++
++				// Bottom
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++					tex_name);
++
++				// Sides
++				for (unsigned int k = 0; k < sides.size(); k++)
++				{
++				brush_side_c& b = sides[k];
++
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					b.x1, b.y1, z1,  b.x1, b.y1, z2,  b.x2, b.y2, z2,
++					tex_name);
++				}
++
++				fprintf(map_fp, "}\n");
++
++				fprintf(map_fp, "}\n");
++				map_fp = old_fp;
++			}
++		}
++
++		bool isButton = (isDoor || isLight) && triggerMode == TRIG_SWITCH;
++
++
++		if (isButton || isExitButton || isFence || isScroll)
++		{
++			int butSize = 16;
++			//fprintf(stdout, "Add button for type %d\n", L->type);
++
++			double sx = L->start->x;
++			double sy = L->start->y;
++
++			double ey = L->end  ->y;
++			double ex = L->end  ->x;
++
++			double sx0 = L->start->x;
++			double sy0 = L->start->y;
++			double ey0 = L->end  ->y;
++			double ex0 = L->end  ->x;
++
++			double sx1, ex1, sy1, ey1;
++
++			// adjust to be button width and sticking out a bit
++			double midX = sx + (ex-sx)*0.5f;
++			double midY = sy + (ey-sy)*0.5f;
++			double dirX = (ex-sx);
++			double dirY = (ey-sy);
++
++			double length = sqrt(dirX * dirX + dirY * dirY);
++
++			// normalize vector
++			dirX /= length;
++			dirY /= length;
++
++			// normal (used to get back face coordinates)
++			double nx = ey - sy;
++			double ny = sx - ex;
++			double n_len = ComputeDist(nx, ny);
++			nx = nx / n_len;
++			ny = ny / n_len;
++
++			sx = midX + dirX*-butSize*g_world_scale;
++			ex = midX + dirX*butSize*g_world_scale;
++
++			sy = midY + dirY*-butSize*g_world_scale;
++			ey = midY + dirY*butSize*g_world_scale;
++
++			// determine coordinates for left and right sides
++			double line_A = ComputeAngle(L->end->x - L->start->x, L->end->y - L->start->y);
++
++			double left_A  = GetInteriorAngle(L->start, L, true);
++			double right_A = GetInteriorAngle(L->end,   L, true);
++
++			left_A = right_A = 180;
++
++			left_A  = line_A + left_A  / 2.0;
++			right_A = line_A - right_A / 2.0 + 180.0;
++			double lx = sx + 12.0*g_world_scale * cos(left_A * M_PI / 180.0);
++			double ly = sy + 12.0*g_world_scale * sin(left_A * M_PI / 180.0);
++
++			double rx = ex + 12.0*g_world_scale * cos(right_A * M_PI / 180.0);
++			double ry = ey + 12.0*g_world_scale * sin(right_A * M_PI / 180.0);
++
++			// fprintf(stderr, "left_A = %1.1f  right_A = %1.1f  line_A = %1.1f\n\n", left_A, right_A, line_A);
++
++			FILE* old_fp = map_fp;
++			map_fp = ent_fp;
++			
++
++			const char *tex_name = "+0SW2S";
++			const char *null_name = "NULL";
++
++			if (isScroll)
++				tex_name = Texture_Convert(L->right->mid_tex);
++
++			if (isFence || isScroll)
++			{				
++				double z1 = L->right->sector->floor_h;
++				double z2 = L->right->sector->ceil_h;
++				double zdist = -1.0f;
++				double backdist = 1.0f;
++				sx = sx0;
++				sy = sy0;
++				ex = ex0;
++				ey = ey0;
++				lx = sx + 12.0*g_world_scale * cos(left_A * M_PI / 180.0);
++				ly = sy + 12.0*g_world_scale * sin(left_A * M_PI / 180.0);
++				rx = ex + 12.0*g_world_scale * cos(right_A * M_PI / 180.0);
++				ry = ey + 12.0*g_world_scale * sin(right_A * M_PI / 180.0);
++
++				for (int z = 0; z < (isScroll ? 1 : 2); z++)
++				{
++					fprintf(map_fp, "{\n");
++
++					std::string cname = z == 0 ? "func_wall" : "func_illusionary";
++					if (isScroll)
++						cname = "func_conveyor";
++
++					Brush_WriteField("classname", cname.c_str());	
++					if (isScroll)
++					{
++						Brush_WriteField("speed", "%d", (int)(28*g_world_scale));
++						Brush_WriteField("spawnflags", "3");
++					}
++					else if (z == 1)
++					{
++						Brush_WriteField("rendermode", "4");
++						Brush_WriteField("renderamt", "255");
++					}
++					if (!isScroll)
++						tex_name = z == 0 ? "clip" : "null";
++					backdist = 1.0f;
++					zdist = isScroll ? 1 : 0;
++
++					fprintf(map_fp, "{\n");
++					// Top
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++						isScroll ? "NULL" : tex_name);
++
++					// Bottom
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++						isScroll ? "NULL" : tex_name);
++
++					// Front
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++						sx+nx*zdist, sy+ny*zdist, z1,  sx+nx*zdist, sy+ny*zdist, z2,  ex+nx*zdist, ey+ny*zdist, z2,
++						tex_name, g_world_scale, g_world_scale);
++
++					// Back
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++						ex-nx*backdist, ey-ny*backdist, z1,  ex-nx*backdist, ey-ny*backdist, z2,  sx-nx*backdist, sy-ny*backdist, z2,
++						isScroll ? "NULL" : tex_name, g_world_scale, g_world_scale);
++
++					// Left
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						lx, ly, z1,  lx, ly, z2,  sx, sy, z2,
++						isScroll ? "NULL" : tex_name);
++
++					// Right
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						ex, ey, z1,  ex, ey, z2,  rx, ry, z2,
++						isScroll ? "NULL" : tex_name);
++
++					fprintf(map_fp, "}\n");
++
++					fprintf(map_fp, "}\n");
++				}
++			}
++			else
++			{
++				fprintf(map_fp, "{\n");
++
++				Brush_WriteField("classname", "func_doom_door");				
++				Brush_WriteField("wait", "%d", door.wait == -1 ? -1 : 1);		
++				Brush_WriteField("target", isExitButton ? "exit_level" : buttonTarget.c_str());			
++				Brush_WriteField("sounds", "0");			
++
++				float zdist = 0.1f;
++
++				for (int b = 0; b < 3; b++)
++				{
++					double z1 = L->right->sector->floor_h + b*butSize*g_world_scale;
++					if (b >= 2)
++						z1 += butSize*g_world_scale;
++					double z2 = z1 + butSize*g_world_scale;
++					if (b == 1)
++						z2 += butSize*g_world_scale;
++
++					z1 = (int)z1;
++					z2 = (int)z2;
++
++					fprintf(map_fp, "{\n");
++					// Top
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++						null_name);
++
++					// Bottom
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++						null_name);
++
++					// Front
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s %d %d 0 %f %f\n",
++						sx+nx*zdist, sy+ny*zdist, z1,  sx+nx*zdist, sy+ny*zdist, z2,  ex+nx*zdist, ey+ny*zdist, z2,
++						b == 1 ? tex_name : null_name, (int)16, (int)0, g_world_scale, g_world_scale);
++
++					// Back
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						ex-nx*8, ey-ny*8, z1,  ex-nx*8, ey-ny*8, z2,  sx-nx*8, sy-ny*8, z2,
++						null_name);
++
++					// Left
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						lx, ly, z1,  lx, ly, z2,  sx, sy, z2,
++						null_name);
++
++					// Right
++					fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++						ex, ey, z1,  ex, ey, z2,  rx, ry, z2,
++						null_name);
++
++					fprintf(map_fp, "}\n");
++				}
++				double z1 = L->right->sector->floor_h;
++				double z2 = z1 + (int)(64*g_world_scale);
++
++				sx1 = ex;
++				sy1 = ey;
++				ex1 = ex0;
++				ey1 = ey0;
++				lx = sx1 + 12.0*g_world_scale * cos(left_A * M_PI / 180.0);
++				ly = sy1 + 12.0*g_world_scale * sin(left_A * M_PI / 180.0);
++				rx = ex1 + 12.0*g_world_scale * cos(right_A * M_PI / 180.0);
++				ry = ey1 + 12.0*g_world_scale * sin(right_A * M_PI / 180.0);
++
++				fprintf(map_fp, "{\n");
++				// Top
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++					null_name);
++
++				// Bottom
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++					null_name);
++
++				// Front
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					sx1+nx*zdist, sy1+ny*zdist, z1,  sx1+nx*zdist, sy1+ny*zdist, z2,  ex1, ey1, z2,
++					null_name);
++
++				// Back
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					ex1-nx*8, ey1-ny*8, z1,  ex1-nx*8, ey1-ny*8, z2,  sx1-nx*8, sy1-ny*8, z2,
++					null_name);
++
++				// Left
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					lx, ly, z1,  lx, ly, z2,  sx1, sy1, z2,
++					null_name);
++
++				// Right
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					ex1, ey1, z1,  ex1, ey1, z2,  rx, ry, z2,
++					null_name);
++
++				fprintf(map_fp, "}\n");
++
++				sx1 = sx0;
++				sy1 = sy0;
++				ex1 = sx;
++				ey1 = sy;
++				lx = sx1 + 12.0*g_world_scale * cos(left_A * M_PI / 180.0);
++				ly = sy1 + 12.0*g_world_scale * sin(left_A * M_PI / 180.0);
++				rx = ex1 + 12.0*g_world_scale * cos(right_A * M_PI / 180.0);
++				ry = ey1 + 12.0*g_world_scale * sin(right_A * M_PI / 180.0);
++
++				fprintf(map_fp, "{\n");
++				// Top
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++					null_name);
++
++				// Bottom
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++					null_name);
++
++				// Front
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					sx1, sy1, z1,  sx1, sy1, z2,  ex1+nx*zdist, ey1+ny*zdist, z2,
++					null_name);
++
++				// Back
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					ex1-nx*8, ey1-ny*8, z1,  ex1-nx*8, ey1-ny*8, z2,  sx1-nx*8, sy1-ny*8, z2,
++					null_name);
++
++				// Left
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					lx, ly, z1,  lx, ly, z2,  sx1, sy1, z2,
++					null_name);
++
++				// Right
++				fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++					ex1, ey1, z1,  ex1, ey1, z2,  rx, ry, z2,
++					null_name);
++
++				fprintf(map_fp, "}\n");	
++
++				fprintf(map_fp, "}\n");
++			}
++			map_fp = old_fp;
++		}		
++	}
++
++	for (int i = 0; i < lev_subsecs.num; i++)
++	{
++		subsec_c *sub = lev_subsecs.Get(i);
++		sector_c *S = sub->sector;
++
++		if (S->special != 9)
++			continue;
++
++		FILE* old_fp = map_fp;
++		map_fp = ent_fp;
++
++		std::vector<brush_side_c> sides;
++		//fprintf(stdout, "Add secret trigger at sector %d tag %d\n", S->index, S->tag);
++
++		if (! sub->sector)
++		{
++			fprintf(stderr, "Warning: subsec:%d has no sector\n", S->index);
++			continue;
++		}
++
++		GetBrushSides(sub, sides);
++
++		if (sides.size() < 3)
++		{
++			fprintf(stderr, "Warning: subsec:%d in sector:%d invalid (only %d sides)\n",
++					i, S->index, (int)sides.size());
++			continue;
++		}
++
++		fprintf(map_fp, "{\n");
++		Brush_WriteField("classname", "trigger_once");		
++		Brush_WriteField("target", "secret_revealed");			
++
++		bool isFloor = false;
++
++		const char *tex_name = "aaatrigger";
++		double z1 = S->floor_h;
++		double z2 = S->ceil_h;
++
++		if (z1 == z2)
++		{
++			fprintf(stderr, "Bad height for secret trigger\n", S->index);
++			z2 += 64;
++		}
++
++		fprintf(map_fp, "{\n");
++
++		// Top
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++			0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++			tex_name);
++
++		// Bottom
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++			0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++			tex_name);
++
++		// Sides
++		for (unsigned int k = 0; k < sides.size(); k++)
++		{
++			brush_side_c& b = sides[k];
++
++			fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++				b.x1, b.y1, z1,  b.x1, b.y1, z2,  b.x2, b.y2, z2,
++				tex_name);
++		}
++
++		fprintf(map_fp, "}\n");
++
++		fprintf(map_fp, "}\n");
++		map_fp = old_fp;
++	}
++}
++
++void GetBrushSides(subsec_c *sub, std::vector<brush_side_c>& sides)
++{
+   sides.clear();
+ 
+   for (unsigned int k = 0; k < sub->seg_list.size(); k++)
+@@ -180,8 +1213,8 @@
+       }
+     }
+ 
+-    if (far_dist < 0.01)
+-      FatalError("Bad slope in sector %d\n", S->index);
++    //if (far_dist < 0.01)
++    //  FatalError("Bad slope in sector %d\n", S->index);
+ 
+     double nx = L->end->y - L->start->y;
+     double ny = L->start->x - L->end->x;
+@@ -219,7 +1252,7 @@
+   }
+ }
+ 
+-static const char *DetermineSideTex(subsec_c *sub, brush_side_c& b, int is_ceil)
++const char *DetermineSideTex(subsec_c *sub, brush_side_c& b, int is_ceil)
+ {
+   // find longest seg on the brush side
+   const char *best = NULL;
+@@ -267,7 +1300,7 @@
+ }
+ 
+ 
+-static void WriteSlopedFloor(sector_c *S, const char *tex)
++void WriteSlopedFloor(sector_c *S, const char *tex)
+ {
+   slope_c *P = S->floor_slope;
+   SYS_ASSERT(P);
+@@ -275,7 +1308,7 @@
+   double nx = P->ey - P->sy;
+   double ny = P->sx - P->ex;
+ 
+-  fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++  fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
+       P->sx, P->sy, P->sz,
+       P->ex, P->ey, P->ez, 
+       P->ex + nx, P->ey + ny, P->ez,
+@@ -282,7 +1315,7 @@
+       tex);
+ }
+ 
+-static void WriteSlopedCeiling(sector_c *S, const char *tex)
++void WriteSlopedCeiling(sector_c *S, const char *tex)
+ {
+   slope_c *P = S->ceil_slope;
+   SYS_ASSERT(P);
+@@ -290,7 +1323,7 @@
+   double nx = P->ey - P->sy;
+   double ny = P->sx - P->ex;
+ 
+-  fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++  fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
+       P->sx, P->sy, P->sz,
+       P->ex, P->ey, P->ez, 
+       P->ex - nx, P->ey - ny, P->ez,
+@@ -297,7 +1330,138 @@
+       tex);
+ }
+ 
++std::vector<subsec_c*> getNeighbors(subsec_c * sector)
++{
++	std::vector<subsec_c*> neighbors;
+ 
++	for (int k = 0; k < lev_subsecs.num; k++)
++	{
++		subsec_c *sub = lev_subsecs.Get(k);
++		sector_c *S = sub->sector;
++
++		 if (! sub->sector)
++		{
++		  fprintf(stderr, "Warning: subsec:%d has no sector\n", k);
++		  continue;
++		}
++
++		 if (sub->index == sector->index)
++			 continue;
++		for (int z = 0; z < sub->seg_list.size(); z++)
++		{
++			linedef_c * def = sub->seg_list[z]->linedef;
++			if (!def)
++				continue;
++			for (int d = 0; d < sector->seg_list.size(); d++)
++			{
++				linedef_c * def2 = sector->seg_list[d]->linedef;
++				if (def2 && def->index == def2->index)
++				{
++					neighbors.push_back(sub);
++					break;
++				}
++			}
++		}
++	}
++
++	return neighbors;
++}
++
++subsec_c * getNeighbor(subsec_c * sector, int& min, int mode)
++{
++	std::vector<subsec_c*> neighbors = getNeighbors(sector);
++
++	min = mode == LOWEST_CEILING || mode == LOWEST_FLOOR ? 1000000 : -1000000;
++	subsec_c * min_sector = NULL;
++	for (int i = 0; i < neighbors.size(); i++)
++	{
++		subsec_c *sub = neighbors[i];
++		sector_c *S = sub->sector;
++		
++		int num_pass = 3 + (int)S->extrafloors.size();
++
++		bool isFloor = false;
++		for (int pass = 0; pass < num_pass; pass++)
++			{
++			  double z1, z2, z3, z4;
++			  const char *flat_name = NULL;
++
++			  if (pass == 0)
++			  {
++				z1 = S->floor_under - 64;
++				z2 = S->floor_h;
++				z3 = z1 + 64;
++				z4 = z2;
++
++				isFloor = true;
++				flat_name = S->floor_tex;
++			  }
++			  else if (pass == 1)
++			  {
++				z1 = S->ceil_h;
++				z2 = S->ceil_over + 64;
++				z3 = z1;
++				z4 = z2 - 64;
++				isFloor = false;
++				flat_name = S->ceil_tex;
++			  }
++			  else if (pass == 2)  // liquid
++			  {
++				if (S->liquids.size() == 0)
++				  continue;
++
++				sector_c *liq = S->liquids[0];
++
++				z1 = S->floor_under - 32;
++				z2 = liq->floor_h;
++				isFloor = true;
++				flat_name = liq->floor_tex;
++			  }
++			  else  // extrafloor
++			  {
++				unsigned int e_idx = pass - 3;
++				SYS_ASSERT(e_idx < S->extrafloors.size());
++
++				sector_c *EF = S->extrafloors[e_idx];
++
++				z1 = EF->floor_h;
++				z2 = EF->ceil_h;
++				isFloor = false;
++				flat_name = EF->ceil_tex;
++			  }
++
++			  Door door;
++			  bool isDoor = GetDoor(S->tag, S->index, door);
++				isDoor = isDoor && isFloor == door.downNotUp;
++			if (isDoor)
++				continue;
++
++				//fprintf(stderr, "IS GOOD? %d\n", S->ceil_h);
++				if (mode == LOWEST_CEILING && (!isFloor && z1 < min))
++				{
++					min = z1;	
++					min_sector = sub;
++				}
++				if (mode == LOWEST_FLOOR && (isFloor && z2 < min))
++				{
++					min = z2;	
++					min_sector = sub;
++				}
++				if (mode == HIGHEST_CEILING && (!isFloor && z1 > min))
++				{
++					min = z1;	
++					min_sector = sub;
++				}
++				if (mode == HIGHEST_FLOOR && (isFloor && z2 > min))
++				{
++					min = z2;	
++					min_sector = sub;
++				}
++		}		
++	}
++	return min_sector;
++}
++
+ void Brush_ConvertSectors(void)
+ {
+   FindSectorExtents();
+@@ -330,23 +1494,29 @@
+ 
+     int num_pass = 3 + (int)S->extrafloors.size();
+ 
++	bool isFloor = false;
+     for (int pass = 0; pass < num_pass; pass++)
+     {
+-      double z1, z2;
++      double z1, z2, z3, z4;
+       const char *flat_name = NULL;
+ 
+       if (pass == 0)
+       {
+-        z1 = S->floor_under - 64;
++        z1 = S->floor_under - (int)(64*g_world_scale);
+         z2 = S->floor_h;
++		z3 = z1 + (int)(64*g_world_scale);
++		z4 = z2;
+ 
++		isFloor = true;
+         flat_name = S->floor_tex;
+       }
+       else if (pass == 1)
+       {
+         z1 = S->ceil_h;
+-        z2 = S->ceil_over + 64;
+-
++        z2 = S->ceil_over + (int)(64*g_world_scale);
++		z3 = z1;
++		z4 = z2 - (int)(64*g_world_scale);
++		isFloor = false;
+         flat_name = S->ceil_tex;
+       }
+       else if (pass == 2)  // liquid
+@@ -356,14 +1526,14 @@
+ 
+         sector_c *liq = S->liquids[0];
+ 
+-        z1 = S->floor_under - 32;
++        z1 = S->floor_under - (int)(32*g_world_scale);
+         z2 = liq->floor_h;
+-
++		isFloor = true;
+         flat_name = liq->floor_tex;
+       }
+       else  // extrafloor
+       {
+-        unsigned int e_idx = pass - 3;
++        unsigned int e_idx = pass - (int)(3*g_world_scale);
+         SYS_ASSERT(e_idx < S->extrafloors.size());
+ 
+         sector_c *EF = S->extrafloors[e_idx];
+@@ -370,12 +1540,137 @@
+ 
+         z1 = EF->floor_h;
+         z2 = EF->ceil_h;
+-
++		isFloor = false;
+         flat_name = EF->ceil_tex;
+       }
+ 
+       flat_name = Texture_Convert(flat_name);
+ 
++		Door door; 
++		bool isDoor = GetDoor(S->tag, S->index, door);
++		isDoor = isDoor && isFloor == door.downNotUp;
++
++		FILE* old_fp = map_fp;
++
++		if (isDoor)
++		{
++			if (door.tag == 1)
++			{
++				fprintf(stdout, "Making door at tag %d %s\n", door.tag, door.targetname.c_str());
++			}
++			map_fp = ent_fp;
++			z1 = z3;
++			z2 = z4;
++			int min = 0;
++
++			if (door.crusher)
++			{
++				min = z1;
++				z1 = S->floor_h;
++			}
++			else if (door.isFloor)
++			{
++				subsec_c * doorMax = getNeighbor(sub, min, LOWEST_FLOOR);
++				if (min != z2)
++					z1 = min;
++				if (!door.downNotUp)
++				{
++					subsec_c * neighbor = getNeighbor(sub, min, HIGHEST_FLOOR);
++					z2 = min;
++					int height = z2-z1;
++					z2 = z1;
++					z1 = z1 - height;
++				}
++			} 
++			else
++			{
++				subsec_c * doorMax = getNeighbor(sub, min, HIGHEST_CEILING);
++				if (min != z1)
++					z2 = min;
++			}
++
++			if (z1 == z2)
++			{
++				z2 += 64;
++				fprintf(stdout, "bad height for %s\n", door.targetname.c_str());
++			}
++
++			subsec_c * neighbor = getNeighbor(sub, min, door.neighborMode);
++			bool negateLip = door.linedef == 20;
++			if (negateLip)
++				min *= -1;
++			door.moveDist = 0;
++			double lipStart = door.isFloor ? z1 : z2;
++			int extraLip = door.isFloor ? 0 : 4*g_world_scale;
++			int lip = ((lipStart - min) + extraLip);
++
++			if (door.isFloor && abs(lip) == (z2 - z1))
++				lip = 0; // i fucked up again, dont care to fix the root cause
++
++			if (door.isFloor && !door.downNotUp)
++				lip = 0;
++
++			//fprintf(stdout, "ZOMG lip shud tots be %d (%d %d)\n", lip, min, (int)lipStart);				
++			if (negateLip || door.linedef == 19)
++			{
++				lip = -lip;
++				fprintf(stdout, "Negated door lip for tag %d\n", door.tag);
++			}
++
++			int spawnflags = door.monsters ? 0 : 512;
++			spawnflags |= door.crusher*1;
++
++			/*
++			if (door.tag != 0)
++				fprintf(stdout, "Making door at tag %d\n", door.tag);	
++			else
++				fprintf(stdout, "Making door at sector %d\n", S->index);
++			*/
++			fprintf(map_fp, "{\n");
++			Brush_WriteField("classname", "func_doom_door");
++			Brush_WriteField("targetname", door.targetname.c_str());
++			Brush_WriteField("lip", "%d", lip);
++			Brush_WriteField("wait", "%d", door.wait);
++			Brush_WriteField("spawnflags", "%d", spawnflags);
++			Brush_WriteField("speed", "%d", (int)(door.moveSpeed*g_world_scale));
++			Brush_WriteField("lock", "%d", door.lock);
++			Brush_WriteField("linedef", "%d", door.linedef);
++			if (door.crusher)
++				Brush_WriteField("crusher", "1");
++			if (door.touch)
++				Brush_WriteField("touch_opens", "1");
++			if (door.alwaysUsable)
++				Brush_WriteField("always_use", "1");
++			if (door.downNotUp)
++				Brush_WriteField("dir", "-1");
++			else
++				Brush_WriteField("dir", "1");
++
++			Brush_WriteField("sounds", "%d", door.sounds);
++
++			 if (strncmp(flat_name, "SKY", 5) == 0)
++			  {
++					fprintf(stdout, "door%d has sky texture! Replacing with something random\n", door.tag);
++					flat_name = Texture_Convert("EXITSIGN");
++			  }
++		}
++
++	bool isWater = strncmp(flat_name, "+0FWATER", 8) == 0 || strncmp(flat_name, "+0SLIME", 7) == 0 ||
++					strncmp(flat_name, "+0NUKAGE", 8) == 0 || strncmp(flat_name, "+0LAVA", 6) == 0 ;
++	isWater = isWater && !isDoor;
++	
++	if (isWater)
++	{
++		//fprintf(stdout, "ZOMG IS WATER\n");	
++
++		map_fp = ent_fp;
++		z1 = z4-1;
++		z2 = z4;
++		
++		fprintf(map_fp, "{\n");
++		Brush_WriteField("classname", "func_doom_water");
++	}
++
+       fprintf(map_fp, "// %s sector:%d subsec:%d\n",
+               (pass == 0) ? "floor" : (pass == 1) ? "ceiling" :
+               (pass == 2) ? "liquid" : "extrafloor",
+@@ -390,9 +1685,9 @@
+       }
+       else
+       {
+-        fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++        fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+             0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
+-            flat_name);
++            flat_name, g_world_scale, g_world_scale);
+       }
+ 
+       // Bottom
+@@ -402,9 +1697,12 @@
+       }
+       else
+       {
+-        fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++		const char * bottom_name = flat_name;
++		if (isWater)
++			bottom_name = "NULL";
++        fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+             0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
+-            flat_name);
++            bottom_name, g_world_scale, g_world_scale);
+       }
+ 
+       // Sides
+@@ -417,12 +1715,17 @@
+         if (pass == 1 && strncmp(S->ceil_tex, "F_SKY", 5) == 0)
+         {
+           side_tex = Texture_Convert("NODRAW");
++		  if (isDoor)
++		  {
++				fprintf(stdout, "door%d has sky texture! Replacing with something random\n", door.tag);
++				side_tex = Texture_Convert("EXITSIGN");
++		  }
+         }
+         else if (pass < 2)
+         {
+           side_tex = DetermineSideTex(sub, b, pass == 1);
+         }
+-        else if (pass == 2)
++        else if (pass == 2  && !isDoor)
+         {
+           side_tex = Texture_Convert("NODRAW");
+         }
+@@ -438,12 +1741,103 @@
+         if (! side_tex)
+           side_tex = flat_name;
+ 
+-        fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++		if (isWater)
++			side_tex = "NULL";
++
++        fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+             b.x1, b.y1, z1,  b.x1, b.y1, z2,  b.x2, b.y2, z2,
+-            side_tex);
++            side_tex, g_world_scale, g_world_scale);
+       }
+ 
+       fprintf(map_fp, "}\n");
++
++		if (isDoor || isWater)
++		{
++			fprintf(map_fp, "}\n");
++			//fprintf(map_fp, "}\n{\n\t\"classname\"  \"worldspawn\"");
++			map_fp = old_fp;
++
++			if (false)
++				continue;
++
++			// now write world brush above door to prevent leaks
++			if (door.downNotUp || isWater)
++			{
++				z2 = z1;
++				z1 -= 64;
++			}
++			else
++			{
++				z1 = z2;
++				z2 += 64;
++			}
++
++
++			fprintf(map_fp, "{\n");
++
++			// Top
++			if (pass == 0 && S->floor_slope)
++			{
++			WriteSlopedFloor(S, flat_name);
++			}
++			else
++			{
++			fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++				0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++				flat_name, g_world_scale, g_world_scale);
++			}
++
++			// Bottom
++			if (pass == 1 && S->ceil_slope)
++			{
++			WriteSlopedCeiling(S, flat_name);
++			}
++			else
++			{
++			fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++				0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++				flat_name, g_world_scale, g_world_scale);
++			}
++
++			// Sides
++			for (unsigned int k = 0; k < sides.size(); k++)
++			{
++			brush_side_c& b = sides[k];
++
++			const char *side_tex = NULL;
++
++			if (pass == 1 && strncmp(S->ceil_tex, "F_SKY", 5) == 0)
++			{
++				side_tex = Texture_Convert("NODRAW");
++			}
++			else if (pass < 2)
++			{
++				side_tex = DetermineSideTex(sub, b, pass == 1);
++			}
++			else if (pass == 2)
++			{
++				side_tex = Texture_Convert("NODRAW");
++			}
++			else if (pass > 2)
++			{
++				linedef_c *EL = S->ef_lines[pass - 3];
++				SYS_ASSERT(EL && EL->right);
++
++				if (EL->right->mid_tex[0] && EL->right->mid_tex[0] != '-')
++				side_tex = Texture_Convert(EL->right->mid_tex);
++			}
++
++			if (! side_tex)
++				side_tex = flat_name;
++
++			fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++				b.x1, b.y1, z1,  b.x1, b.y1, z2,  b.x2, b.y2, z2,
++				side_tex, g_world_scale, g_world_scale);
++			}
++
++			fprintf(map_fp, "}\n");
++		}
++	  
+     }
+   }
+ }
+@@ -465,7 +1859,7 @@
+   }
+ }
+ 
+-static double GetInteriorAngle(vertex_c *V, linedef_c *L)
++double GetInteriorAngle(vertex_c *V, linedef_c *L, bool isButton)
+ {
+   // returns the angle on the back side of the linedef
+   // and the neighbouring linedef (both one-sided) at the
+@@ -526,8 +1920,9 @@
+ 
+   if (best_ang > 360.0)
+   {
+-    fprintf(stderr, "Warning: unconnected one-sided line at (%1.0f,%1.0f)\n",
+-            V->x, V->y);
++	if (!isButton)
++		fprintf(stderr, "Warning: unconnected one-sided line at (%1.0f,%1.0f)\n",
++				V->x, V->y);
+ 
+     return 90.0;
+   }
+@@ -593,34 +1988,34 @@
+     fprintf(map_fp, "{\n");
+ 
+     // Top
+-    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+         0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
+-        tex_name);
++        tex_name, g_world_scale, g_world_scale);
+ 
+     // Bottom
+-    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+         0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
+-        tex_name);
++        tex_name, g_world_scale, g_world_scale);
+ 
+     // Front
+-    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+         sx, sy, z1,  sx, sy, z2,  ex, ey, z2,
+-        tex_name);
++        tex_name, g_world_scale, g_world_scale);
+ 
+     // Back
+-    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+         ex-nx, ey-ny, z1,  ex-nx, ey-ny, z2,  sx-nx, sy-ny, z2,
+-        tex_name);
++        tex_name, g_world_scale, g_world_scale);
+ 
+     // Left
+-    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+         lx, ly, z1,  lx, ly, z2,  sx, sy, z2,
+-        tex_name);
++        tex_name, g_world_scale, g_world_scale);
+ 
+     // Right
+-    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 0.50 0.50\n",
++    fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
+         ex, ey, z1,  ex, ey, z2,  rx, ry, z2,
+-        tex_name);
++        tex_name, g_world_scale, g_world_scale);
+ 
+     fprintf(map_fp, "}\n");
+   }
+@@ -701,7 +2096,7 @@
+ }
+ 
+ 
+-void Brush_ConvertThings(void)
++void Brush_ConvertThings()
+ {
+   int telept_target = 1;
+ 
+@@ -709,10 +2104,17 @@
+   {
+     thing_c *T = lev_things.Get(i);
+ 
++	if (T->options & 0x10)
++		continue; // ent not in singleplayer
++
+     const char *ent_name = Entity_Convert(T->type);
+ 
+     if (! ent_name)
++	{
++		if (T->type != 11 && T->type != 1 && T->type != 2 && T->type != 3 && T->type != 4)
++			fprintf(stderr, "Warning: ignored thing '%d'\n", T->type);
+       continue;
++	}
+ 
+     sector_c *sec = PointInSector(T->x, T->y);
+     SYS_ASSERT(sec);
+@@ -729,11 +2131,23 @@
+ 
+     z += T->height;
+ 
++	FILE* old_fp = map_fp;
++	map_fp = ent_fp;
++
+     fprintf(map_fp, "// thing #%d type:%d\n", i, T->type);
+     fprintf(map_fp, "{\n");
+ 
++	if (T->type == 14)
++		z -= 34;
++	if (strncmp(ent_name, "info_player_deathmatch", 22) == 0)
++		z += 2;
++
++	bool isProp = strncmp(ent_name, "item_prop", 9) == 0;
++
++	if (!isProp)
++		z += (int)(25*g_world_scale);
+     Brush_WriteField("classname", ent_name);
+-    Brush_WriteField("origin", "%d %d %d", T->x, T->y, z + 25);
++    Brush_WriteField("origin", "%d %d %d", T->x, T->y, z);
+ 
+     if (T->angle != 0)
+     {
+@@ -742,11 +2156,78 @@
+ 
+     if (T->type == 14)
+     {
+-      Brush_WriteField("targetname", "t%d", telept_target);
+-      telept_target++;
++      Brush_WriteField("targetname", "tp%d", sec->tag);
+     }
+ 
++	if (T->options != 0)
++	{
++		Brush_WriteField("doom_flags", "%d", T->options);
++	}
++
++	Brush_WriteField("thing_type", "%d", T->type);
++
+     fprintf(map_fp, "}\n");
++
++	map_fp = old_fp;
++
++	int t = T->type;
++	bool propClip = t != 79 && t != 80;
++
++	if (isProp && propClip)
++	{
++		std::vector<brush_side_c> sides;
++		//fprintf(stdout, "Add touch trigger for type %d\n", L->type);
++		subsec_c * sub = NULL;
++		sector_c *S = sec;
++
++		for (int k = 0; k < lev_subsecs.num; k++)
++		{
++			subsec_c *subk = lev_subsecs.Get(k);
++			sector_c *S = subk->sector;
++			if (S->index == sec->index)
++				sub = subk;
++		}
++
++		double z1 = z;
++		double z2 = z + 80;
++		double sx = T->x - 16;
++		double sy = T->y - 16;
++		double ex = T->x + 16;
++		double ey = T->y + 16;
++		const char * tex_name = "clip";
++
++		fprintf(map_fp, "{\n");
++		// Top
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++			0.0, 0.0, z2,  0.0, 1.0, z2,  1.0, 0.0, z2,
++			tex_name);
++
++		// Bottom
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++			0.0, 0.0, z1,  1.0, 0.0, z1,  0.0, 1.0, z1,
++			tex_name);
++
++		// Front
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++			sx, sy, z1,  sx, sy, z2,  ex, sy, z2,
++			tex_name, g_world_scale, g_world_scale);
++
++		// Back
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 %f %f\n",
++			ex, ey, z1,  ex, ey, z2,  sx, ey, z2,
++			tex_name, g_world_scale, g_world_scale);
++
++		// Left
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++			sx, sy, z1,  sx, ey, z2,  sx, sy, z2,
++			tex_name);
++
++		// Right
++		fprintf(map_fp, "  ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) ( %1.4f %1.4f %1.4f ) %s 0 0 0 1.00 1.00\n",
++			ex, ey, z1,  ex, sy, z2,  ex, ey, z2,
++			tex_name);
++
++		fprintf(map_fp, "}\n");
++	}
+   }
+ }
+-
+Index: doom2brush/brush.h
+===================================================================
+--- doom2brush/brush.h	(revision 546)
++++ doom2brush/brush.h	(working copy)
+@@ -25,6 +25,7 @@
+ void Brush_ConvertSectors(void);
+ void Brush_ConvertWalls(void);
+ void Brush_ConvertThings(void);
++void FindDoors(void);
+ 
+ 
+ #endif /* __DM2BR_BRUSH_H__ */
+Index: doom2brush/defs.h
+===================================================================
+--- doom2brush/defs.h	(revision 546)
++++ doom2brush/defs.h	(working copy)
+@@ -57,5 +57,8 @@
+ #include "brush.h"
+ 
+ extern FILE *map_fp;
++extern FILE *ent_fp;
+ 
++extern float g_world_scale;
++
+ #endif /* __DM2BR_DEFS_H__ */
+Index: doom2brush/level.cc
+===================================================================
+--- doom2brush/level.cc	(revision 546)
++++ doom2brush/level.cc	(working copy)
+@@ -62,6 +62,9 @@
+ static const uint8_g *lev_v2_magic = (uint8_g *)"gNd2";
+ static const uint8_g *lev_v3_magic = (uint8_g *)"gNd3";
+ 
++float g_world_scale = 1.42857f;
++//float g_world_scale = 1.0f;
++
+ // forward decls
+ void GetLinedefsHexen(wad_c *base);
+ void GetThingsHexen(wad_c *base);
+@@ -70,8 +73,8 @@
+ {
+   index = _idx;
+ 
+-  x = (double) SINT16(raw->x);
+-  y = (double) SINT16(raw->y);
++  x = (double) (int)(SINT16(raw->x)*g_world_scale);
++  y = (double) (int)(SINT16(raw->y)*g_world_scale);
+ }
+ 
+ vertex_c::vertex_c(int _idx, const raw_v2_vertex_t *raw)
+@@ -78,8 +81,8 @@
+ {
+   index = _idx;
+ 
+-  x = (double) SINT32(raw->x) / 65536.0;
+-  y = (double) SINT32(raw->y) / 65536.0;
++  x = (double) (int)((SINT32(raw->x) / 65536.0)*g_world_scale);
++  y = (double) (int)((SINT32(raw->y) / 65536.0)*g_world_scale);
+ }
+ 
+ vertex_c::~vertex_c()
+@@ -167,8 +170,8 @@
+ {
+   index = _idx;
+ 
+-  floor_h = SINT16(raw->floor_h);
+-  ceil_h  = SINT16(raw->ceil_h);
++  floor_h = (int)(SINT16(raw->floor_h)*g_world_scale);
++  ceil_h  = (int)(SINT16(raw->ceil_h)*g_world_scale);
+ 
+   // these are updated by FindSectorExtents
+   floor_under = floor_h;
+@@ -224,8 +227,8 @@
+ {
+   index = _idx;
+ 
+-  x = SINT16(raw->x);
+-  y = SINT16(raw->y);
++  x = (int)(SINT16(raw->x)*g_world_scale);
++  y = (int)(SINT16(raw->y)*g_world_scale);
+ 
+   type    = UINT16(raw->type);
+   options = UINT16(raw->options);
+@@ -238,14 +241,14 @@
+ {
+   index = _idx;
+ 
+-  x = SINT16(raw->x);
+-  y = SINT16(raw->y);
++  x = (int)(SINT16(raw->x)*g_world_scale);
++  y = (int)(SINT16(raw->y)*g_world_scale);
+ 
+   type    = UINT16(raw->type);
+   options = UINT16(raw->options);
+ 
+   angle   = SINT16(raw->angle);
+-  height  = SINT16(raw->height);
++  height  = (int)(SINT16(raw->height)*g_world_scale);
+ }
+ 
+ thing_c::~thing_c()
+@@ -751,10 +754,10 @@
+ 
+ void bbox_t::from_raw(const raw_bbox_t *raw)
+ {
+-  minx = SINT16(raw->minx);
+-  miny = SINT16(raw->miny);
+-  maxx = SINT16(raw->maxx);
+-  maxy = SINT16(raw->maxy);
++  minx = (int)(SINT16(raw->minx)*g_world_scale);
++  miny = (int)(SINT16(raw->miny)*g_world_scale);
++  maxx = (int)(SINT16(raw->maxx)*g_world_scale);
++  maxy = (int)(SINT16(raw->maxy)*g_world_scale);
+ }
+ 
+ node_c::node_c(int _idx, const raw_node_t *raw)
+@@ -761,8 +764,8 @@
+ {
+   index = _idx;
+ 
+-  x  = SINT16(raw->x);
+-  y  = SINT16(raw->y);
++  x  = (int)(SINT16(raw->x)*g_world_scale);
++  y  = (int)(SINT16(raw->y)*g_world_scale);
+   dx = SINT16(raw->dx);
+   dy = SINT16(raw->dy);
+ 
+Index: doom2brush/main.cc
+===================================================================
+--- doom2brush/main.cc	(revision 546)
++++ doom2brush/main.cc	(working copy)
+@@ -21,6 +21,7 @@
+ 
+ 
+ FILE *map_fp;
++FILE *ent_fp;
+ 
+ 
+ static void ShowTitle(void)
+@@ -39,7 +40,6 @@
+ }
+ 
+ 
+-
+ //------------------------------------------------------------------------
+ //  MAIN PROGRAM
+ //------------------------------------------------------------------------
+@@ -107,16 +107,20 @@
+     }
+   }
+ 
++  level_name = "MAP12";
+ 
++
+   Texture_Load("convdefs.txt");
+ 
+   LoadLevel(level_name);
+ 
+-
+   map_fp = fopen("out.map", "w");
++  ent_fp = fopen("out.map.ent", "w");
+   if (! map_fp)
+     FatalError("Unable to create output file: out.map\n");
+ 
++   FindDoors();
++
+   fprintf(map_fp, "// generated by Doom-2-Brush\n");
+   fprintf(map_fp, "{\n");
+ 
+@@ -126,14 +130,27 @@
+   Brush_ConvertSectors();
+   Brush_ConvertWalls();
+ 
++  Brush_ConvertThings();
++
+   fprintf(map_fp, "}\n");
++ 
++  fclose(ent_fp);
++  ent_fp = fopen("out.map.ent", "r");
+ 
+-  Brush_ConvertThings();
++  // Read contents from file
++	char c = fgetc(ent_fp);
++	while (c != EOF)
++	{
++		fputc(c, map_fp);
++		c = fgetc(ent_fp);
++	}
+ 
+-  fclose(map_fp);
++   fclose(map_fp);
+ 
+   TermDebug();
+ 
++  system("pause");
++
+   return 0;  // success!
+ }
+ 
+Index: doom2brush/Makefile.xming
+===================================================================
+--- doom2brush/Makefile.xming	(revision 546)
++++ doom2brush/Makefile.xming	(working copy)
+@@ -6,8 +6,8 @@
+ 
+ PROG=doom2brush.exe
+ 
+-CC=i586-mingw32msvc-gcc
+-CXX=i586-mingw32msvc-g++
++CC=gcc
++CXX=g++
+ CFLAGS= -g3 -Wall -DWIN32
+ CXXFLAGS=$(CFLAGS)
+ LDFLAGS=
+Index: doom2brush/texture.cc
+===================================================================
+--- doom2brush/texture.cc	(revision 546)
++++ doom2brush/texture.cc	(working copy)
+@@ -18,8 +18,8 @@
+ 
+ // this includes everything we need
+ #include "defs.h"
++#include <algorithm>
+ 
+-
+ typedef std::map<std::string, std::string> texture_map_t;
+ 
+ static texture_map_t tex_DB;
+@@ -60,7 +60,10 @@
+     return;
+   }
+ 
+-  tex_DB[old_name] = std::string(new_name);
++  std::string oname = std::string(old_name);
++  std::transform(oname.begin(), oname.end(), oname.begin(), ::tolower);
++
++  tex_DB[oname] = std::string(new_name);
+ }
+ 
+ 
+@@ -142,16 +145,20 @@
+ 
+ const char * Texture_Convert(const char *old_name)
+ {
+-  if (tex_DB.find(old_name) == tex_DB.end())
++
++	 std::string oname = std::string(old_name);
++  std::transform(oname.begin(), oname.end(), oname.begin(), ::tolower);
++
++  if (tex_DB.find(oname) == tex_DB.end())
+   {
+     fprintf(stderr, "Warning: unspecified texture '%s'\n", old_name);
+ 
+     SYS_ASSERT(default_tex_name);
+ 
+-    tex_DB[old_name] = std::string(default_tex_name);
++    tex_DB[oname] = std::string(old_name);
+   }
+ 
+-  return tex_DB[old_name].c_str();
++  return tex_DB[oname].c_str();
+ }
+ 
+ 
+@@ -164,11 +171,11 @@
+ 
+   // built-in values
+   if (id_number == 1)
+-    return "info_player_start";
+-
+-  if (id_number == 11)
+     return "info_player_deathmatch";
+ 
++  //if (id_number == 11)
++   // return "info_player_deathmatch";
++
+   return NULL; // not found
+ }
+ 
+Index: doom2brush/util.cc
+===================================================================
+--- doom2brush/util.cc	(revision 546)
++++ doom2brush/util.cc	(working copy)
+@@ -196,9 +196,10 @@
+ unsigned int UtilGetMillis()
+ {
+ #ifdef WIN32
+-  unsigned long ticks = GetTickCount();
++  //unsigned long ticks = GetTickCount();
+ 
+-  return (unsigned int) ticks;
++  //return (unsigned int) ticks;
++  return 0;
+ #else
+   struct timeval tm;
+ 
