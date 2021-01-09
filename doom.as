@@ -592,36 +592,6 @@ void printkeybind(EHandle h_plr, string msg)
 	g_PlayerFuncs.PrintKeyBindingString(plr, msg);
 }
 
-void let_me_play(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, float flValue)
-{
-	if (pActivator is null or !pActivator.IsPlayer())
-		return;
-	CBasePlayer@ plr = cast<CBasePlayer@>(pActivator);
-	
-	plr.pev.targetname = "let_me_play_damnit"; // map script will wait for this before letting them start
-	
-	g_PlayerFuncs.RespawnPlayer(plr, true, true);
-	plr.SetHasSuit(true);
-	g_PlayerFuncs.ApplyMapCfgToPlayer(plr, true);
-	
-	for (int i = 1; i <= g_rewards; i++) {
-		g_EntityFuncs.FireTargets("use_reward" + i, plr, plr, USE_TOGGLE);
-	}
-	for (int i = 1; i <= g_unlocks; i <<= 1) {
-		g_EntityFuncs.FireTargets("use_unlock" + i, plr, plr, USE_TOGGLE);
-	}
-	
-	PlayerState@ state = getPlayerState(plr);
-	CustomKeyvalues@ customKeys = plr.GetCustomKeyvalues();
-	customKeys.SetKeyvalue("uiscale", state.uiScale);
-	
-	string msg = "[Secondary Fire] = Toggle thirdperson\n\n[Tertiary Fire] = Change HUD scale";
-	g_Scheduler.SetTimeout("printkeybind", 2.0f, EHandle(plr), msg);
-	g_Scheduler.SetTimeout("printkeybind", 3.0f, EHandle(plr), msg);
-	g_Scheduler.SetTimeout("printkeybind", 4.0f, EHandle(plr), msg);
-	g_Scheduler.SetTimeout("printkeybind", 5.0f, EHandle(plr), msg);	
-}
-
 string getMapName()
 {
 	if (g_map_num < 10)
@@ -1009,26 +979,21 @@ void tally_time(string item, int time, int targetTime, bool playSound)
 			g_Scheduler.SetTimeout("tally_time", 0.8, "par", 0, g_par_times[g_map_num-1], !playSound);
 		if (item == "par")
 		{
-			if (g_map_num == 11) {			
-				g_Scheduler.SetTimeout("end_game", 32.0);
+			if (g_map_num == 11) {
+				g_Scheduler.SetTimeout("end_game", 22.0);
 				CBasePlayer@ plr = getAnyPlayer();
 				
-				string msg = "ERROR: Mapper too lazy to finish series.\n\nGame ends in 30 seconds.";
+				string msg = "ERROR: Mapper too lazy to finish series.\n\nGame ends in 20 seconds.";
 				g_Scheduler.SetTimeout("printkeybind", 2.0f, msg);
 				g_Scheduler.SetTimeout("printkeybind", 3.0f, msg);
 				g_Scheduler.SetTimeout("printkeybind", 4.0f, msg);
 				
 				if (!g_friendly_fire)
-				{
-					msg = "Disappointed?\n\nThis should help you feel better...";
+				{				
+					msg = "also friendly fire is on now";
 					g_Scheduler.SetTimeout("printkeybind", 6.0f, msg);
-					g_Scheduler.SetTimeout("printkeybind", 7.0f, msg);
-					g_Scheduler.SetTimeout("printkeybind", 8.0f, msg);
-				
-					msg = "FRIENDLY FIRE ENABLED";
-					g_Scheduler.SetTimeout("printkeybind", 9.0f, msg);
 					
-					g_Scheduler.SetTimeout("loner_check", 13.0f);
+					g_Scheduler.SetTimeout("loner_check", 10.0f);
 				}
 				
 				g_Scheduler.SetTimeout("end_game_dm", 9.0f);
@@ -1179,6 +1144,23 @@ void ep_text(CBaseEntity@ pActivator, CBaseEntity@ pCaller, USE_TYPE useType, fl
 	g_Scheduler.SetTimeout("ep_scroll_line", 0.0f, 1, 0, 10);
 }
 
+void delay_init_player(EHandle h_plr) {
+	CBasePlayer@ plr = cast<CBasePlayer@>(h_plr.GetEntity());
+	
+	for (int i = 1; i <= g_rewards; i++) {
+		g_EntityFuncs.FireTargets("use_reward" + i, plr, plr, USE_TOGGLE);
+	}
+	for (int i = 1; i <= g_unlocks; i <<= 1) {
+		g_EntityFuncs.FireTargets("use_unlock" + i, plr, plr, USE_TOGGLE);
+	}
+	
+	string msg = "[Secondary Fire] = Toggle thirdperson\n\n[Tertiary Fire] = Change HUD scale";
+	g_Scheduler.SetTimeout("printkeybind", 2.0f, EHandle(plr), msg);
+	g_Scheduler.SetTimeout("printkeybind", 3.0f, EHandle(plr), msg);
+	g_Scheduler.SetTimeout("printkeybind", 4.0f, EHandle(plr), msg);
+	g_Scheduler.SetTimeout("printkeybind", 5.0f, EHandle(plr), msg);
+}
+
 void initSettings(EHandle h_plr)
 {
 	if (!h_plr.IsValid())
@@ -1192,7 +1174,7 @@ void initSettings(EHandle h_plr)
 		
 	if (g_wait_for_noobs)
 	{
-		if (plr.pev.targetname != "let_me_play_damnit" and g_timer_started) {
+		if (g_timer_started) {
 			resetTimer();
 		}
 	}
@@ -1214,6 +1196,8 @@ void initSettings(EHandle h_plr)
 			}
 		}
 	}
+	
+	g_Scheduler.SetTimeout("delay_init_player", 2.0f, h_plr);
 }
 
 HookReturnCode ClientJoin( CBasePlayer@ plr )
@@ -1285,8 +1269,7 @@ void updateTimer()
 		@ent = g_EntityFuncs.FindEntityByClassname(ent, "player");
 		if (ent !is null) {
 			CBasePlayer@ plr = cast<CBasePlayer@>(ent);
-			if (string(ent.pev.targetname) == "let_me_play_damnit")
-				waitingPlayers.insertLast(ent);
+			waitingPlayers.insertLast(ent);
 		}
 	} while (ent !is null);
 	
@@ -1337,11 +1320,6 @@ HookReturnCode PlayerUse( CBasePlayer@ plr, uint& out )
 			phit.Use(plr, plr, USE_TOGGLE);
 	}
 	return HOOK_CONTINUE;
-}
-
-void doTheStatic(CBaseEntity@ ent)
-{
-	//g_EngineFuncs.MakeStatic(ent.edict());
 }
 
 void doEffect(CBasePlayer@ plr)
