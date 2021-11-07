@@ -969,72 +969,74 @@ class monster_doom : ScriptBaseMonsterEntity
 		// render sprite for each player
 		bool visibleToAnyone = false;
 		if (self.IsAlive())
-		{			
-			edict_t@ edt = g_EngineFuncs.FindClientInPVS(self.edict());
-			while (edt !is null)
-			{
-				CBasePlayer@ plr = cast<CBasePlayer@>(g_EntityFuncs.Instance( edt ));
-				if (plr !is null)
+		{
+			for ( int pidx = 1; pidx <= g_Engine.maxClients; pidx++ ) {		
+				CBasePlayer@ plr = g_PlayerFuncs.FindPlayerByIndex(pidx);
+				
+				if (plr is null or !plr.IsConnected())
+					continue;
+					
+				if (!plr.FVisible(self, true)) {
+					continue;
+				}
+				
+				//println("VISIBLE TO " + plr.pev.netname);
+				
+				visibleToAnyone = true;
+				if (!spritesCreated)
+					CreateRenderSprites();
+				
+				int angleIdx = getSpriteAngle(pev.origin, forward, right, plr.pev.origin);
+					
+				if (!h_enemy.IsValid() and plr.IsAlive())
 				{
-					@edt = @plr.pev.chain;
-					visibleToAnyone = true;
-					if (!spritesCreated)
-						CreateRenderSprites();
-					
-					int angleIdx = getSpriteAngle(pev.origin, forward, right, plr.pev.origin);
-						
-					if (!h_enemy.IsValid() and plr.IsAlive())
+					Vector delta = pev.origin - plr.pev.origin;
+					delta = delta.Normalize();
+					if (DotProduct(forward, delta) < -0.3f)
 					{
-						Vector delta = pev.origin - plr.pev.origin;
-						delta = delta.Normalize();
-						if (DotProduct(forward, delta) < -0.3f and plr.FVisible(self, true))
-						{
-							bool visible = true;
-							PlayerState@ state = getPlayerState(plr);
-							visible = plr.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
-							visible = visible and g_EngineFuncs.PointContents(plr.pev.origin) != CONTENTS_SOLID;
+						bool visible = true;
+						PlayerState@ state = getPlayerState(plr);
+						visible = plr.pev.rendermode == 0 or state.lastAttack + 1.0f > g_Engine.time;
+						visible = visible and g_EngineFuncs.PointContents(plr.pev.origin) != CONTENTS_SOLID;
 
-							if (visible)
-								SetEnemy(plr);
-						}
+						if (visible)
+							SetEnemy(plr);
 					}
+				}
+				
+				string steamId = getSteamID(plr);
+				PlayerState@ state = getPlayerState(plr);
+				
+				int lastAngle = -1;
+				if (plrViewAngles.exists(steamId))
+					plrViewAngles.get(steamId, lastAngle);
+				plrViewAngles[steamId] = angleIdx;
+				
+				if (lastAngle == angleIdx)
+					continue;
+				
+				for (int i = 0; i < 8; i++)
+				{
+					CBaseEntity@ client_sprite = sprites[i];
+					bool shouldVisible = i == angleIdx;
 					
-					string steamId = getSteamID(plr);
-					PlayerState@ state = getPlayerState(plr);
-					
-					int lastAngle = -1;
-					if (plrViewAngles.exists(steamId))
-						plrViewAngles.get(steamId, lastAngle);
-					plrViewAngles[steamId] = angleIdx;
-					
-					if (lastAngle == angleIdx)
-						continue;
-					
-					for (int i = 0; i < 8; i++)
+					if (shouldVisible != state.isVisibleEnt(client_sprite.pev.targetname))
 					{
-						CBaseEntity@ client_sprite = sprites[i];
-						bool shouldVisible = i == angleIdx;
-						
-						if (shouldVisible != state.isVisibleEnt(client_sprite.pev.targetname))
+						//println("SET VISIBLE " + client_sprite.pev.targetname + " " + shouldVisible);
+						if (shouldVisible)
 						{
-							//println("SET VISIBLE " + client_sprite.pev.targetname + " " + shouldVisible);
-							if (shouldVisible)
-							{
-								CBaseEntity@ renderent = renderShowEnts[i];
-								renderent.Use(plr, plr, USE_TOGGLE);
-								state.addVisibleEnt(client_sprite.pev.targetname, EHandle(client_sprite));
-							}
-							else
-							{
-								CBaseEntity@ renderent = renderHideEnts[i];
-								renderent.Use(plr, plr, USE_TOGGLE);
-								state.hideVisibleEnt(client_sprite.pev.targetname);
-							}
+							CBaseEntity@ renderent = renderShowEnts[i];
+							renderent.Use(plr, plr, USE_TOGGLE);
+							state.addVisibleEnt(client_sprite.pev.targetname, EHandle(client_sprite));
+						}
+						else
+						{
+							CBaseEntity@ renderent = renderHideEnts[i];
+							renderent.Use(plr, plr, USE_TOGGLE);
+							state.hideVisibleEnt(client_sprite.pev.targetname);
 						}
 					}
 				}
-				else
-					break;
 			}
 			
 			if (visibleToAnyone or !dormant)
